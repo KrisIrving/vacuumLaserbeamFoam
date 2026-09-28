@@ -1,5 +1,6 @@
 # Test directories
 tutorialsTest
+tests/run
 
 # VTK files
 **/*.vtk

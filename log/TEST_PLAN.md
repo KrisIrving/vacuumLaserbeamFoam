@@ -121,3 +121,31 @@ Acceptance:
 - no build/runtime failure;
 - legacy model selection is explicit in the test case;
 - no intentional equation change beyond moving the formulas into the model.
+
+## T2c — Automated byte-level legacy field equivalence
+
+Script:
+`tests/legacyEquivalence/Allrun`
+
+Method:
+- copy the same bootstrap Plate2D case into two clean directories;
+- force both cases to write after the first time step;
+- run one with upstream `laserbeamFoam`;
+- run one with `vacuumLaserbeamFoam + legacyAnisimov`;
+- require the runtime-selection message;
+- byte-compare key OpenFOAM field files at the same output time.
+
+Fields:
+- `T`;
+- `U`;
+- `alpha.metal`;
+- `p_rgh`;
+- `p`;
+- `epsilon1`;
+- `Qv`;
+- `condition`;
+- `meltHistory`.
+
+Acceptance:
+all listed field files are byte-identical for this deterministic serial
+regression case.

@@ -37,12 +37,20 @@ jobs:
           cd tutorials
           ./Alltest
 
+      - name: Legacy model regression
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          ./tests/legacyEquivalence/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: test-logs.${{ matrix.container-image.name }}
-          path: tutorialsTest/logs
+          path: |
+            tutorialsTest/logs
+            tests/run
           retention-days: 10
 
       - name: Set job status

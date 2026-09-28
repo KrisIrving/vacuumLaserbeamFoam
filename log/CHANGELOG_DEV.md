@@ -59,3 +59,11 @@ Implemented:
 - bootstrap tutorial explicitly selects `legacyAnisimov`.
 
 No near-vacuum/chamber-pressure physics has been added in this change.
+
+### Phase-2 regression infrastructure
+
+Added `tests/legacyEquivalence/Allrun` and a GitHub Actions step that runs the
+same one-step Plate2D state through upstream `laserbeamFoam` and
+`vacuumLaserbeamFoam + legacyAnisimov`, then byte-compares key output fields.
+This turns legacy equivalence into an automated regression gate rather than a
+manual assumption.
