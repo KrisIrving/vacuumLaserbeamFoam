@@ -185,39 +185,11 @@ const dimensionedScalar Marangoni_Constant
     transportProperties//.lookup("dsigmadT")
 );
 
-const dimensionedScalar p0
+// Runtime-selectable evaporation/recoil model. Existing V3.0 cases default to
+// legacyAnisimov when the evaporationModel entry is absent.
+autoPtr<vacuumEvaporationModel> evaporationModel
 (
-    "p0",
-    dimensionSet(1, -1, -2, 0, 0, 0, 0),
-    transportProperties//.lookup("p0")
-); // atmospheric pressure
-
-const dimensionedScalar Tvap
-(
-    "Tvap",
-    dimensionSet(0, 0, 0, 1, 0),
-    transportProperties//.lookup("Tvap")
-);
-
-const dimensionedScalar Mm
-(
-    "Mm",
-    dimensionSet(1, 0, 0, 0, -1),
-    transportProperties//.lookup("Mm")
-);
-
-const dimensionedScalar LatentHeatVap
-(
-    "LatentHeatVap",
-    dimensionSet(0, 2, -2, 0, 0),
-    transportProperties//.lookup("LatentHeatVap")
-);
-
-const dimensionedScalar R
-(
-    "R",
-    dimensionSet(1, 2, -2, -1, -1, 0, 0),
-        8.314
+    vacuumEvaporationModel::New(mesh, transportProperties)
 );
 
 

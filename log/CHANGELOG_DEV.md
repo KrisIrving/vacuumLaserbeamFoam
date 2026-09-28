@@ -42,3 +42,20 @@ Commit tested: `2ad22fb0930127c9d5ba596a72d37340e3af1d8e`
   the only differences are the three intended application-identity changes.
 - Full field-by-field `laserbeamFoam` vs `vacuumLaserbeamFoam` regression
   remains pending and is intentionally not inferred from the smoke test.
+
+## 2026-09-28 — Phase 2 evaporation-model API
+
+Branch: `feat/vacuum-model-api`
+
+Implemented:
+- new `libvacuumEvaporationModels` library;
+- runtime-selectable `vacuumEvaporationModel` base class;
+- `legacyAnisimov` model containing the exact V3.0 recoil-pressure and
+  evaporation-cooling expressions;
+- `UEqn.H` now obtains recoil pressure from the model;
+- `TEqn.H` now obtains evaporation heat flux from the same model;
+- original `p0/Tvap/Mm/LatentHeatVap/R` ownership moved out of solver field
+  creation and into the legacy model;
+- bootstrap tutorial explicitly selects `legacyAnisimov`.
+
+No near-vacuum/chamber-pressure physics has been added in this change.

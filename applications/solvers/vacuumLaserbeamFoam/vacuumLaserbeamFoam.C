@@ -31,9 +31,9 @@ Group
     grpMultiphaseSolvers
 
 Description
-    Phase-1 bootstrap of vacuumLaserbeamFoam. This solver is intentionally
-    physics-equivalent to laserbeamFoam V3.0 at this stage, providing a stable
-    branch point for subsequent vacuum-specific models. It retains the two-phase
+    Vacuum-aware laser melt-pool solver under active development. The current
+    legacyAnisimov evaporation model is intentionally physics-equivalent to the
+    hard-coded LaserbeamFoam V3.0 recoil/cooling expressions. It retains the two-phase
     incompressible VoF description of the metallic substrate and numerical gas phase,
     with optional mesh motion and mesh topology changes including adaptive
     re-meshing.
@@ -67,6 +67,7 @@ Authors
 
 #include "Polynomial.H"
 #include "laserHeatSource.H"
+#include "vacuumEvaporationModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

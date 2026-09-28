@@ -29,7 +29,7 @@ Acceptance:
 - Running the same case with either executable gives equivalent fields within
   numerical/restart tolerance.
 
-## Phase 2 — Vacuum evaporation model API
+## Phase 2 — Vacuum evaporation model API (in progress)
 
 Create a runtime-selectable library, planned name
 `vacuumEvaporationModels`, so `UEqn.H` and `TEqn.H` no longer contain

@@ -24,10 +24,7 @@
         TRHS =
             LatentHeat*((fvc::ddt(rho, epsilon1) + fvc::div(rhoPhi, epsilon1)));
 
-        Qv =
-            0.82*LatentHeatVap*Mm*p0
-           *Foam::exp(LatentHeatVap*Mm*((T - Tvap)/(R*T*Tvap)))
-           /Foam::pow(2*M_PI*Mm*R*T,0.5);
+        Qv = evaporationModel->evaporationHeatFlux(T);
 
         if (damperSwitch)
         {
