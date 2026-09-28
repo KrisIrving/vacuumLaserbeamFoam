@@ -37,3 +37,18 @@ it explicitly to exercise the runtime-selection path.
 3. bootstrap smoke test;
 4. numerical regression against the Phase-1 solver before claiming complete
    equivalence.
+
+## First CI attempt
+
+Run `36418680113`: **FAIL** during library compilation.
+
+Root cause:
+the explicit runtime-selection iterator type used in the selector was not
+compatible with the OpenFOAM-v2506 API exposed by the CI environment.
+
+The subsequent missing-library linker error was a cascade from this compilation
+failure.
+
+Action:
+replace the explicit iterator type with `auto` and re-test. This change does
+not affect any physical equation.

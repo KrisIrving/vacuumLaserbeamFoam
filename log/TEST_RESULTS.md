@@ -97,3 +97,28 @@ Still required:
 run the same prepared case with `laserbeamFoam` and
 `vacuumLaserbeamFoam`, then quantitatively compare fields/integral metrics at
 identical output times.
+
+## 2026-09-28 — Phase-2 first CI attempt
+
+Commit:
+`f14f15d34290bb033af99a21407a303dca9e7797`
+
+GitHub Actions run:
+`36418680113`
+
+Result: **FAIL (build)**
+
+Failure:
+`vacuumEvaporationModelNew.C` used an explicit
+`dictionaryConstructorTable::iterator` type that is not accepted by the
+OpenFOAM-v2506 runtime-selection API in this build environment.
+
+Consequence:
+`libvacuumEvaporationModels` was not created, so the later solver link also
+failed with `cannot find -lvacuumEvaporationModels`.
+
+Diagnosis:
+the linker failure is cascading, not a separate library-order issue.
+
+Fix:
+use C++17 `auto` for the runtime-selection table iterator and re-run CI.
