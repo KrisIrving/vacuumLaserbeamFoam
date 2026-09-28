@@ -12,6 +12,8 @@ License
 
 #include "fvCFD.H"
 #include "vacuumEvaporationModel.H"
+#include <iomanip>
+#include <iostream>
 
 using namespace Foam;
 
@@ -86,13 +88,14 @@ int main(int argc, char *argv[])
     const scalar recoil = gMax(tRecoil().primitiveField());
     const scalar heatFlux = gMax(tHeatFlux().primitiveField());
 
-    Info.precision(16);
-    Info<< "EVAP_MODEL_TEST "
+    std::cout
+        << std::setprecision(16)
+        << "EVAP_MODEL_TEST "
         << testTemperature.value() << " "
         << pSat << " "
         << massFlux << " "
         << recoil << " "
-        << heatFlux << nl;
+        << heatFlux << std::endl;
 
     return 0;
 }

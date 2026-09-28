@@ -224,3 +224,24 @@ add `$(LIB_SRC)/meshTools/lnInclude` and `-lmeshTools`.
 
 This failure is isolated to the diagnostic test utility and does not change the
 evaporation-model implementation.
+
+## 2026-09-28 — Phase-3 analytical utility second CI attempt
+
+Commit:
+`5d6eaac12787466a434feb75616d285e6661c758`
+
+GitHub Actions run:
+`36428017249`
+
+Result: **FAIL (build)**
+
+Failure:
+the diagnostic utility attempted `Info.precision(16)`; OpenFOAM-v2506
+`Info` is a `messageStream` and does not expose that method.
+
+Fix:
+print the machine-readable regression line with standard C++
+`std::cout << std::setprecision(16)`.
+
+The failure affects only diagnostic formatting; model equations and solver
+coupling are unchanged.

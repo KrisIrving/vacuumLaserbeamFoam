@@ -130,3 +130,9 @@ temperature/back-pressure states, including the zero-net-evaporation limit.
 CI run `36427391669` showed that the new diagnostic utility needed the
 OpenFOAM `meshTools` include path/library because `fvCFD.H` pulls AMI mesh
 types transitively. Added the missing build dependency; no physics code changed.
+
+### Phase-3 analytical utility output correction
+
+CI run `36428017249` showed that `messageStream Info` cannot set stream
+precision directly in OpenFOAM-v2506. The regression utility now uses
+`std::cout` with 16-digit precision for its machine-readable test line.
