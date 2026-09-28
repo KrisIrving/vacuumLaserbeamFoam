@@ -1,0 +1,98 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_ROOT="$REPO_ROOT/tests/run/legacyEquivalence"
+REF_CASE="$RUN_ROOT/laserbeamFoam"
+MODEL_CASE="$RUN_ROOT/vacuumLaserbeamFoam"
+
+rm -rf "$RUN_ROOT"
+mkdir -p "$RUN_ROOT"
+cp -a "$SOURCE_CASE" "$REF_CASE"
+cp -a "$SOURCE_CASE" "$MODEL_CASE"
+
+prepare_case()
+{
+    local case_dir="$1"
+
+    rm -rf "$case_dir/0"
+    cp -a "$case_dir/initial" "$case_dir/0"
+
+    (
+        cd "$case_dir"
+
+        foamDictionary system/controlDict -entry stopAt -set nextWrite
+        foamDictionary system/controlDict -entry writeControl -set timeStep
+        foamDictionary system/controlDict -entry writeInterval -set 1
+
+        blockMesh > log.blockMesh 2>&1
+        setFields > log.setFields 2>&1
+    )
+}
+
+prepare_case "$REF_CASE"
+prepare_case "$MODEL_CASE"
+
+(
+    cd "$REF_CASE"
+    laserbeamFoam > log.laserbeamFoam 2>&1
+)
+
+(
+    cd "$MODEL_CASE"
+    vacuumLaserbeamFoam > log.vacuumLaserbeamFoam 2>&1
+)
+
+grep -q     "Selecting vacuum evaporation model legacyAnisimov"     "$MODEL_CASE/log.vacuumLaserbeamFoam"
+
+ref_time="$(foamListTimes -case "$REF_CASE" -latestTime | tail -1)"
+model_time="$(foamListTimes -case "$MODEL_CASE" -latestTime | tail -1)"
+
+if [[ -z "$ref_time" || -z "$model_time" ]]
+then
+    echo "Could not determine latest output time" >&2
+    exit 1
+fi
+
+if [[ "$ref_time" != "$model_time" ]]
+then
+    echo "Output-time mismatch: reference=$ref_time model=$model_time" >&2
+    exit 1
+fi
+
+fields=(
+    T
+    U
+    alpha.metal
+    p_rgh
+    p
+    epsilon1
+    Qv
+    condition
+    meltHistory
+)
+
+for field in "${fields[@]}"
+do
+    ref_file="$REF_CASE/$ref_time/$field"
+    model_file="$MODEL_CASE/$model_time/$field"
+
+    if [[ ! -f "$ref_file" || ! -f "$model_file" ]]
+    then
+        echo "Missing regression field: $field" >&2
+        exit 1
+    fi
+
+    if ! cmp -s "$ref_file" "$model_file"
+    then
+        echo "Field mismatch: $field" >&2
+        diff -u "$ref_file" "$model_file" | head -200 || true
+        exit 1
+    fi
+done
+
+echo "PASS: legacyAnisimov reproduces laserbeamFoam for fields:"
+printf '  %s\n' "${fields[@]}"
+echo "Compared output time: $ref_time"

@@ -45,9 +45,10 @@ Current V3.0 physics:
   `pVap = 0.54*p0*exp(...)`;
 - surface tension and buoyancy terms.
 
-Primary future change:
-Replace the hard-coded recoil correlation with
-`vacuumEvaporationModel::pRecoil()` after a legacy-equivalent model is tested.
+Phase-2 change:
+The hard-coded recoil correlation is replaced by
+`vacuumEvaporationModel::recoilPressure(T)`. The first implementation,
+`legacyAnisimov`, contains the exact V3.0 expression.
 
 ## Energy equation
 
@@ -59,8 +60,12 @@ Current V3.0 physics:
 - ray-tracing deposition;
 - hard-coded evaporation cooling `Qv`.
 
-Primary future changes:
-- route evaporation heat loss through the same evaporation model used for recoil;
+Phase-2 change:
+Evaporation heat loss is routed through
+`vacuumEvaporationModel::evaporationHeatFlux(T)`, using the same selected model
+as recoil.
+
+Future change:
 - add validated free-surface radiation to chamber surroundings.
 
 ## Pressure equation
@@ -124,3 +129,15 @@ as the first 0.6 Pa production solver framework.
 Must remain unmodified while early vacuum development proceeds. It provides the
 same-repository numerical reference for `legacyAnisimov` and Phase-1
 equivalence testing.
+
+## Vacuum evaporation model library
+
+### `src/vacuumEvaporationModels/`
+
+Current structure:
+- `vacuumEvaporationModel/` — abstract runtime-selection interface;
+- `legacyAnisimov/` — V3.0-equivalent recoil/cooling closure.
+
+Planned derived models:
+- Hertz-Knudsen reference model;
+- near-vacuum/Knudsen-layer model.

@@ -1,0 +1,5 @@
+vacuumEvaporationModel/vacuumEvaporationModel.C
+vacuumEvaporationModel/vacuumEvaporationModelNew.C
+legacyAnisimov/legacyAnisimov.C
+
+LIB = $(FOAM_USER_LIBBIN)/libvacuumEvaporationModels

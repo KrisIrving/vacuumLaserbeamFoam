@@ -97,3 +97,84 @@ Still required:
 run the same prepared case with `laserbeamFoam` and
 `vacuumLaserbeamFoam`, then quantitatively compare fields/integral metrics at
 identical output times.
+
+## 2026-09-28 — Phase-2 first CI attempt
+
+Commit:
+`f14f15d34290bb033af99a21407a303dca9e7797`
+
+GitHub Actions run:
+`36418680113`
+
+Result: **FAIL (build)**
+
+Failure:
+`vacuumEvaporationModelNew.C` used an explicit
+`dictionaryConstructorTable::iterator` type that is not accepted by the
+OpenFOAM-v2506 runtime-selection API in this build environment.
+
+Consequence:
+`libvacuumEvaporationModels` was not created, so the later solver link also
+failed with `cannot find -lvacuumEvaporationModels`.
+
+Diagnosis:
+the linker failure is cascading, not a separate library-order issue.
+
+Fix:
+use C++17 `auto` for the runtime-selection table iterator and re-run CI.
+
+## 2026-09-28 — Phase-2 corrected build and regression
+
+### Corrected model API build
+
+Commit:
+`ecac408e2da1c40fa5c7848ac8e1bd69a2275f4d`
+
+GitHub Actions run:
+`36419254818`
+
+Result: **PASS**
+
+Observed:
+- `libvacuumEvaporationModels.so` compiled and linked;
+- `vacuumLaserbeamFoam` compiled and linked against the new library;
+- repository `Alltest` passed.
+
+### Automated legacy field equivalence
+
+Commit:
+`8b1806127c4a6103210e704ac6ca0dc20da7cadb`
+
+GitHub Actions run:
+`36419960056`
+
+Result: **PASS**
+
+The regression executed the same prepared Plate2D state with:
+1. upstream `laserbeamFoam`;
+2. `vacuumLaserbeamFoam` selecting `legacyAnisimov`.
+
+Compared output time:
+`1e-05`
+
+The following output files were required to be byte-identical:
+- `T`;
+- `U`;
+- `alpha.metal`;
+- `p_rgh`;
+- `p`;
+- `epsilon1`;
+- `Qv`;
+- `condition`;
+- `meltHistory`.
+
+CI result:
+`PASS: legacyAnisimov reproduces laserbeamFoam for fields`
+
+Interpretation:
+for this deterministic one-step serial regression case, extracting the V3.0
+recoil and evaporation-cooling expressions into the runtime-selectable model
+introduces no numerical difference in the compared fields.
+
+This is a regression result, not validation of the physical accuracy of the
+legacy Anisimov-style evaporation model.

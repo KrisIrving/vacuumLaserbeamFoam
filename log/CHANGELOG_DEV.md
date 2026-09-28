@@ -42,3 +42,40 @@ Commit tested: `2ad22fb0930127c9d5ba596a72d37340e3af1d8e`
   the only differences are the three intended application-identity changes.
 - Full field-by-field `laserbeamFoam` vs `vacuumLaserbeamFoam` regression
   remains pending and is intentionally not inferred from the smoke test.
+
+## 2026-09-28 — Phase 2 evaporation-model API
+
+Branch: `feat/vacuum-model-api`
+
+Implemented:
+- new `libvacuumEvaporationModels` library;
+- runtime-selectable `vacuumEvaporationModel` base class;
+- `legacyAnisimov` model containing the exact V3.0 recoil-pressure and
+  evaporation-cooling expressions;
+- `UEqn.H` now obtains recoil pressure from the model;
+- `TEqn.H` now obtains evaporation heat flux from the same model;
+- original `p0/Tvap/Mm/LatentHeatVap/R` ownership moved out of solver field
+  creation and into the legacy model;
+- bootstrap tutorial explicitly selects `legacyAnisimov`.
+
+No near-vacuum/chamber-pressure physics has been added in this change.
+
+### Phase-2 regression infrastructure
+
+Added `tests/legacyEquivalence/Allrun` and a GitHub Actions step that runs the
+same one-step Plate2D state through upstream `laserbeamFoam` and
+`vacuumLaserbeamFoam + legacyAnisimov`, then byte-compares key output fields.
+This turns legacy equivalence into an automated regression gate rather than a
+manual assumption.
+
+### Phase-2 verification and closeout
+
+- First CI run `36418680113`: FAIL because the explicit runtime-selection
+  iterator type was incompatible with OpenFOAM-v2506.
+- Fixed the selector by using C++17 `auto`; no physics change.
+- Corrected CI run `36419254818`: PASS.
+- Added automated legacy-equivalence regression.
+- CI run `36419960056`: PASS.
+- Critical fields were byte-identical between upstream `laserbeamFoam` and
+  `vacuumLaserbeamFoam + legacyAnisimov` at time `1e-05`.
+- Phase 2 is closed; no chamber-pressure or near-vacuum physics is present yet.

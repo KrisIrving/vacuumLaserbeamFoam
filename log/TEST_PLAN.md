@@ -107,3 +107,45 @@ the selected validation case.
 
 A planned test belongs here. A measured result belongs in `TEST_RESULTS.md`.
 Never mark a test passed based only on code inspection.
+
+## T2b — Legacy evaporation-model API regression
+
+After Phase-2 integration:
+- build `libvacuumEvaporationModels` and `vacuumLaserbeamFoam`;
+- confirm log reports `Selecting vacuum evaporation model legacyAnisimov`;
+- run bootstrapPlate2D successfully;
+- compare Phase-2 `vacuumLaserbeamFoam` against the pre-API Phase-1 solver on
+  the same case/fields before accepting physical equivalence.
+
+Acceptance:
+- no build/runtime failure;
+- legacy model selection is explicit in the test case;
+- no intentional equation change beyond moving the formulas into the model.
+
+## T2c — Automated byte-level legacy field equivalence
+
+Script:
+`tests/legacyEquivalence/Allrun`
+
+Method:
+- copy the same bootstrap Plate2D case into two clean directories;
+- force both cases to write after the first time step;
+- run one with upstream `laserbeamFoam`;
+- run one with `vacuumLaserbeamFoam + legacyAnisimov`;
+- require the runtime-selection message;
+- byte-compare key OpenFOAM field files at the same output time.
+
+Fields:
+- `T`;
+- `U`;
+- `alpha.metal`;
+- `p_rgh`;
+- `p`;
+- `epsilon1`;
+- `Qv`;
+- `condition`;
+- `meltHistory`.
+
+Acceptance:
+all listed field files are byte-identical for this deterministic serial
+regression case.

@@ -40,7 +40,7 @@ if (damperSwitch)
     damper = 2.0*rho/(rho1 + rho2);
 }
 
-pVap = 0.54*p0*Foam::exp(LatentHeatVap*Mm*((T - Tvap)/(R*T*Tvap)));
+pVap = evaporationModel->recoilPressure(T);
 
 
     fvVectorMatrix UEqn
