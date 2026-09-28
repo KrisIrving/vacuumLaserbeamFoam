@@ -29,3 +29,16 @@ Additional Phase-1 test infrastructure:
 Next intended code change:
 - only after Phase-1 compilation/regression passes, create the evaporation-model
   runtime-selection architecture.
+
+## 2026-09-28 — Phase-1 CI verification
+
+Commit tested: `2ad22fb0930127c9d5ba596a72d37340e3af1d8e`
+
+- OpenFOAM-v2506 `Allwmake`: PASS.
+- `vacuumLaserbeamFoam` executable compiled and linked.
+- Added bootstrap Plate2D smoke case was explicitly executed by CI.
+- Repository `Alltest`: PASS with zero reported solver/command failures.
+- Source comparison confirmed 30/33 solver files are byte-identical to V3.0;
+  the only differences are the three intended application-identity changes.
+- Full field-by-field `laserbeamFoam` vs `vacuumLaserbeamFoam` regression
+  remains pending and is intentionally not inferred from the smoke test.

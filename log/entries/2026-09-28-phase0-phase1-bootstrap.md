@@ -32,3 +32,14 @@ rather than caused by a new vacuum model.
 Extract the hard-coded V3.0 recoil and evaporation-cooling expressions into a
 runtime-selectable model with a `legacyAnisimov` implementation that must
 reproduce the original fields before any pressure-aware model is introduced.
+
+## Results obtained in this session
+
+- Baseline V3.0 CI: PASS.
+- New solver build on OpenFOAM-v2506: PASS.
+- New `bootstrapPlate2D` smoke run: PASS.
+- Full repository `Alltest`: PASS.
+- Structural source equivalence: 30 of 33 copied solver files are byte-identical;
+  only the intended name/diagnostic files differ.
+
+No vacuum-specific physical equation has been introduced yet.
