@@ -162,3 +162,10 @@ Pressure-aware reference implementation. Provides:
 
 It is an intermediate benchmark only; Phase 4 will introduce the final
 near-vacuum/Knudsen-layer closure.
+
+### `applications/utilities/vacuumEvaporationModelTest/`
+
+Diagnostic utility used to evaluate evaporation-model outputs at a prescribed
+uniform temperature without running the full melt-pool solver. This separates
+constitutive-model verification from CFD coupling and is intended to remain
+useful for Phase 4 and later model development.

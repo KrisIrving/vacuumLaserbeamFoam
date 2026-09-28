@@ -1,0 +1,23 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      vacuumProperties;
+}
+
+evaporationModel     hertzKnudsen;
+
+chamberPressure      0.6;
+chamberTemperature   300;
+testTemperature      3500;
+
+hertzKnudsenCoeffs
+{
+    referencePressure        1e5;
+    referenceTemperature     3500;
+    molarMass                0.05;
+    latentHeatVap            6e5;
+    accommodationCoefficient 1.0;
+}

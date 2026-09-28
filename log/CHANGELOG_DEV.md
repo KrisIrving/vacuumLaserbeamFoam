@@ -117,3 +117,10 @@ CI run `36425725491` exposed an OpenFOAM-v2506 API compatibility issue in the
 model selector: templated `lookup<word>()` is not supported here. The selector
 was changed to the dictionary-stream form already used throughout OpenFOAM.
 No equation or physical-model change was made by this correction.
+
+### Phase-3 analytical model regression infrastructure
+
+Added `vacuumEvaporationModelTest`, a small diagnostic utility that directly
+evaluates the runtime-selected model without solving U/T/p. Added an independent
+analytical regression for the Hertz-Knudsen reference closure at multiple
+temperature/back-pressure states, including the zero-net-evaporation limit.
