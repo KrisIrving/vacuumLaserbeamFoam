@@ -90,3 +90,13 @@ Phase 2 is considered complete. The next scientific change is Phase 3:
 introduce an explicit vacuum environment configuration and a pressure-aware
 reference evaporation model. That future change must not reinterpret CFD
 `p_rgh` as chamber absolute pressure.
+
+## Integration
+
+Phase 2 was merged through pull request #3 into `dev/vacuum-solver`.
+
+Merge commit:
+`14a54919e6a484d6b187c0dbedbde0f83b468879`
+
+The feature-branch history is retained, including the failed first CI attempt
+and its correction.

@@ -79,3 +79,16 @@ manual assumption.
 - Critical fields were byte-identical between upstream `laserbeamFoam` and
   `vacuumLaserbeamFoam + legacyAnisimov` at time `1e-05`.
 - Phase 2 is closed; no chamber-pressure or near-vacuum physics is present yet.
+
+### Phase-2 integration
+
+Pull request: #3 — `Phase 2: runtime-selectable evaporation model API`
+
+Merged into:
+`dev/vacuum-solver`
+
+Merge commit:
+`14a54919e6a484d6b187c0dbedbde0f83b468879`
+
+The protected project baseline `main` remains unchanged at the LaserbeamFoam
+V3.0 tree.
