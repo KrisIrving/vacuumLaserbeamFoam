@@ -149,3 +149,24 @@ Fields:
 Acceptance:
 all listed field files are byte-identical for this deterministic serial
 regression case.
+
+## T4a — Hertz-Knudsen pressure-aware model smoke test
+
+Script:
+`tests/hertzKnudsenReference/Allrun`
+
+Checks:
+- explicit selection of `hertzKnudsen` from `vacuumProperties`;
+- explicit chamber-pressure configuration;
+- one-step solver execution;
+- `Qv` output exists and contains no NaN/Inf.
+
+This is a runtime/limit sanity test, not physical validation.
+
+## T4b — Pressure/temperature curve verification
+
+Planned next:
+sample prescribed temperatures and chamber pressures and compare
+`pSat`, `mDot`, `pRecoil`, and `qEvap` against independently evaluated
+reference equations. This test should be in place before Phase 4 changes the
+production recoil closure.

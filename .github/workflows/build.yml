@@ -43,6 +43,12 @@ jobs:
           source ${{ matrix.container-image.source }}
           ./tests/legacyEquivalence/Allrun
 
+      - name: Hertz-Knudsen reference smoke test
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          ./tests/hertzKnudsenReference/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4

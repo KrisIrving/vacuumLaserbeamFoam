@@ -141,3 +141,24 @@ Current structure:
 Planned derived models:
 - Hertz-Knudsen reference model;
 - near-vacuum/Knudsen-layer model.
+
+## Phase-3 additions
+
+### `constant/vacuumProperties`
+
+Owns vacuum-environment/model configuration:
+- `evaporationModel`;
+- `chamberPressure`;
+- `chamberTemperature`;
+- model-specific coefficient sub-dictionaries.
+
+### `src/vacuumEvaporationModels/hertzKnudsen/`
+
+Pressure-aware reference implementation. Provides:
+- `saturationPressure(T)`;
+- `massFlux(T)`;
+- `recoilPressure(T)`;
+- `evaporationHeatFlux(T)`.
+
+It is an intermediate benchmark only; Phase 4 will introduce the final
+near-vacuum/Knudsen-layer closure.

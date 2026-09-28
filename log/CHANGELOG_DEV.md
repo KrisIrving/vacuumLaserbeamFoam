@@ -92,3 +92,21 @@ Merge commit:
 
 The protected project baseline `main` remains unchanged at the LaserbeamFoam
 V3.0 tree.
+
+## 2026-09-28 — Phase 3 pressure-aware reference model started
+
+Branch: `feat/pressure-aware-reference`
+
+Implemented in this commit:
+- new required `constant/vacuumProperties` for vacuumLaserbeamFoam cases;
+- model selection moved from `transportProperties` to `vacuumProperties`;
+- runtime model constructor now receives separate environment/model and material
+  dictionaries;
+- base evaporation-model API extended with `saturationPressure()` and
+  `massFlux()`;
+- `legacyAnisimov` extended with the new API while preserving the exact V3.0
+  recoil and cooling operation order;
+- new pressure-aware `hertzKnudsen` reference model;
+- CI smoke test for the new model.
+
+No final near-vacuum/Knudsen-layer physics has been implemented yet.

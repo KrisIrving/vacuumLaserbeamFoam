@@ -82,3 +82,35 @@ During Phase 2, `transportProperties` may specify
 `evaporationModel legacyAnisimov;`. If the entry is absent, the solver defaults
 to `legacyAnisimov` so unmodified V3.0 cases remain runnable. A dedicated
 `vacuumProperties` dictionary is deferred until pressure-aware models are added.
+
+## ADR-010 — vacuumProperties owns environment/model selection
+
+**Status:** accepted
+
+From Phase 3 onward, `constant/vacuumProperties` is the explicit home for:
+- evaporation-model selection;
+- chamber absolute pressure;
+- chamber temperature;
+- pressure-aware model coefficients.
+
+The original V3.0 material/legacy coefficients remain in
+`transportProperties` so the `legacyAnisimov` regression stays exact.
+
+This enforces the distinction between chamber pressure, CFD pressure, and
+thermodynamic reference pressure.
+
+## ADR-011 — Hertz-Knudsen is a reference model, not the final 0.6 Pa closure
+
+**Status:** accepted
+
+The Phase-3 `hertzKnudsen` model uses:
+- Clausius-Clapeyron saturation pressure referenced by
+  `referencePressure/referenceTemperature`;
+- net Hertz-Knudsen evaporation based on
+  `max(pSat - chamberPressure, 0)`;
+- a simple free-molecular half-range momentum-flux recoil reference
+  `0.5*max(pSat - chamberPressure, 0)`.
+
+Its purpose is pressure-awareness, dimensional/limit testing, and an
+intermediate benchmark. It must not be presented as the final near-vacuum
+Knudsen-layer model for 0.6 Pa LPBF.
