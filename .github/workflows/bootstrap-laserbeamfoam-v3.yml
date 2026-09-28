@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Import exact upstream V3.0 tree
+      - name: Import upstream V3.0 tree except workflow files
         shell: bash
         run: |
           set -euo pipefail
@@ -30,6 +30,7 @@ jobs:
           UPSTREAM_TAG="V3.0"
           EXPECTED_COMMIT="f42e08a0bfc1749675beadcf7c6a90334d7aa9f8"
           EXPECTED_TREE="a37e12fa6d6828e06bbde60831db2de67dab283a"
+          BOOTSTRAP_WORKFLOW=".github/workflows/bootstrap-laserbeamfoam-v3.yml"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -43,12 +44,22 @@ jobs:
           test "$upstream_commit" = "$EXPECTED_COMMIT"
           test "$upstream_tree" = "$EXPECTED_TREE"
 
+          # Start from the exact upstream tree in the index.
+          git read-tree "$upstream_tree"
+
+          # GitHub's GITHUB_TOKEN is not allowed to create/update workflow files.
+          # Keep the temporary bootstrap workflow unchanged and omit upstream workflows
+          # from this push; they are restored afterward through the GitHub connector.
+          git rm --cached -r --ignore-unmatch .github/workflows
+          git add "$BOOTSTRAP_WORKFLOW"
+
+          import_tree="$(git write-tree)"
           parent="$(git rev-parse HEAD)"
           new_commit="$(
             printf '%s\n\n%s\n' \
-              'Import LaserbeamFoam V3.0 baseline' \
+              'Import LaserbeamFoam V3.0 baseline (workflow files deferred)' \
               'Upstream: laserbeamfoam/LaserbeamFoam tag V3.0 @ f42e08a0bfc1749675beadcf7c6a90334d7aa9f8' \
-            | git commit-tree "$upstream_tree" -p "$parent"
+            | git commit-tree "$import_tree" -p "$parent"
           )"
 
           git reset --hard "$new_commit"
