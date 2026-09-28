@@ -1,0 +1,53 @@
+name: Bootstrap LaserbeamFoam V3.0
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  import-upstream:
+    if: github.event.head_commit.message == 'Bootstrap LaserbeamFoam V3.0 import'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Import exact upstream V3.0 tree
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_REPO="https://github.com/laserbeamfoam/LaserbeamFoam.git"
+          UPSTREAM_TAG="V3.0"
+          EXPECTED_COMMIT="f42e08a0bfc1749675beadcf7c6a90334d7aa9f8"
+          EXPECTED_TREE="a37e12fa6d6828e06bbde60831db2de67dab283a"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "$UPSTREAM_REPO"
+          git fetch --no-tags --depth=1 upstream "refs/tags/$UPSTREAM_TAG"
+
+          upstream_commit="$(git rev-parse FETCH_HEAD)"
+          upstream_tree="$(git rev-parse FETCH_HEAD^{tree})"
+
+          test "$upstream_commit" = "$EXPECTED_COMMIT"
+          test "$upstream_tree" = "$EXPECTED_TREE"
+
+          parent="$(git rev-parse HEAD)"
+          new_commit="$(
+            printf '%s\n\n%s\n' \
+              'Import LaserbeamFoam V3.0 baseline' \
+              'Upstream: laserbeamfoam/LaserbeamFoam tag V3.0 @ f42e08a0bfc1749675beadcf7c6a90334d7aa9f8' \
+            | git commit-tree "$upstream_tree" -p "$parent"
+          )"
+
+          git reset --hard "$new_commit"
+          git push origin HEAD:main
