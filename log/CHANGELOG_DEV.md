@@ -67,3 +67,15 @@ same one-step Plate2D state through upstream `laserbeamFoam` and
 `vacuumLaserbeamFoam + legacyAnisimov`, then byte-compares key output fields.
 This turns legacy equivalence into an automated regression gate rather than a
 manual assumption.
+
+### Phase-2 verification and closeout
+
+- First CI run `36418680113`: FAIL because the explicit runtime-selection
+  iterator type was incompatible with OpenFOAM-v2506.
+- Fixed the selector by using C++17 `auto`; no physics change.
+- Corrected CI run `36419254818`: PASS.
+- Added automated legacy-equivalence regression.
+- CI run `36419960056`: PASS.
+- Critical fields were byte-identical between upstream `laserbeamFoam` and
+  `vacuumLaserbeamFoam + legacyAnisimov` at time `1e-05`.
+- Phase 2 is closed; no chamber-pressure or near-vacuum physics is present yet.

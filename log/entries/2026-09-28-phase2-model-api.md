@@ -52,3 +52,41 @@ failure.
 Action:
 replace the explicit iterator type with `auto` and re-test. This change does
 not affect any physical equation.
+
+## Corrected CI result
+
+Run `36419254818`: **PASS**.
+
+The runtime-selection iterator fix allowed:
+- `libvacuumEvaporationModels.so` to build;
+- `vacuumLaserbeamFoam` to link against it;
+- the repository tutorial suite to pass.
+
+## Automated equivalence result
+
+Run `36419960056`: **PASS**.
+
+The automated regression compared upstream `laserbeamFoam` with
+`vacuumLaserbeamFoam + legacyAnisimov` at output time `1e-05`.
+
+Byte-identical fields:
+- T;
+- U;
+- alpha.metal;
+- p_rgh;
+- p;
+- epsilon1;
+- Qv;
+- condition;
+- meltHistory.
+
+Conclusion:
+Phase 2 successfully changes software architecture without changing the
+numerical result of the tested legacy physics case.
+
+## Phase-2 closeout
+
+Phase 2 is considered complete. The next scientific change is Phase 3:
+introduce an explicit vacuum environment configuration and a pressure-aware
+reference evaporation model. That future change must not reinterpret CFD
+`p_rgh` as chamber absolute pressure.

@@ -17,7 +17,7 @@ Acceptance:
 - Original solver tutorial completes.
 - Baseline metrics are archived.
 
-## Phase 1 — Solver bootstrap (current)
+## Phase 1 — Solver bootstrap (completed)
 
 - Add `applications/solvers/vacuumLaserbeamFoam`.
 - Keep equations and physics identical to V3.0 `laserbeamFoam`.
@@ -29,22 +29,25 @@ Acceptance:
 - Running the same case with either executable gives equivalent fields within
   numerical/restart tolerance.
 
-## Phase 2 — Vacuum evaporation model API (in progress)
+## Phase 2 — Vacuum evaporation model API (completed)
 
 Create a runtime-selectable library, planned name
 `vacuumEvaporationModels`, so `UEqn.H` and `TEqn.H` no longer contain
 hard-coded evaporation/recoil correlations.
 
-Planned API outputs:
-- saturation pressure `pSat(T,...)`;
-- mass flux `mDot(T,pChamber,...)`;
-- recoil pressure `pRecoil(T,pChamber,...)`;
-- evaporative heat flux `qEvap(T,pChamber,...)`.
+Phase-2 API outputs:
+- recoil pressure from temperature;
+- evaporative heat flux from temperature.
 
 First model: `legacyAnisimov`, reproducing V3.0 exactly.
 
+The API will be extended with saturation pressure, mass flux, and explicit
+chamber-pressure inputs when the pressure-aware models are introduced in the
+next phases.
+
 Acceptance:
-- legacy model reproduces the Phase-1 reference result.
+- legacy model reproduces the Phase-1 reference result. **PASS** using the
+  automated byte-level field regression at output time 1e-05.
 
 ## Phase 3 — Pressure-aware reference model
 
