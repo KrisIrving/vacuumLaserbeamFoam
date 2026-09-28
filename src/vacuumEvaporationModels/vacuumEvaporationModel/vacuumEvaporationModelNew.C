@@ -24,7 +24,7 @@ Foam::vacuumEvaporationModel::New
     const dictionary& materialDict
 )
 {
-    const word modelType(modelDict.lookup<word>("evaporationModel"));
+    const word modelType(modelDict.lookup("evaporationModel"));
 
     Info<< "Selecting vacuum evaporation model " << modelType << endl;
 

@@ -178,3 +178,27 @@ introduces no numerical difference in the compared fields.
 
 This is a regression result, not validation of the physical accuracy of the
 legacy Anisimov-style evaporation model.
+
+## 2026-09-28 — Phase-3 first CI attempt
+
+Commit:
+`281d10c24f583785401d9e8df0f45022148f07dd`
+
+GitHub Actions run:
+`36425725491`
+
+Result: **FAIL (build)**
+
+Failure:
+`vacuumEvaporationModelNew.C` used the templated form
+`lookup<word>()`, which is not accepted by the OpenFOAM-v2506 dictionary API
+in this build.
+
+Consequence:
+`libvacuumEvaporationModels` was not produced, and the later
+`vacuumLaserbeamFoam` link failure (`cannot find -lvacuumEvaporationModels`)
+was cascading rather than a separate linker issue.
+
+Fix:
+use the established OpenFOAM dictionary-stream conversion
+`word(modelDict.lookup("evaporationModel"))` and rerun CI.

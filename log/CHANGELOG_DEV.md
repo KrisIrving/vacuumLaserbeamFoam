@@ -110,3 +110,10 @@ Implemented in this commit:
 - CI smoke test for the new model.
 
 No final near-vacuum/Knudsen-layer physics has been implemented yet.
+
+### Phase-3 first CI correction
+
+CI run `36425725491` exposed an OpenFOAM-v2506 API compatibility issue in the
+model selector: templated `lookup<word>()` is not supported here. The selector
+was changed to the dictionary-stream form already used throughout OpenFOAM.
+No equation or physical-model change was made by this correction.
