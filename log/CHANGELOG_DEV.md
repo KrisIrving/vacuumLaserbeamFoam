@@ -22,6 +22,10 @@ Physics intentionally **not** changed:
 - pseudo-gas properties;
 - radiation.
 
+Additional Phase-1 test infrastructure:
+- added `tutorials/vacuumLaserbeamFoam/bootstrapPlate2D` as a smoke test copied from the upstream Plate2D case;
+- the copied case changes only the executable/application name and is explicitly not a vacuum-physics validation case.
+
 Next intended code change:
 - only after Phase-1 compilation/regression passes, create the evaporation-model
   runtime-selection architecture.

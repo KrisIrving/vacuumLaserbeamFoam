@@ -23,6 +23,13 @@ Result: **PENDING**
 Expected automated check: repository GitHub Actions `Build` workflow after the
 `dev/vacuum-solver` branch commit is pushed.
 
+### Phase-1 vacuumLaserbeamFoam smoke test
+
+Result: **PENDING**
+
+A dedicated bootstrap tutorial has been added. Result will be updated from the
+GitHub Actions run associated with the smoke-test commit.
+
 ### Phase-1 solver-equivalence regression
 
 Result: **PENDING**

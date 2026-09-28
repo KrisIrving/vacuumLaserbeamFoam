@@ -27,6 +27,21 @@ Record:
 Acceptance:
 - original solver behavior remains unchanged.
 
+## T1b — vacuumLaserbeamFoam smoke test
+
+Case:
+`tutorials/vacuumLaserbeamFoam/bootstrapPlate2D`
+
+Purpose:
+- ensure the new executable is discoverable;
+- initialize all copied fields/models;
+- advance the baseline equations without a fatal runtime error.
+
+This is not a 0.6 Pa validation case.
+
+Acceptance:
+- CI/tutorial smoke run completes without a solver error.
+
 ## T2 — Phase-1 executable equivalence
 
 Use the same prepared case twice:
