@@ -202,3 +202,25 @@ was cascading rather than a separate linker issue.
 Fix:
 use the established OpenFOAM dictionary-stream conversion
 `word(modelDict.lookup("evaporationModel"))` and rerun CI.
+
+## 2026-09-28 — Phase-3 analytical utility first CI attempt
+
+Commit:
+`3fa842ffe8496a14375c19f570967348fc4706ef`
+
+GitHub Actions run:
+`36427391669`
+
+Result: **FAIL (build)**
+
+Failure:
+the new `vacuumEvaporationModelTest` utility included `fvCFD.H` but its
+`Make/options` did not include/link `meshTools`. Compilation therefore
+stopped at the indirect AMI header dependency
+`cyclicAMIPolyPatch.H: No such file or directory`.
+
+Fix:
+add `$(LIB_SRC)/meshTools/lnInclude` and `-lmeshTools`.
+
+This failure is isolated to the diagnostic test utility and does not change the
+evaporation-model implementation.

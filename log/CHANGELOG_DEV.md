@@ -124,3 +124,9 @@ Added `vacuumEvaporationModelTest`, a small diagnostic utility that directly
 evaluates the runtime-selected model without solving U/T/p. Added an independent
 analytical regression for the Hertz-Knudsen reference closure at multiple
 temperature/back-pressure states, including the zero-net-evaporation limit.
+
+### Phase-3 analytical utility build correction
+
+CI run `36427391669` showed that the new diagnostic utility needed the
+OpenFOAM `meshTools` include path/library because `fvCFD.H` pulls AMI mesh
+types transitively. Added the missing build dependency; no physics code changed.
