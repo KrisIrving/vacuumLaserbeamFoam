@@ -73,6 +73,12 @@ jobs:
           source ${{ matrix.container-image.source }}
           ./tests/nearVacuumWang/Allrun
 
+      - name: Wang alloy-mixture regression
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          ./tests/wangAlloyMixture/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
