@@ -281,3 +281,30 @@ passed. The branch is ready for integration into `dev/vacuum-solver`.
 
 The corrected Wang Eq. (9)-(13) constants, transition-state infrastructure and
 production near-vacuum model are now treated as one verified Phase-4 chain.
+
+## 2026-09-29 — Wang 2020 fast-track alloy extension
+
+Branch: `feat/wang2020-fasttrack`
+
+Implemented:
+- generalized the transition residual so callers can supply an arbitrary
+  saturation pressure `Pe(T)`;
+- extended `nearVacuumWang` with optional multi-component alloy input;
+- converted configured mass fractions to the molar fractions required by Wang
+  Eq. (18);
+- implemented Eqs. (18)-(20) for mixture saturation pressure and
+  temperature-dependent vapor molar mass;
+- added alloy boiling-temperature and `Tk0/Tk1` bisection using the mixture
+  saturation curve;
+- retained the previous single-component path unchanged when no component list
+  is configured;
+- added the two-temperature `wangAlloyMixture` analytical regression and a CI
+  gate.
+
+Not yet claimed:
+- OpenFOAM-v2512 local validation;
+- 304L paper benchmark;
+- Ti-6Al-4V production material coefficients;
+- composition transport / preferential elemental depletion.
+
+Those items require the subsequent local and CFD validation checkpoints.
