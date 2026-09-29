@@ -390,3 +390,35 @@ Correct sonic reference values for gamma=5/3, Ma=1 are now:
 The production sonic model, generic transition relations, and independent
 regression references are being corrected in the same commit. A new full CI
 result is required before Phase 4c proceeds.
+
+## 2026-09-29 — Phase-4c near-vacuum production model CI
+
+Commit:
+`90cdcc9799300054d1bb6ab962d74e2c8f272cfa`
+
+GitHub Actions run:
+`36519951799`
+
+Result: **PASS**
+
+Passed gates:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy Anisimov byte-level field regression;
+- Hertz-Knudsen smoke regression;
+- Hertz-Knudsen analytical curve regression;
+- corrected sonic Knudsen-layer regression;
+- corrected transition-relation regression;
+- new `nearVacuumWang` constitutive and CFD-coupling regression.
+
+The new regression covered:
+1. the 0.6 Pa strong-evaporation branch reducing to the corrected sonic
+   Knudsen-layer state;
+2. a synthetic subsonic transition state;
+3. zero liquid-evaporation source below liquidus;
+4. one-step coupled `vacuumLaserbeamFoam` execution with finite `Qv`.
+
+Interpretation:
+the Phase-4c implementation is numerically regression-tested for the selected
+single-component Wang near-vacuum closure. This is **not** yet validation
+against Ti-6Al-4V material data or the user's 0.6 Pa experiment.
