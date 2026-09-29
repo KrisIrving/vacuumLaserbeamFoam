@@ -198,3 +198,30 @@ Cases:
 Acceptance:
 relative error <= 1e-9 for the analytical quantities, with the zero-flux limit
 also enforced.
+
+## T4d — Sonic Knudsen-layer analytical regression
+
+Script:
+`tests/knudsenLayerSonic/Allrun`
+
+Model:
+`knudsenLayerSonic`
+
+Checks:
+- saturation pressure from Clausius-Clapeyron;
+- sonic Knudsen-layer mass-flux coefficient;
+- sonic recoil-pressure coefficient;
+- chamber-relative recoil limit;
+- evaporative heat flux;
+- one-step CFD coupling at `chamberPressure = 0.6 Pa`;
+- finite `Qv` field and runtime model selection.
+
+Independent reference constants for `gamma=5/3, Ma=1`:
+- `T3/Te = 0.8386534551`;
+- `P3/Pe = 0.2148343054`;
+- Hertz-normalized mass flux = `0.8289634846`;
+- absolute recoil coefficient = `0.5728914811`.
+
+Acceptance:
+analytical quantities agree within the scripted floating-point tolerance and the
+one-step CFD coupling run completes without NaN/Inf.

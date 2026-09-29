@@ -114,3 +114,47 @@ The Phase-3 `hertzKnudsen` model uses:
 Its purpose is pressure-awareness, dimensional/limit testing, and an
 intermediate benchmark. It must not be presented as the final near-vacuum
 Knudsen-layer model for 0.6 Pa LPBF.
+
+## ADR-012 — Implement the sonic Knudsen-layer branch before full interpolation
+
+**Status:** accepted
+
+Phase 4 is split so the directly testable `Ma=1` strong-evaporation branch is
+implemented and verified before the complete near-vacuum interpolation logic.
+
+The Phase-4a model is named `knudsenLayerSonic`. It evaluates the
+Knudsen-layer jump relations and mass/momentum fluxes from Wang, Zhang & Yan
+(2020), Eqs. (9)-(13), at `Ma=1`.
+
+This model is not yet the final production closure for every surface
+temperature. In particular, the source paper notes that weaker evaporation in
+vacuum may not sustain the same Knudsen-layer gas-dynamic state.
+
+## ADR-013 — Recoil API returns net chamber-relative traction
+
+**Status:** accepted for incompressible pseudo-gas solver
+
+The literature Knudsen-layer recoil relation gives an absolute surface momentum
+flux. The current incompressible VOF outer phase is a numerical pseudo-gas and
+does not carry the experimental absolute chamber pressure.
+
+Therefore pressure-aware models return the normal stress applied relative to
+the chamber background pressure. For the sonic model this is
+`max(PrecoilAbsolute - chamberPressure, 0)`.
+
+Revisit this decision if an absolute-pressure gas/vapour solver is coupled later.
+
+## ADR-014 — Fix gamma = 5/3 in the sonic metal-vapour model
+
+**Status:** accepted
+
+`knudsenLayerSonic` represents the monatomic metal-vapour Knudsen-layer model
+used in the Phase-4a literature derivation. The heat-capacity ratio is therefore
+fixed in code at `gamma = 5/3`.
+
+Reason:
+- this is the physical assumption used by the source derivation for monatomic
+  vapour;
+- gamma should not become a fitting parameter;
+- fixing it prevents configuration serialization/rounding from perturbing the
+  analytical jump constants.

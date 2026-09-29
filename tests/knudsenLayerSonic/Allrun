@@ -1,0 +1,131 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/knudsenLayerSonic"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+)
+
+check_model()
+{
+    local temperature="$1"
+    local chamber_pressure="$2"
+    local label="$3"
+
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry testTemperature -set "$temperature" > /dev/null
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry chamberPressure -set "$chamber_pressure" > /dev/null
+
+    (
+        cd "$RUN_CASE"
+        vacuumEvaporationModelTest > "log.model.$label" 2>&1
+    )
+
+    local line
+    line="$(grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.model.$label" | tail -1)"
+
+    if [[ -z "$line" ]]
+    then
+        echo "Missing EVAP_MODEL_TEST output for $label" >&2
+        exit 1
+    fi
+
+    local tag actual_T actual_pSat actual_mDot actual_recoil actual_qEvap
+    read -r tag actual_T actual_pSat actual_mDot actual_recoil actual_qEvap <<< "$line"
+
+    awk         -v T="$temperature"         -v pch="$chamber_pressure"         -v aT="$actual_T"         -v aPsat="$actual_pSat"         -v aMdot="$actual_mDot"         -v aRecoil="$actual_recoil"         -v aQ="$actual_qEvap"         'BEGIN {
+            pi = atan2(0, -1);
+            pRef = 1.0e5;
+            TRef = 3500.0;
+            M = 0.05;
+            Lv = 6.0e5;
+            R = 8.314;
+
+            # Independent Ma=1 constants from Wang et al. Eqs. (9)-(12)
+            # for gamma=5/3. These constants were evaluated independently
+            # from the production C++ implementation.
+            massRatio = 0.8289634846019969;
+            recoilCoeff = 0.5728914811310224;
+
+            pSat = pRef*exp(Lv*M*((T-TRef)/(R*T*TRef)));
+
+            if (pSat > pch)
+                mDot = massRatio*pSat*sqrt(M/(2.0*pi*R*T));
+            else
+                mDot = 0.0;
+
+            recoil = recoilCoeff*pSat-pch;
+            if (recoil < 0.0) recoil = 0.0;
+
+            q = Lv*mDot;
+            tol = 2e-9;
+
+            if (aT != T) exit 11;
+
+            scale = (pSat > 1.0 ? pSat : 1.0);
+            if ((aPsat-pSat > tol*scale) || (pSat-aPsat > tol*scale)) exit 12;
+
+            scale = (mDot > 1.0 ? mDot : 1.0);
+            if ((aMdot-mDot > tol*scale) || (mDot-aMdot > tol*scale)) exit 13;
+
+            scale = (recoil > 1.0 ? recoil : 1.0);
+            if ((aRecoil-recoil > tol*scale) || (recoil-aRecoil > tol*scale)) exit 14;
+
+            scale = (q > 1.0 ? q : 1.0);
+            if ((aQ-q > tol*scale) || (q-aQ > tol*scale)) exit 15;
+        }'
+
+    grep -q "sonic Knudsen-layer constants (Ma=1)" "$RUN_CASE/log.model.$label"
+
+    echo "PASS: $label T=$temperature chamberPressure=$chamber_pressure"
+    echo "      pSat=$actual_pSat mDot=$actual_mDot recoil=$actual_recoil qEvap=$actual_qEvap"
+}
+
+check_model 3500 0.6 sonicAtReferenceTemperature
+check_model 3000 0.6 sonicBelowReferenceTemperature
+check_model 3500 100000 sonicRecoilBelowAmbientLimit
+
+# One-step CFD coupling smoke test at the target chamber pressure.
+foamDictionary "$RUN_CASE/constant/vacuumProperties"     -entry testTemperature -set 3500 > /dev/null
+foamDictionary "$RUN_CASE/constant/vacuumProperties"     -entry chamberPressure -set 0.6 > /dev/null
+
+rm -rf "$RUN_CASE/0"
+cp -a "$RUN_CASE/initial" "$RUN_CASE/0"
+
+(
+    cd "$RUN_CASE"
+    foamDictionary system/controlDict -entry stopAt -set nextWrite
+    foamDictionary system/controlDict -entry writeControl -set timeStep
+    foamDictionary system/controlDict -entry writeInterval -set 1
+
+    setFields > log.setFields 2>&1
+    vacuumLaserbeamFoam > log.vacuumLaserbeamFoam 2>&1
+)
+
+grep -q "Selecting vacuum evaporation model knudsenLayerSonic"     "$RUN_CASE/log.vacuumLaserbeamFoam"
+
+latest_time="$(foamListTimes -case "$RUN_CASE" -latestTime | tail -1)"
+qv="$RUN_CASE/$latest_time/Qv"
+
+if [[ ! -f "$qv" ]]
+then
+    echo "Missing Qv output field from CFD smoke test" >&2
+    exit 1
+fi
+
+if grep -Eiq '(^|[^A-Za-z])(nan|inf)([^A-Za-z]|$)' "$qv"
+then
+    echo "Non-finite value detected in Qv" >&2
+    exit 1
+fi
+
+echo "PASS: knudsenLayerSonic analytical and CFD-coupling regression"

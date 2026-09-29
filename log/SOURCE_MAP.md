@@ -169,3 +169,19 @@ Diagnostic utility used to evaluate evaporation-model outputs at a prescribed
 uniform temperature without running the full melt-pool solver. This separates
 constitutive-model verification from CFD coupling and is intended to remain
 useful for Phase 4 and later model development.
+
+## Phase-4a additions
+
+### `src/vacuumEvaporationModels/knudsenLayerSonic/`
+
+Implements the strong-evaporation `Ma=1` Knudsen-layer branch of the
+literature model used for Phase 4.
+
+Outputs:
+- Clausius-Clapeyron saturation pressure;
+- sonic Knudsen-layer mass flux;
+- chamber-relative recoil traction;
+- evaporative heat flux.
+
+This directory does not yet contain the complete near-vacuum interpolation
+algorithm; that will be added as a separate model/change in Phase 4b.

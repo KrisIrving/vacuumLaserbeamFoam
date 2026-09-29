@@ -173,3 +173,41 @@ GitHub Actions run `36512859745` — PASS.
 
 The protected project baseline `main` remains unchanged at the LaserbeamFoam
 V3.0 tree.
+
+## 2026-09-29 — Phase 4a sonic Knudsen-layer model
+
+Branch: `feat/knudsen-layer-sonic`
+
+Implemented:
+- new runtime-selectable `knudsenLayerSonic` evaporation model;
+- Wang et al. (2020) Knudsen-layer jump relations evaluated at `Ma=1`;
+- a mass flux and recoil pressure derived from the same sonic jump state;
+- chamber-relative net recoil traction for the current pseudo-gas solver;
+- evaporative heat flux from `mDot * latentHeatVap`;
+- analytical constitutive regression plus one-step CFD coupling smoke test;
+- literature-to-code notes in `log/LITERATURE_NOTES.md`.
+
+Scope:
+this commit intentionally implements only the strong-evaporation sonic branch.
+The full near-vacuum transition/interpolation logic is deferred to Phase 4b.
+
+### Phase-4a first regression correction
+
+CI attempt 1 compiled and passed all pre-existing gates, but the new sonic
+analytical comparison exposed a configuration-rounding issue: `foamDictionary`
+rewrote a user-configurable gamma to `1.66667`.
+
+The sonic model now fixes `gamma=5/3` in code, matching the monatomic-vapour
+assumption of the literature model and eliminating an inappropriate calibration
+degree of freedom. No empirical tolerance widening was used.
+
+### Phase-4a verification complete
+
+Final CI run `36514885821`: PASS.
+
+The `knudsenLayerSonic` implementation now passes analytical constitutive
+checks and one-step CFD coupling while preserving every Phase 0-3 regression.
+
+Phase 4 remains open: the next sub-phase is the common-atmosphere/transition
+solver required to determine the `Ma=0.05` and `Ma=1` temperature thresholds
+and implement the source paper's near-vacuum interpolation logic.

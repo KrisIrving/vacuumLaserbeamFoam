@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      vacuumProperties;
+}
+
+evaporationModel     knudsenLayerSonic;
+
+chamberPressure      0.6;
+chamberTemperature   300;
+testTemperature      3500;
+
+knudsenLayerSonicCoeffs
+{
+    referencePressure     1e5;
+    referenceTemperature  3500;
+    molarMass             0.05;
+    latentHeatVap         6e5;
+}
+
+// ************************************************************************* //

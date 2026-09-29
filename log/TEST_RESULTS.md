@@ -300,3 +300,69 @@ Phase 3 provides a tested pressure-aware reference model and an explicit
 `vacuumProperties` configuration split. The Hertz-Knudsen recoil closure remains
 an intermediate reference model; it is not the final near-vacuum Knudsen-layer
 model for the 0.6 Pa experiment.
+
+## 2026-09-29 — Phase-4a first CI attempt
+
+Commit:
+`a9cd4aa495029063b8d6488384ed6257ecf11b89`
+
+GitHub Actions run:
+`36513971338`, attempt 1
+
+Result: **FAIL (new analytical regression only)**
+
+Passed:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy byte-level regression;
+- Hertz-Knudsen smoke regression;
+- Hertz-Knudsen analytical curve regression.
+
+The new sonic test failed with exit code 13 (mass-flux comparison). Artifact
+inspection showed that the production model reported:
+
+- `gamma = 1.66667`;
+- `massFluxRatio = 0.8289634046`;
+
+instead of the exact `gamma = 5/3` reference value used to construct the
+independent expected coefficient.
+
+Diagnosis:
+the test script used `foamDictionary` to change temperature/pressure, which
+rewrote the dictionary and rounded the configurable gamma value. The discrepancy
+was caused by configuration serialization, not the Knudsen-layer equations.
+
+Resolution:
+`knudsenLayerSonic` now fixes `gamma = 5/3` in code, consistent with the
+monatomic-vapour assumption of the source model. Gamma is no longer a tunable
+dictionary coefficient.
+
+## 2026-09-29 — Phase-4a sonic Knudsen-layer final CI
+
+Commit:
+`5520d829e06bf66309dd76a50848659c75be7840`
+
+GitHub Actions run:
+`36514885821`
+
+Result: **PASS**
+
+Passed gates:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy Anisimov byte-level field regression;
+- Hertz-Knudsen 0.6 Pa smoke regression;
+- Hertz-Knudsen analytical curve regression;
+- sonic Knudsen-layer analytical regression;
+- sonic Knudsen-layer one-step CFD coupling.
+
+The sonic regression explicitly passed:
+- reference temperature, `chamberPressure=0.6 Pa`;
+- lower surface temperature, `chamberPressure=0.6 Pa`;
+- high back-pressure limit for chamber-relative recoil;
+- finite `Qv` in the coupled solver run.
+
+Interpretation:
+the strong-evaporation `Ma=1` branch is now implemented and regression-tested.
+This does not yet validate the complete near-vacuum interpolation procedure or
+the final Ti-6Al-4V material dataset.
