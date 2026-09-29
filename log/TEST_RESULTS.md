@@ -366,3 +366,27 @@ Interpretation:
 the strong-evaporation `Ma=1` branch is now implemented and regression-tested.
 This does not yet validate the complete near-vacuum interpolation procedure or
 the final Ti-6Al-4V material dataset.
+
+## 2026-09-29 — Phase-4 equation transcription audit
+
+Status: **CORRECTION IN PROGRESS**
+
+Before coupling the transition solver into a production near-vacuum model, the
+Wang et al. Eq. (9)-(13) source was rechecked against the published equation
+layout and an independent kinetic-theory formulation.
+
+Finding:
+the first Phase-4a implementation parsed the square-root placement in Eq. (10)
+incorrectly and consequently used an incorrect normalized mass-flux expression.
+The earlier Phase-4a PASS therefore verified implementation consistency with the
+then-coded constants, not correctness of that equation transcription.
+
+Correct sonic reference values for gamma=5/3, Ma=1 are now:
+- T3/Te = 0.6691164507;
+- P3/Pe = 0.2061848244;
+- Hertz-normalized mass flux = 0.8156806362;
+- absolute recoil coefficient = 0.5498261984.
+
+The production sonic model, generic transition relations, and independent
+regression references are being corrected in the same commit. A new full CI
+result is required before Phase 4c proceeds.

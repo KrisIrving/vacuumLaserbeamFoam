@@ -30,12 +30,25 @@ The Knudsen-layer jump functions define the temperature and pressure ratios
 between the liquid surface and the gas side of the Knudsen layer. For
 `gamma = 5/3` and `Ma = 1`, the implementation obtains approximately:
 
-- `T3/Te = 0.8386534551`;
-- `P3/Pe = 0.2148343054`;
+- `T3/Te = 0.6691164507`;
+- `P3/Pe = 0.2061848244`;
 - net mass-flux coefficient relative to the maximum Hertz flux:
-  `0.8289634846`;
+  `0.8156806362`;
 - absolute recoil-pressure coefficient:
-  `Precoil/Pe = 0.5728914811`.
+  `Precoil/Pe = 0.5498261984`.
+
+### Equation-transcription correction (2026-09-29)
+
+A source-to-code audit before Phase 4c found that the first Phase-4a
+implementation had parsed the square-root structure in Eq. (10) incorrectly.
+The correct relation is
+
+`sqrt(T3/Te) = sqrt(1 + pi*m^2/64) - sqrt(pi)*m/8`.
+
+The mass-flux coefficient must therefore use `sqrt(T3/Te)`, not
+`T3/Te`, in the denominator after normalization by the maximum Hertz flux.
+The production model, transition helper, and independent regression constants
+were corrected together.
 
 The mass-loss and recoil relations are evaluated from the same Knudsen-layer
 state. Saturation pressure is calculated with the Clausius-Clapeyron relation.
@@ -62,3 +75,34 @@ returns the net applied normal stress:
 
 This convention is explicitly tested and should be revisited if the solver later
 uses an absolute-pressure gas/vapour formulation.
+
+## Wang common-atmosphere state relations — Phase 4b
+
+The paper links the Knudsen-layer state to ambient gas through a shock-wave
+model. For monatomic gas, Eqs. (16)-(17) determine the Knudsen-layer Mach number
+and shock state.
+
+A useful numerical reduction is applied in the code:
+
+Given surface temperature `Te` and a trial Knudsen-layer Mach number `Ma`,
+Eq. (17) can be reduced to a quadratic equation for the region-II shock Mach
+number `M2`. Therefore the coupled state does not require a two-dimensional
+Newton solve.
+
+With
+`C = sqrt(T3/Te) * m * sqrt(2*Te/(gamma*T1))`,
+
+the physical positive root is
+
+`M2 = [C(gamma+1) + sqrt(C^2(gamma+1)^2 + 16)] / 4`.
+
+Eq. (16) then becomes a scalar residual in either `Ma` or `Te`.
+The implementation uses a logarithmic pressure-ratio residual and bounded
+bisection.
+
+This solver is intended to:
+- recover `Ma(Te)` where the common-atmosphere relation is applicable;
+- compute `Tk0` at `Ma=0.05`;
+- compute `Tk1` at `Ma=1`;
+- provide the threshold information required by the paper's near-vacuum
+  interpolation procedure.

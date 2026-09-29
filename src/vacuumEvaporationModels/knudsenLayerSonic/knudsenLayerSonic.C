@@ -113,13 +113,11 @@ Foam::vacuumEvaporationModels::knudsenLayerSonic::knudsenLayerSonic
         (2.0*m2 + 1.0)*erfcM
       - (2.0/sqrtPi)*m_*expMinusM2;
 
+    // Wang et al. Eq. (10):
+    // sqrt(T3/Te) = sqrt(1 + pi*m^2/64) - sqrt(pi)*m/8.
     const scalar sqrtTemperatureRatio =
-        std::sqrt
-        (
-            1.0
-          + (pi/64.0)*m2
-          - (sqrtPi/8.0)*m_
-        );
+        std::sqrt(1.0 + (pi/64.0)*m2)
+      - (sqrtPi/8.0)*m_;
 
     temperatureRatio_ = sqr(sqrtTemperatureRatio);
 
@@ -140,13 +138,11 @@ Foam::vacuumEvaporationModels::knudsenLayerSonic::knudsenLayerSonic
     // Eq. (11), expressed relative to the maximum Hertz flux:
     // mLoss = phi * Pe * sqrt(M/(2*pi*R*Te)).
     massFluxRatio_ =
-        2.0*sqrtPi*m_*p3OverPe_/temperatureRatio_;
+        2.0*sqrtPi*m_*p3OverPe_/sqrtTemperatureRatio;
 
-    // Eq. (12): Precoil = C_recoil * Pe.
+    // Eq. (12), equivalently P_recoil = P3*(2*m^2 + 1).
     recoilCoefficient_ =
-        0.5*std::exp(m2)
-       *jumpDenominator
-       *(2.0*m2 + 1.0);
+        p3OverPe_*(2.0*m2 + 1.0);
 
     Info<< "    sonic Knudsen-layer constants (Ma=1)" << nl
         << "        gamma             = " << gamma_ << nl
