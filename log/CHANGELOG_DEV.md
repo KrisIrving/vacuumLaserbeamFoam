@@ -200,3 +200,14 @@ rewrote a user-configurable gamma to `1.66667`.
 The sonic model now fixes `gamma=5/3` in code, matching the monatomic-vapour
 assumption of the literature model and eliminating an inappropriate calibration
 degree of freedom. No empirical tolerance widening was used.
+
+### Phase-4a verification complete
+
+Final CI run `36514885821`: PASS.
+
+The `knudsenLayerSonic` implementation now passes analytical constitutive
+checks and one-step CFD coupling while preserving every Phase 0-3 regression.
+
+Phase 4 remains open: the next sub-phase is the common-atmosphere/transition
+solver required to determine the `Ma=0.05` and `Ma=1` temperature thresholds
+and implement the source paper's near-vacuum interpolation logic.

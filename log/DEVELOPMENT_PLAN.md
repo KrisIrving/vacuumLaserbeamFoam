@@ -60,7 +60,7 @@ Completed implementation includes the configuration split, a pressure-aware
 Hertz-Knudsen reference model, a dedicated diagnostic utility, solver smoke
 coverage, and analytical curve regression.
 
-## Phase 4 — Near-vacuum evaporation/recoil (in progress)
+## Phase 4 — Near-vacuum evaporation/recoil (in progress; Phase 4a completed)
 
 - Implement literature-grounded near-vacuum/Knudsen-layer closure.
 - Derive evaporation cooling and recoil pressure from one consistent mass/momentum

@@ -336,3 +336,33 @@ Resolution:
 `knudsenLayerSonic` now fixes `gamma = 5/3` in code, consistent with the
 monatomic-vapour assumption of the source model. Gamma is no longer a tunable
 dictionary coefficient.
+
+## 2026-09-29 — Phase-4a sonic Knudsen-layer final CI
+
+Commit:
+`5520d829e06bf66309dd76a50848659c75be7840`
+
+GitHub Actions run:
+`36514885821`
+
+Result: **PASS**
+
+Passed gates:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy Anisimov byte-level field regression;
+- Hertz-Knudsen 0.6 Pa smoke regression;
+- Hertz-Knudsen analytical curve regression;
+- sonic Knudsen-layer analytical regression;
+- sonic Knudsen-layer one-step CFD coupling.
+
+The sonic regression explicitly passed:
+- reference temperature, `chamberPressure=0.6 Pa`;
+- lower surface temperature, `chamberPressure=0.6 Pa`;
+- high back-pressure limit for chamber-relative recoil;
+- finite `Qv` in the coupled solver run.
+
+Interpretation:
+the strong-evaporation `Ma=1` branch is now implemented and regression-tested.
+This does not yet validate the complete near-vacuum interpolation procedure or
+the final Ti-6Al-4V material dataset.
