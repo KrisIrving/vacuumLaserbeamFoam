@@ -185,3 +185,19 @@ Outputs:
 
 This directory does not yet contain the complete near-vacuum interpolation
 algorithm; that will be added as a separate model/change in Phase 4b.
+
+## Phase-4b transition infrastructure
+
+### `src/vacuumEvaporationModels/knudsenTransition/`
+
+Pure scalar relation solver for Wang et al. Eqs. (9)-(17).
+
+Responsibilities:
+- Knudsen jump state for arbitrary `Ma`;
+- shock `M2` from the reduced Eq. (17);
+- Eq. (16) pressure residual;
+- bounded solution of `Ma(Te)`;
+- bounded threshold-temperature solution for `Tk0/Tk1`.
+
+It deliberately contains no VOF/mesh dependency and can later support cached
+temperature tables for efficient CFD coupling.

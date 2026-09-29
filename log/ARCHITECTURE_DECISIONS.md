@@ -158,3 +158,21 @@ Reason:
 - gamma should not become a fitting parameter;
 - fixing it prevents configuration serialization/rounding from perturbing the
   analytical jump constants.
+
+## ADR-015 — Reduce Wang Eqs. (16)-(17) to bounded one-dimensional solves
+
+**Status:** accepted
+
+The common-atmosphere state solver will not use a cell-wise two-variable Newton
+iteration.
+
+For prescribed `Te` and `Ma`, Eq. (17) is reduced analytically to the
+positive shock-Mach root `M2 > 1`. Eq. (16) is then evaluated as a scalar
+log-pressure residual.
+
+Consequences:
+- `Ma(Te)` can be solved by bounded bisection on `[0.05,1]`;
+- `Tk0` and `Tk1` can be solved by bounded temperature bisection;
+- failure to bracket a state is explicit instead of producing an unconstrained
+  nonlinear iterate;
+- the same relation solver can later be tabled/cached instead of solved per cell.

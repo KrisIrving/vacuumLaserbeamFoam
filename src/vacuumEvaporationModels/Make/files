@@ -1,5 +1,6 @@
 vacuumEvaporationModel/vacuumEvaporationModel.C
 vacuumEvaporationModel/vacuumEvaporationModelNew.C
+knudsenTransition/knudsenTransitionRelations.C
 legacyAnisimov/legacyAnisimov.C
 hertzKnudsen/hertzKnudsen.C
 knudsenLayerSonic/knudsenLayerSonic.C

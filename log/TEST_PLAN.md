@@ -225,3 +225,28 @@ Independent reference constants for `gamma=5/3, Ma=1`:
 Acceptance:
 analytical quantities agree within the scripted floating-point tolerance and the
 one-step CFD coupling run completes without NaN/Inf.
+
+## T4e — Eq. (16)-(17) transition-state solver regression
+
+Utility:
+`knudsenTransitionTest`
+
+Script:
+`tests/knudsenTransition/Allrun`
+
+Reference states are independently precomputed for the Phase-3 synthetic
+single-component thermodynamic parameters at `Te=3000 K`, `T1=300 K`.
+
+The test checks three known states:
+- `Ma=0.05`;
+- `Ma=0.5`;
+- `Ma=1.0`.
+
+For each state it verifies:
+- recovery of Ma from Eq. (16)-(17);
+- recovery of the known 3000 K threshold temperature;
+- the physical region-II shock Mach number `M2>1`;
+- successful bisection/bracketing flags.
+
+This test validates the nonlinear-state infrastructure before it is used by a
+full near-vacuum evaporation model.

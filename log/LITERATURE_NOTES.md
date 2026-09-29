@@ -62,3 +62,34 @@ returns the net applied normal stress:
 
 This convention is explicitly tested and should be revisited if the solver later
 uses an absolute-pressure gas/vapour formulation.
+
+## Wang common-atmosphere state relations — Phase 4b
+
+The paper links the Knudsen-layer state to ambient gas through a shock-wave
+model. For monatomic gas, Eqs. (16)-(17) determine the Knudsen-layer Mach number
+and shock state.
+
+A useful numerical reduction is applied in the code:
+
+Given surface temperature `Te` and a trial Knudsen-layer Mach number `Ma`,
+Eq. (17) can be reduced to a quadratic equation for the region-II shock Mach
+number `M2`. Therefore the coupled state does not require a two-dimensional
+Newton solve.
+
+With
+`C = sqrt(T3/Te) * m * sqrt(2*Te/(gamma*T1))`,
+
+the physical positive root is
+
+`M2 = [C(gamma+1) + sqrt(C^2(gamma+1)^2 + 16)] / 4`.
+
+Eq. (16) then becomes a scalar residual in either `Ma` or `Te`.
+The implementation uses a logarithmic pressure-ratio residual and bounded
+bisection.
+
+This solver is intended to:
+- recover `Ma(Te)` where the common-atmosphere relation is applicable;
+- compute `Tk0` at `Ma=0.05`;
+- compute `Tk1` at `Ma=1`;
+- provide the threshold information required by the paper's near-vacuum
+  interpolation procedure.

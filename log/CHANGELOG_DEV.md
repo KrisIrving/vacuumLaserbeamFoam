@@ -226,3 +226,20 @@ Final verification before merge:
 GitHub Actions run `36514885821` — PASS.
 
 The protected `main` branch remains the exact LaserbeamFoam V3.0 baseline.
+
+## 2026-09-29 — Phase 4b transition-state solver started
+
+Branch: `feat/near-vacuum-transition`
+
+Added:
+- reusable `knudsenTransitionRelations` scalar constitutive helper;
+- exact Knudsen-layer jump-state evaluation for arbitrary `0 < Ma <= 1`;
+- analytical reduction of Eq. (17) to the physical shock Mach number;
+- logarithmic Eq. (16) residual;
+- bounded bisection for `Ma(Te)`;
+- bounded bisection for threshold temperature at target Ma;
+- dedicated `knudsenTransitionTest` utility;
+- round-trip regression at Ma = 0.05, 0.5, and 1.0.
+
+This is transition-state infrastructure only. It does not yet change the
+production evaporation model selected by the solver.
