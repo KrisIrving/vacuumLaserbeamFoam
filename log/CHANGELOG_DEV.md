@@ -173,3 +173,20 @@ GitHub Actions run `36512859745` — PASS.
 
 The protected project baseline `main` remains unchanged at the LaserbeamFoam
 V3.0 tree.
+
+## 2026-09-29 — Phase 4a sonic Knudsen-layer model
+
+Branch: `feat/knudsen-layer-sonic`
+
+Implemented:
+- new runtime-selectable `knudsenLayerSonic` evaporation model;
+- Wang et al. (2020) Knudsen-layer jump relations evaluated at `Ma=1`;
+- a mass flux and recoil pressure derived from the same sonic jump state;
+- chamber-relative net recoil traction for the current pseudo-gas solver;
+- evaporative heat flux from `mDot * latentHeatVap`;
+- analytical constitutive regression plus one-step CFD coupling smoke test;
+- literature-to-code notes in `log/LITERATURE_NOTES.md`.
+
+Scope:
+this commit intentionally implements only the strong-evaporation sonic branch.
+The full near-vacuum transition/interpolation logic is deferred to Phase 4b.
