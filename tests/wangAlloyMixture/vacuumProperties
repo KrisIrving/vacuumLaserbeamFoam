@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      vacuumProperties;
+}
+
+evaporationModel     nearVacuumWang;
+
+chamberPressure      0.6;
+chamberTemperature   300;
+testTemperature      3000;
+
+nearVacuumWangCoeffs
+{
+    // Single-component fallback entries remain required for backward
+    // compatibility and for the shared jump-relation helper.
+    referencePressure       1e5;
+    referenceTemperature    3500;
+    molarMass               0.05;
+    latentHeatVap           7e5;
+
+    thresholdTemperatureMin 100;
+    thresholdTemperatureMax 6000;
+
+    // Wang Eqs. (18)-(20): mass fractions are converted to molar fractions.
+    componentNames (A B);
+
+    components
+    {
+        A
+        {
+            massFraction         0.6;
+            molarMass            0.05;
+            referencePressure    1e5;
+            referenceTemperature 3500;
+            latentHeatVap        6e5;
+        }
+
+        B
+        {
+            massFraction         0.4;
+            molarMass            0.10;
+            referencePressure    1e5;
+            referenceTemperature 4000;
+            latentHeatVap        8e5;
+        }
+    }
+}
+
+// ************************************************************************* //
