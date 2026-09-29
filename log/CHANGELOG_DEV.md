@@ -211,3 +211,18 @@ checks and one-step CFD coupling while preserving every Phase 0-3 regression.
 Phase 4 remains open: the next sub-phase is the common-atmosphere/transition
 solver required to determine the `Ma=0.05` and `Ma=1` temperature thresholds
 and implement the source paper's near-vacuum interpolation logic.
+
+### Phase-4a integration
+
+Pull request: #5 — `Phase 4a: sonic Knudsen-layer evaporation model`
+
+Merged into:
+`dev/vacuum-solver`
+
+Merge commit:
+`6ed0a047f920a583824e484e8427bf3387eec968`
+
+Final verification before merge:
+GitHub Actions run `36514885821` — PASS.
+
+The protected `main` branch remains the exact LaserbeamFoam V3.0 baseline.
