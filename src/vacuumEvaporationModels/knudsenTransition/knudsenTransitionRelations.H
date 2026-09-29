@@ -75,11 +75,32 @@ public:
         const scalar Ma
     ) const;
 
+    // Same Eq. (16) residual, but with saturation pressure supplied by the
+    // caller. This is required for Wang Eqs. (18)-(20), where alloy Pe(T)
+    // cannot be represented by one constant Clausius-Clapeyron curve.
+    scalar pressureResidualFromSaturation
+    (
+        const scalar surfaceTemperature,
+        const scalar Ma,
+        const scalar surfaceSaturationPressure
+    ) const;
+
     // Solve Eq. (16)-(17) for Ma at a prescribed surface temperature.
     // Returns false if [MaMin,MaMax] does not bracket a solution.
     bool solveMachNumber
     (
         const scalar surfaceTemperature,
+        scalar& Ma,
+        const scalar MaMin = 0.05,
+        const scalar MaMax = 1.0,
+        const scalar tolerance = 1e-10,
+        const label maxIterations = 200
+    ) const;
+
+    bool solveMachNumberFromSaturation
+    (
+        const scalar surfaceTemperature,
+        const scalar surfaceSaturationPressure,
         scalar& Ma,
         const scalar MaMin = 0.05,
         const scalar MaMax = 1.0,
