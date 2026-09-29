@@ -152,3 +152,47 @@ At that point test:
 
 Only after Phase 5 is locally accepted should the project move to the numerical
 void/pseudo-gas sensitivity study and real bare-plate pressure sweeps.
+
+## Wang-2020 fast-track checkpoint — OpenFOAM v2512
+
+Target branch:
+`feat/wang2020-fasttrack`
+
+Target head at the time this checkpoint was added:
+`c4eb2cd0459e5511204f1ca43eed1ce3c2e89b8d`
+
+This checkpoint is intentionally focused. Run it on the WSL2 / OpenFOAM-v2512
+workstation before starting the paper-scale validation case.
+
+```bash
+git fetch origin
+git checkout feat/wang2020-fasttrack
+git pull --ff-only origin feat/wang2020-fasttrack
+
+echo "$WM_PROJECT_VERSION"
+./Allwmake -j
+
+./tests/legacyEquivalence/Allrun
+./tests/knudsenLayerSonic/Allrun
+./tests/knudsenTransition/Allrun
+./tests/nearVacuumWang/Allrun
+./tests/wangAlloyMixture/Allrun
+```
+
+Return/retain:
+- the exact `WM_PROJECT_VERSION`;
+- the final `Allwmake` exit status and compiler error block if non-zero;
+- the PASS/FAIL line from every focused regression;
+- `tests/run/nearVacuumWang/log.vacuumLaserbeamFoam` if the coupled smoke test
+  fails;
+- `tests/run/wangAlloyMixture/log.model.*` if the alloy constitutive regression
+  fails.
+
+Acceptance:
+- v2512 build completes;
+- all five focused regressions pass;
+- no NaN/Inf appears in the coupled near-vacuum smoke test.
+
+The GitHub CI remains a useful v2506 cross-version gate, but it does not replace
+this required v2512 checkpoint.
+
