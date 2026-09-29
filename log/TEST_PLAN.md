@@ -289,3 +289,27 @@ The full command sequence and return-log requirements are maintained in
 `log/LOCAL_TESTING_WSL2.md`.
 
 Phase-5 radiation remains unmerged until this local checkpoint is accepted.
+
+## T4g — Wang Eqs. (18)-(20) alloy-mixture regression
+
+Script:
+`tests/wangAlloyMixture/Allrun`
+
+Purpose:
+verify the new multi-component path independently of full CFD.
+
+The synthetic two-component fixture checks two temperatures. Expected values are
+calculated independently from component mass fractions, conversion to molar
+fractions, component Clausius-Clapeyron curves, Wang Eq. (18) mixture
+saturation pressure, Eq. (19) vapor molar mass, and the corrected `Ma=1`
+Knudsen-layer coefficients.
+
+Acceptance:
+- original single-component `nearVacuumWang` regression still passes;
+- component mass fractions convert to the expected molar fractions;
+- mixture `Pe`, mass flux, recoil pressure, and evaporation heat flux agree
+  with independent constants at both temperatures;
+- CI build and all pre-existing regression gates remain green.
+
+This test establishes constitutive correctness only. A 304L / near-vacuum CFD
+benchmark is the next validation stage.
