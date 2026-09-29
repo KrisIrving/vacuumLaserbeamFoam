@@ -176,3 +176,15 @@ Consequences:
 - failure to bracket a state is explicit instead of producing an unconstrained
   nonlinear iterate;
 - the same relation solver can later be tabled/cached instead of solved per cell.
+
+## ADR-016 — Near-vacuum model does not extrapolate below Ma=0.05
+
+**Status:** accepted
+
+The production `nearVacuumWang` model uses the Wang transition relations only
+where the active liquid-surface state is at or above the paper's `Ma=0.05`
+convection threshold. Above `Tk1` it uses the sonic state.
+
+If the material/environment combination activates liquid evaporation below
+`Tk0`, construction fails with an explicit diagnostic. This is preferred over
+inventing a weak-evaporation closure not supported by the selected source model.

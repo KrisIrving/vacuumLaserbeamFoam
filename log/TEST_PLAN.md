@@ -250,3 +250,20 @@ For each state it verifies:
 
 This test validates the nonlinear-state infrastructure before it is used by a
 full near-vacuum evaporation model.
+
+## T4f — nearVacuumWang constitutive/coupling regression
+
+Script:
+`tests/nearVacuumWang/Allrun`
+
+Checks:
+1. target-pressure strong-evaporation case reduces to the corrected sonic
+   Knudsen-layer limit;
+2. an intentionally low-liquidus synthetic case exercises the subsonic
+   transition branch and compares against independently precomputed values;
+3. temperatures below liquidus return zero liquid-evaporation mass/recoil flux;
+4. a one-step `vacuumLaserbeamFoam` coupling run at 0.6 Pa completes with
+   finite evaporation heat flux.
+
+This is a constitutive regression using synthetic properties, not Ti-6Al-4V
+experimental validation.

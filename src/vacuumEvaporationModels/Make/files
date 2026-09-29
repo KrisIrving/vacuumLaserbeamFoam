@@ -4,5 +4,6 @@ knudsenTransition/knudsenTransitionRelations.C
 legacyAnisimov/legacyAnisimov.C
 hertzKnudsen/hertzKnudsen.C
 knudsenLayerSonic/knudsenLayerSonic.C
+nearVacuumWang/nearVacuumWang.C
 
 LIB = $(FOAM_USER_LIBBIN)/libvacuumEvaporationModels

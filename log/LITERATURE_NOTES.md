@@ -106,3 +106,23 @@ This solver is intended to:
 - compute `Tk1` at `Ma=1`;
 - provide the threshold information required by the paper's near-vacuum
   interpolation procedure.
+
+## Wang near-vacuum production closure — Phase 4c
+
+Model:
+`src/vacuumEvaporationModels/nearVacuumWang/`
+
+The implementation follows the paper's staged near-vacuum construction:
+- compute the pressure-dependent boiling point from the same
+  Clausius-Clapeyron saturation relation;
+- compute `Tk0` at `Ma=0.05` and `Tk1` at `Ma=1`;
+- below the liquid/boiling activation temperature, liquid evaporation is zero;
+- in the active interval below `Tk1`, solve the common-atmosphere transition
+  relations for `Ma(T)`;
+- at and above `Tk1`, use the sonic `Ma=1` Knudsen-layer state.
+
+The current implementation deliberately refuses configurations whose active
+liquid state begins below `Tk0`. Such a case would enter the `Ma<0.05`
+weak-evaporation/conduction regime, where the source paper explicitly warns
+that the convection-flow assumptions used for the transition relations are not
+valid. No undocumented extrapolation is introduced.
