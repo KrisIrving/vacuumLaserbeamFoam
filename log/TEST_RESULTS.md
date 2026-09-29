@@ -272,3 +272,31 @@ This is a test-fixture formatting error, not a model-equation failure.
 Fix:
 replace the test dictionary header with a valid OpenFOAM `FoamFile` header and
 rerun the full CI gate.
+
+## 2026-09-29 — Phase-3 final CI
+
+Commit:
+`be98459e3c00a058d53fa6b08e963afa7dc2ba7e`
+
+GitHub Actions run:
+`36512859745`
+
+Result: **PASS**
+
+Passed gates:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy Anisimov byte-level field regression;
+- Hertz-Knudsen 0.6 Pa solver smoke test;
+- Hertz-Knudsen analytical pressure/temperature curve regression.
+
+The analytical curve regression independently reconstructs the implemented
+Clausius-Clapeyron saturation pressure, Hertz-Knudsen net mass flux, reference
+recoil closure, and evaporative heat flux at multiple temperature/back-pressure
+conditions.
+
+Interpretation:
+Phase 3 provides a tested pressure-aware reference model and an explicit
+`vacuumProperties` configuration split. The Hertz-Knudsen recoil closure remains
+an intermediate reference model; it is not the final near-vacuum Knudsen-layer
+model for the 0.6 Pa experiment.

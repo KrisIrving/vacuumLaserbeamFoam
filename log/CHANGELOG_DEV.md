@@ -144,3 +144,16 @@ and the pressure-aware solver smoke test. The analytical curve regression then
 failed before model evaluation because its copied `vacuumProperties` fixture
 had an invalid OpenFOAM header. The fixture header was corrected; no production
 model code changed in this commit.
+
+### Phase-3 verification complete
+
+Final CI run `36512859745`: PASS.
+
+All Phase-3 gates pass, including the analytical curve regression. The
+pressure-aware reference implementation is ready to integrate into
+`dev/vacuum-solver`.
+
+Next development target:
+Phase 4 will add a literature-derived Knudsen-layer/near-vacuum model in
+incremental, analytically tested steps rather than replacing the reference model
+in one change.
