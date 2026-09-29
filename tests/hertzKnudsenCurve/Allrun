@@ -1,0 +1,97 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/hertzKnudsenCurve"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+)
+
+check_case()
+{
+    local temperature="$1"
+    local chamber_pressure="$2"
+    local label="$3"
+
+    foamDictionary "$RUN_CASE/constant/vacuumProperties" \
+        -entry testTemperature -set "$temperature" > /dev/null
+    foamDictionary "$RUN_CASE/constant/vacuumProperties" \
+        -entry chamberPressure -set "$chamber_pressure" > /dev/null
+
+    (
+        cd "$RUN_CASE"
+        vacuumEvaporationModelTest > "log.$label" 2>&1
+    )
+
+    local line
+    line="$(grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.$label" | tail -1)"
+
+    if [[ -z "$line" ]]
+    then
+        echo "Missing EVAP_MODEL_TEST output for $label" >&2
+        exit 1
+    fi
+
+    local tag actual_T actual_pSat actual_mDot actual_recoil actual_qEvap
+    read -r tag actual_T actual_pSat actual_mDot actual_recoil actual_qEvap <<< "$line"
+
+    awk \
+        -v T="$temperature" \
+        -v pch="$chamber_pressure" \
+        -v aT="$actual_T" \
+        -v aPsat="$actual_pSat" \
+        -v aMdot="$actual_mDot" \
+        -v aRecoil="$actual_recoil" \
+        -v aQ="$actual_qEvap" \
+        'BEGIN {
+            pi = atan2(0, -1);
+            pRef = 1.0e5;
+            TRef = 3500.0;
+            M = 0.05;
+            Lv = 6.0e5;
+            R = 8.314;
+            alpha = 1.0;
+
+            pSat = pRef*exp(Lv*M*((T-TRef)/(R*T*TRef)));
+            dp = pSat-pch;
+            if (dp < 0.0) dp = 0.0;
+
+            mDot = alpha*dp*sqrt(M/(2.0*pi*R*T));
+            recoil = 0.5*dp;
+            q = Lv*mDot;
+
+            tol = 1e-9;
+
+            if (aT != T) exit 11;
+
+            scale = (pSat > 1.0 ? pSat : 1.0);
+            if ((aPsat-pSat > tol*scale) || (pSat-aPsat > tol*scale)) exit 12;
+
+            scale = (mDot > 1.0 ? mDot : 1.0);
+            if ((aMdot-mDot > tol*scale) || (mDot-aMdot > tol*scale)) exit 13;
+
+            scale = (recoil > 1.0 ? recoil : 1.0);
+            if ((aRecoil-recoil > tol*scale) || (recoil-aRecoil > tol*scale)) exit 14;
+
+            scale = (q > 1.0 ? q : 1.0);
+            if ((aQ-q > tol*scale) || (q-aQ > tol*scale)) exit 15;
+        }'
+
+    echo "PASS: $label T=$temperature Pa_chamber=$chamber_pressure"
+    echo "      pSat=$actual_pSat mDot=$actual_mDot recoil=$actual_recoil qEvap=$actual_qEvap"
+}
+
+check_case 3500 0.6 lowPressureAtReferenceTemperature
+check_case 3000 0.6 lowPressureBelowReferenceTemperature
+check_case 3500 110000 backPressureSuppressesEvaporation
+
+echo "PASS: hertzKnudsen analytical curve regression"

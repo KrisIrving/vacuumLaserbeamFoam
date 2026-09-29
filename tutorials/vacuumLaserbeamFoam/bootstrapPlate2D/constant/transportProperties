@@ -17,9 +17,6 @@ FoamFile
 // Interface tracking method: isoAdvector or MULES
 interfaceTrackingScheme isoAdvector;
 
-// Phase-2 runtime-selectable evaporation/recoil model
-evaporationModel legacyAnisimov;
-
 phases          (metal gas);
 
 metal

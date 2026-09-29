@@ -20,13 +20,11 @@ Foam::autoPtr<Foam::vacuumEvaporationModel>
 Foam::vacuumEvaporationModel::New
 (
     const fvMesh& mesh,
-    const dictionary& dict
+    const dictionary& modelDict,
+    const dictionary& materialDict
 )
 {
-    const word modelType
-    (
-        dict.lookupOrDefault<word>("evaporationModel", "legacyAnisimov")
-    );
+    const word modelType(modelDict.lookup("evaporationModel"));
 
     Info<< "Selecting vacuum evaporation model " << modelType << endl;
 
@@ -34,14 +32,14 @@ Foam::vacuumEvaporationModel::New
 
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
-        FatalIOErrorInFunction(dict)
+        FatalIOErrorInFunction(modelDict)
             << "Unknown vacuum evaporation model " << modelType << nl << nl
             << "Valid model types are:" << nl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalIOError);
     }
 
-    return cstrIter()(mesh, dict);
+    return cstrIter()(mesh, modelDict, materialDict);
 }
 
 // ************************************************************************* //

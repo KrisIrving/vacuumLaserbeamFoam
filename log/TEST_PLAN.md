@@ -149,3 +149,52 @@ Fields:
 Acceptance:
 all listed field files are byte-identical for this deterministic serial
 regression case.
+
+## T4a — Hertz-Knudsen pressure-aware model smoke test
+
+Script:
+`tests/hertzKnudsenReference/Allrun`
+
+Checks:
+- explicit selection of `hertzKnudsen` from `vacuumProperties`;
+- explicit chamber-pressure configuration;
+- one-step solver execution;
+- `Qv` output exists and contains no NaN/Inf.
+
+This is a runtime/limit sanity test, not physical validation.
+
+## T4b — Pressure/temperature curve verification
+
+Planned next:
+sample prescribed temperatures and chamber pressures and compare
+`pSat`, `mDot`, `pRecoil`, and `qEvap` against independently evaluated
+reference equations. This test should be in place before Phase 4 changes the
+production recoil closure.
+
+## T4c — Hertz-Knudsen analytical curve regression
+
+Utility:
+`vacuumEvaporationModelTest`
+
+Script:
+`tests/hertzKnudsenCurve/Allrun`
+
+The utility evaluates the actual C++ runtime-selected evaporation model on a
+uniform prescribed temperature field without advancing the melt-pool solver.
+
+The test independently evaluates the reference equations using `awk` and
+compares:
+- saturation pressure;
+- net evaporation mass flux;
+- recoil reference pressure;
+- evaporative heat flux.
+
+Cases:
+1. reference temperature, 0.6 Pa chamber pressure;
+2. lower surface temperature, 0.6 Pa chamber pressure;
+3. back pressure greater than saturation pressure, which must suppress net
+   evaporation/recoil to zero.
+
+Acceptance:
+relative error <= 1e-9 for the analytical quantities, with the zero-flux limit
+also enforced.

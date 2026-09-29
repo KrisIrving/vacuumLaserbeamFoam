@@ -14,75 +14,64 @@ License
     option) any later version.
 \*---------------------------------------------------------------------------*/
 
-#ifndef vacuumEvaporationModel_H
-#define vacuumEvaporationModel_H
+#ifndef hertzKnudsen_H
+#define hertzKnudsen_H
 
-#include "dictionary.H"
-#include "fvMesh.H"
-#include "runTimeSelectionTables.H"
-#include "volFields.H"
+#include "vacuumEvaporationModel.H"
 
 namespace Foam
 {
-
-class vacuumEvaporationModel
+namespace vacuumEvaporationModels
 {
-protected:
 
-    const fvMesh& mesh_;
+class hertzKnudsen
+:
+    public vacuumEvaporationModel
+{
+    dimensionedScalar chamberPressure_;
+    dimensionedScalar chamberTemperature_;
+    dimensionedScalar referencePressure_;
+    dimensionedScalar referenceTemperature_;
+    dimensionedScalar molarMass_;
+    dimensionedScalar latentHeatVap_;
+    dimensionedScalar R_;
+    scalar accommodationCoefficient_;
 
 public:
 
-    TypeName("vacuumEvaporationModel");
+    TypeName("hertzKnudsen");
 
-    declareRunTimeSelectionTable
-    (
-        autoPtr,
-        vacuumEvaporationModel,
-        dictionary,
-        (
-            const fvMesh& mesh,
-            const dictionary& modelDict,
-            const dictionary& materialDict
-        ),
-        (mesh, modelDict, materialDict)
-    );
-
-    explicit vacuumEvaporationModel(const fvMesh& mesh);
-
-    virtual ~vacuumEvaporationModel();
-
-    static autoPtr<vacuumEvaporationModel> New
+    hertzKnudsen
     (
         const fvMesh& mesh,
         const dictionary& modelDict,
         const dictionary& materialDict
     );
 
-    // Saturation/reference vapour pressure associated with the surface
-    // temperature. This is separated from chamber pressure by design.
+    virtual ~hertzKnudsen();
+
     virtual tmp<volScalarField> saturationPressure
     (
         const volScalarField& T
-    ) const = 0;
+    ) const override;
 
-    // Net outward evaporation mass flux [kg m^-2 s^-1].
     virtual tmp<volScalarField> massFlux
     (
         const volScalarField& T
-    ) const = 0;
+    ) const override;
 
     virtual tmp<volScalarField> recoilPressure
     (
         const volScalarField& T
-    ) const = 0;
+    ) const override;
 
     virtual tmp<volScalarField> evaporationHeatFlux
     (
         const volScalarField& T
-    ) const = 0;
+    ) const override;
 };
 
+} // End namespace vacuumEvaporationModels
 } // End namespace Foam
 
 #endif

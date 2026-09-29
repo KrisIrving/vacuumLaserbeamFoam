@@ -1,5 +1,6 @@
 vacuumEvaporationModel/vacuumEvaporationModel.C
 vacuumEvaporationModel/vacuumEvaporationModelNew.C
 legacyAnisimov/legacyAnisimov.C
+hertzKnudsen/hertzKnudsen.C
 
 LIB = $(FOAM_USER_LIBBIN)/libvacuumEvaporationModels

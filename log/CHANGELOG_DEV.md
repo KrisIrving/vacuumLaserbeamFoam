@@ -92,3 +92,68 @@ Merge commit:
 
 The protected project baseline `main` remains unchanged at the LaserbeamFoam
 V3.0 tree.
+
+## 2026-09-28 — Phase 3 pressure-aware reference model started
+
+Branch: `feat/pressure-aware-reference`
+
+Implemented in this commit:
+- new required `constant/vacuumProperties` for vacuumLaserbeamFoam cases;
+- model selection moved from `transportProperties` to `vacuumProperties`;
+- runtime model constructor now receives separate environment/model and material
+  dictionaries;
+- base evaporation-model API extended with `saturationPressure()` and
+  `massFlux()`;
+- `legacyAnisimov` extended with the new API while preserving the exact V3.0
+  recoil and cooling operation order;
+- new pressure-aware `hertzKnudsen` reference model;
+- CI smoke test for the new model.
+
+No final near-vacuum/Knudsen-layer physics has been implemented yet.
+
+### Phase-3 first CI correction
+
+CI run `36425725491` exposed an OpenFOAM-v2506 API compatibility issue in the
+model selector: templated `lookup<word>()` is not supported here. The selector
+was changed to the dictionary-stream form already used throughout OpenFOAM.
+No equation or physical-model change was made by this correction.
+
+### Phase-3 analytical model regression infrastructure
+
+Added `vacuumEvaporationModelTest`, a small diagnostic utility that directly
+evaluates the runtime-selected model without solving U/T/p. Added an independent
+analytical regression for the Hertz-Knudsen reference closure at multiple
+temperature/back-pressure states, including the zero-net-evaporation limit.
+
+### Phase-3 analytical utility build correction
+
+CI run `36427391669` showed that the new diagnostic utility needed the
+OpenFOAM `meshTools` include path/library because `fvCFD.H` pulls AMI mesh
+types transitively. Added the missing build dependency; no physics code changed.
+
+### Phase-3 analytical utility output correction
+
+CI run `36428017249` showed that `messageStream Info` cannot set stream
+precision directly in OpenFOAM-v2506. The regression utility now uses
+`std::cout` with 16-digit precision for its machine-readable test line.
+
+### Phase-3 analytical test fixture correction
+
+CI run `36428475347` reached and passed build, tutorials, legacy regression,
+and the pressure-aware solver smoke test. The analytical curve regression then
+failed before model evaluation because its copied `vacuumProperties` fixture
+had an invalid OpenFOAM header. The fixture header was corrected; no production
+model code changed in this commit.
+
+### Phase-3 verification complete
+
+Final CI run `36512859745`: PASS.
+
+All Phase-3 gates pass, including the analytical curve regression. The
+pressure-aware reference implementation is ready to integrate into
+`dev/vacuum-solver`.
+
+Next development target:
+Phase 4 will add a literature-derived Knudsen-layer/near-vacuum model in
+incremental, analytically tested steps rather than replacing the reference model
+in one change.

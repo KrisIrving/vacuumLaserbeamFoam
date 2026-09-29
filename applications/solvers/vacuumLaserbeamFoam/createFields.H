@@ -185,11 +185,31 @@ const dimensionedScalar Marangoni_Constant
     transportProperties//.lookup("dsigmadT")
 );
 
-// Runtime-selectable evaporation/recoil model. Existing V3.0 cases default to
-// legacyAnisimov when the evaporationModel entry is absent.
+Info<< "Reading vacuumProperties\n" << endl;
+IOdictionary vacuumProperties
+(
+    IOobject
+    (
+        "vacuumProperties",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ_IF_MODIFIED,
+        IOobject::NO_WRITE
+    )
+);
+
+// Runtime-selectable evaporation/recoil model.
+// Vacuum/environment configuration lives in vacuumProperties, while the
+// legacy material parameters remain in transportProperties for exact
+// LaserbeamFoam V3.0 backward compatibility.
 autoPtr<vacuumEvaporationModel> evaporationModel
 (
-    vacuumEvaporationModel::New(mesh, transportProperties)
+    vacuumEvaporationModel::New
+    (
+        mesh,
+        vacuumProperties,
+        transportProperties
+    )
 );
 
 

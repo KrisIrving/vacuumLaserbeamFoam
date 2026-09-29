@@ -178,3 +178,125 @@ introduces no numerical difference in the compared fields.
 
 This is a regression result, not validation of the physical accuracy of the
 legacy Anisimov-style evaporation model.
+
+## 2026-09-28 — Phase-3 first CI attempt
+
+Commit:
+`281d10c24f583785401d9e8df0f45022148f07dd`
+
+GitHub Actions run:
+`36425725491`
+
+Result: **FAIL (build)**
+
+Failure:
+`vacuumEvaporationModelNew.C` used the templated form
+`lookup<word>()`, which is not accepted by the OpenFOAM-v2506 dictionary API
+in this build.
+
+Consequence:
+`libvacuumEvaporationModels` was not produced, and the later
+`vacuumLaserbeamFoam` link failure (`cannot find -lvacuumEvaporationModels`)
+was cascading rather than a separate linker issue.
+
+Fix:
+use the established OpenFOAM dictionary-stream conversion
+`word(modelDict.lookup("evaporationModel"))` and rerun CI.
+
+## 2026-09-28 — Phase-3 analytical utility first CI attempt
+
+Commit:
+`3fa842ffe8496a14375c19f570967348fc4706ef`
+
+GitHub Actions run:
+`36427391669`
+
+Result: **FAIL (build)**
+
+Failure:
+the new `vacuumEvaporationModelTest` utility included `fvCFD.H` but its
+`Make/options` did not include/link `meshTools`. Compilation therefore
+stopped at the indirect AMI header dependency
+`cyclicAMIPolyPatch.H: No such file or directory`.
+
+Fix:
+add `$(LIB_SRC)/meshTools/lnInclude` and `-lmeshTools`.
+
+This failure is isolated to the diagnostic test utility and does not change the
+evaporation-model implementation.
+
+## 2026-09-28 — Phase-3 analytical utility second CI attempt
+
+Commit:
+`5d6eaac12787466a434feb75616d285e6661c758`
+
+GitHub Actions run:
+`36428017249`
+
+Result: **FAIL (build)**
+
+Failure:
+the diagnostic utility attempted `Info.precision(16)`; OpenFOAM-v2506
+`Info` is a `messageStream` and does not expose that method.
+
+Fix:
+print the machine-readable regression line with standard C++
+`std::cout << std::setprecision(16)`.
+
+The failure affects only diagnostic formatting; model equations and solver
+coupling are unchanged.
+
+## 2026-09-28 — Phase-3 analytical curve regression third attempt
+
+Commit:
+`abc749ca644165e980234263d98520c723517494`
+
+GitHub Actions run:
+`36428475347`
+
+Result: **FAIL (test input format)**
+
+Passed before the failure:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy byte-level field regression;
+- Hertz-Knudsen 0.6 Pa solver smoke test.
+
+Failure:
+`tests/hertzKnudsenCurve/vacuumProperties` had an incomplete OpenFOAM header
+comment, so `vacuumEvaporationModelTest` aborted while reading the dictionary
+before any analytical comparison was performed.
+
+This is a test-fixture formatting error, not a model-equation failure.
+
+Fix:
+replace the test dictionary header with a valid OpenFOAM `FoamFile` header and
+rerun the full CI gate.
+
+## 2026-09-29 — Phase-3 final CI
+
+Commit:
+`be98459e3c00a058d53fa6b08e963afa7dc2ba7e`
+
+GitHub Actions run:
+`36512859745`
+
+Result: **PASS**
+
+Passed gates:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy Anisimov byte-level field regression;
+- Hertz-Knudsen 0.6 Pa solver smoke test;
+- Hertz-Knudsen analytical pressure/temperature curve regression.
+
+The analytical curve regression independently reconstructs the implemented
+Clausius-Clapeyron saturation pressure, Hertz-Knudsen net mass flux, reference
+recoil closure, and evaporative heat flux at multiple temperature/back-pressure
+conditions.
+
+Interpretation:
+Phase 3 provides a tested pressure-aware reference model and an explicit
+`vacuumProperties` configuration split. The Hertz-Knudsen recoil closure remains
+an intermediate reference model; it is not the final near-vacuum Knudsen-layer
+model for the 0.6 Pa experiment.

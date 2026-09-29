@@ -34,7 +34,8 @@ namespace vacuumEvaporationModels
 Foam::vacuumEvaporationModels::legacyAnisimov::legacyAnisimov
 (
     const fvMesh& mesh,
-    const dictionary& dict
+    const dictionary& modelDict,
+    const dictionary& materialDict
 )
 :
     vacuumEvaporationModel(mesh),
@@ -42,25 +43,25 @@ Foam::vacuumEvaporationModels::legacyAnisimov::legacyAnisimov
     (
         "p0",
         dimensionSet(1, -1, -2, 0, 0, 0, 0),
-        dict
+        materialDict
     ),
     Tvap_
     (
         "Tvap",
         dimensionSet(0, 0, 0, 1, 0, 0, 0),
-        dict
+        materialDict
     ),
     Mm_
     (
         "Mm",
         dimensionSet(1, 0, 0, 0, -1, 0, 0),
-        dict
+        materialDict
     ),
     latentHeatVap_
     (
         "LatentHeatVap",
         dimensionSet(0, 2, -2, 0, 0, 0, 0),
-        dict
+        materialDict
     ),
     R_
     (
@@ -68,11 +69,39 @@ Foam::vacuumEvaporationModels::legacyAnisimov::legacyAnisimov
         dimensionSet(1, 2, -2, -1, -1, 0, 0),
         8.314
     )
-{}
+{
+    (void)modelDict;
+}
 
 
 Foam::vacuumEvaporationModels::legacyAnisimov::~legacyAnisimov()
 {}
+
+
+Foam::tmp<Foam::volScalarField>
+Foam::vacuumEvaporationModels::legacyAnisimov::saturationPressure
+(
+    const volScalarField& T
+) const
+{
+    return
+        p0_
+       *Foam::exp
+        (
+            latentHeatVap_*Mm_
+           *((T - Tvap_)/(R_*T*Tvap_))
+        );
+}
+
+
+Foam::tmp<Foam::volScalarField>
+Foam::vacuumEvaporationModels::legacyAnisimov::massFlux
+(
+    const volScalarField& T
+) const
+{
+    return evaporationHeatFlux(T)/latentHeatVap_;
+}
 
 
 Foam::tmp<Foam::volScalarField>
@@ -81,6 +110,7 @@ Foam::vacuumEvaporationModels::legacyAnisimov::recoilPressure
     const volScalarField& T
 ) const
 {
+    // Keep the exact V3.0 operation order for byte-level regression.
     return
         0.54*p0_
        *Foam::exp
@@ -97,6 +127,7 @@ Foam::vacuumEvaporationModels::legacyAnisimov::evaporationHeatFlux
     const volScalarField& T
 ) const
 {
+    // Keep the exact V3.0 operation order for byte-level regression.
     return
         0.82*latentHeatVap_*Mm_*p0_
        *Foam::exp

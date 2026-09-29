@@ -41,10 +41,21 @@ public:
     legacyAnisimov
     (
         const fvMesh& mesh,
-        const dictionary& dict
+        const dictionary& modelDict,
+        const dictionary& materialDict
     );
 
     virtual ~legacyAnisimov();
+
+    virtual tmp<volScalarField> saturationPressure
+    (
+        const volScalarField& T
+    ) const override;
+
+    virtual tmp<volScalarField> massFlux
+    (
+        const volScalarField& T
+    ) const override;
 
     virtual tmp<volScalarField> recoilPressure
     (

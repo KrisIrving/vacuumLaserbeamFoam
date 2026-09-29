@@ -49,12 +49,16 @@ Acceptance:
 - legacy model reproduces the Phase-1 reference result. **PASS** using the
   automated byte-level field regression at output time 1e-05.
 
-## Phase 3 — Pressure-aware reference model
+## Phase 3 — Pressure-aware reference model (completed)
 
 - Add `constant/vacuumProperties`.
 - Introduce explicit `chamberPressure` and `chamberTemperature`.
 - Add a Hertz-Knudsen-type reference model for controlled unit/curve tests.
 - Keep `pRef`, `pChamber`, and CFD pressure conceptually and numerically separate.
+
+Completed implementation includes the configuration split, a pressure-aware
+Hertz-Knudsen reference model, a dedicated diagnostic utility, solver smoke
+coverage, and analytical curve regression.
 
 ## Phase 4 — Near-vacuum evaporation/recoil
 
