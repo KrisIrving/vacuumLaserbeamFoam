@@ -15,6 +15,8 @@ License
 
 #include "vacuumEvaporationModel.H"
 #include "knudsenTransitionRelations.H"
+#include "scalarList.H"
+#include "wordList.H"
 
 namespace Foam
 {
@@ -38,10 +40,58 @@ class nearVacuumWang
 
     knudsenTransitionRelations relations_;
 
+    bool componentMode_;
+    wordList componentNames_;
+    scalarList componentMoleFractions_;
+    scalarList componentMolarMasses_;
+    scalarList componentReferencePressures_;
+    scalarList componentReferenceTemperatures_;
+    scalarList componentLatentHeats_;
+
     scalar boilingTemperature_;
     scalar activationTemperature_;
     scalar Tk0_;
     scalar Tk1_;
+
+    scalar componentSaturationPressure
+    (
+        const label componenti,
+        const scalar temperature
+    ) const;
+
+    void mixtureProperties
+    (
+        const scalar temperature,
+        scalar& saturationPressure,
+        scalar& mixtureMolarMass
+    ) const;
+
+    scalar transitionResidual
+    (
+        const scalar temperature,
+        const scalar Ma
+    ) const;
+
+    bool solveMachNumberForState
+    (
+        const scalar temperature,
+        scalar& Ma
+    ) const;
+
+    bool thresholdTemperatureForState
+    (
+        const scalar targetMa,
+        const scalar Tmin,
+        const scalar Tmax,
+        scalar& temperature
+    ) const;
+
+    bool boilingTemperatureForPressure
+    (
+        const scalar Tmin,
+        const scalar Tmax,
+        scalar& temperature
+    ) const;
 
     void evaluateState
     (
