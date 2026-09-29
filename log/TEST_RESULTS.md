@@ -300,3 +300,39 @@ Phase 3 provides a tested pressure-aware reference model and an explicit
 `vacuumProperties` configuration split. The Hertz-Knudsen recoil closure remains
 an intermediate reference model; it is not the final near-vacuum Knudsen-layer
 model for the 0.6 Pa experiment.
+
+## 2026-09-29 — Phase-4a first CI attempt
+
+Commit:
+`a9cd4aa495029063b8d6488384ed6257ecf11b89`
+
+GitHub Actions run:
+`36513971338`, attempt 1
+
+Result: **FAIL (new analytical regression only)**
+
+Passed:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy byte-level regression;
+- Hertz-Knudsen smoke regression;
+- Hertz-Knudsen analytical curve regression.
+
+The new sonic test failed with exit code 13 (mass-flux comparison). Artifact
+inspection showed that the production model reported:
+
+- `gamma = 1.66667`;
+- `massFluxRatio = 0.8289634046`;
+
+instead of the exact `gamma = 5/3` reference value used to construct the
+independent expected coefficient.
+
+Diagnosis:
+the test script used `foamDictionary` to change temperature/pressure, which
+rewrote the dictionary and rounded the configurable gamma value. The discrepancy
+was caused by configuration serialization, not the Knudsen-layer equations.
+
+Resolution:
+`knudsenLayerSonic` now fixes `gamma = 5/3` in code, consistent with the
+monatomic-vapour assumption of the source model. Gamma is no longer a tunable
+dictionary coefficient.

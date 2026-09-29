@@ -26,7 +26,6 @@ knudsenLayerSonicCoeffs
     referenceTemperature  3500;
     molarMass             0.05;
     latentHeatVap         6e5;
-    gamma                 1.6666666666666667;
 }
 
 // ************************************************************************* //

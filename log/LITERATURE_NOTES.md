@@ -19,7 +19,9 @@ Phase-4a model:
 `src/vacuumEvaporationModels/knudsenLayerSonic/`
 
 The implementation uses the single-component sonic Knudsen-layer limit,
-`Ma = 1`, from the paper's Eqs. (9)-(13).
+`Ma = 1`, from the paper's Eqs. (9)-(13). For monatomic metal vapour the model
+fixes `gamma = 5/3`, matching the assumption used in the paper rather than
+exposing gamma as a calibration parameter.
 
 For the dimensionless velocity:
 `m = sqrt(gamma/2) * Ma`.

@@ -77,11 +77,7 @@ Foam::vacuumEvaporationModels::knudsenLayerSonic::knudsenLayerSonic
         dimensionSet(1, 2, -2, -1, -1, 0, 0),
         8.314
     ),
-    gamma_
-    (
-        modelDict.subDict("knudsenLayerSonicCoeffs")
-       .lookupOrDefault<scalar>("gamma", 5.0/3.0)
-    ),
+    gamma_(5.0/3.0),
     m_(0.0),
     temperatureRatio_(0.0),
     p3OverPe_(0.0),
@@ -97,15 +93,10 @@ Foam::vacuumEvaporationModels::knudsenLayerSonic::knudsenLayerSonic
             << exit(FatalIOError);
     }
 
-    if (gamma_ <= 1.0)
-    {
-        FatalIOErrorInFunction(modelDict)
-            << "gamma must be greater than one"
-            << exit(FatalIOError);
-    }
-
     // Wang, Zhang & Yan, Phys. Rev. Applied 14, 064039 (2020),
     // Eqs. (9)-(13), evaluated at the sonic Knudsen-layer edge Ma = 1.
+    // The paper takes gamma = 5/3 for monatomic metal vapour; keep this fixed
+    // rather than exposing a non-physical tuning parameter.
     const scalar pi = M_PI;
     const scalar sqrtPi = std::sqrt(pi);
 

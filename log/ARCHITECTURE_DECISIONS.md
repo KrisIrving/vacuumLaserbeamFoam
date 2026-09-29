@@ -143,3 +143,18 @@ the chamber background pressure. For the sonic model this is
 `max(PrecoilAbsolute - chamberPressure, 0)`.
 
 Revisit this decision if an absolute-pressure gas/vapour solver is coupled later.
+
+## ADR-014 — Fix gamma = 5/3 in the sonic metal-vapour model
+
+**Status:** accepted
+
+`knudsenLayerSonic` represents the monatomic metal-vapour Knudsen-layer model
+used in the Phase-4a literature derivation. The heat-capacity ratio is therefore
+fixed in code at `gamma = 5/3`.
+
+Reason:
+- this is the physical assumption used by the source derivation for monatomic
+  vapour;
+- gamma should not become a fitting parameter;
+- fixing it prevents configuration serialization/rounding from perturbing the
+  analytical jump constants.

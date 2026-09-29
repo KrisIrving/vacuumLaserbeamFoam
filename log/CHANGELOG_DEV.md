@@ -190,3 +190,13 @@ Implemented:
 Scope:
 this commit intentionally implements only the strong-evaporation sonic branch.
 The full near-vacuum transition/interpolation logic is deferred to Phase 4b.
+
+### Phase-4a first regression correction
+
+CI attempt 1 compiled and passed all pre-existing gates, but the new sonic
+analytical comparison exposed a configuration-rounding issue: `foamDictionary`
+rewrote a user-configurable gamma to `1.66667`.
+
+The sonic model now fixes `gamma=5/3` in code, matching the monatomic-vapour
+assumption of the literature model and eliminating an inappropriate calibration
+degree of freedom. No empirical tolerance widening was used.
