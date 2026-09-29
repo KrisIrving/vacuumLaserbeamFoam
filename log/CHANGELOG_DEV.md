@@ -243,3 +243,12 @@ Added:
 
 This is transition-state infrastructure only. It does not yet change the
 production evaporation model selected by the solver.
+
+### Phase-4 literature equation correction
+
+A pre-Phase-4c source audit identified an Eq. (10) transcription error in the
+initial sonic/transition implementation. The correction changes the
+`sqrt(T3/Te)` evaluation and the normalized mass-flux expression, and updates
+all independent regression constants. This is a physics correction, not a
+tolerance adjustment. The prior successful Phase-4a regression remains in the
+record as evidence of the original implementation state.

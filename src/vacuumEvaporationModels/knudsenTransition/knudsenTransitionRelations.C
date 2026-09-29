@@ -104,10 +104,11 @@ knudsenJumpState knudsenTransitionRelations::jumpState(const scalar Ma) const
         (2.0*m2 + 1.0)*erfcM
       - (2.0/sqrtPi)*state.m*expMinusM2;
 
-    state.temperatureRatio =
-        1.0
-      + (pi/64.0)*m2
+    const scalar sqrtTemperatureRatio =
+        std::sqrt(1.0 + (pi/64.0)*m2)
       - (sqrtPi/8.0)*state.m;
+
+    state.temperatureRatio = sqr(sqrtTemperatureRatio);
 
     if (state.temperatureRatio <= SMALL)
     {
@@ -133,12 +134,10 @@ knudsenJumpState knudsenTransitionRelations::jumpState(const scalar Ma) const
 
     state.massFluxRatio =
         2.0*sqrtPi*state.m
-       *state.p3OverPe/state.temperatureRatio;
+       *state.p3OverPe/sqrtTemperatureRatio;
 
     state.recoilCoefficient =
-        0.5*std::exp(m2)
-       *jumpDenominator
-       *(2.0*m2 + 1.0);
+        state.p3OverPe*(2.0*m2 + 1.0);
 
     return state;
 }

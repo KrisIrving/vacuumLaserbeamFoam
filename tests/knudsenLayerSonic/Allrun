@@ -53,8 +53,8 @@ check_model()
             # Independent Ma=1 constants from Wang et al. Eqs. (9)-(12)
             # for gamma=5/3. These constants were evaluated independently
             # from the production C++ implementation.
-            massRatio = 0.8289634846019969;
-            recoilCoeff = 0.5728914811310224;
+            massRatio = 0.8156806361858134;
+            recoilCoeff = 0.5498261984336758;
 
             pSat = pRef*exp(Lv*M*((T-TRef)/(R*T*TRef)));
 

@@ -217,10 +217,10 @@ Checks:
 - finite `Qv` field and runtime model selection.
 
 Independent reference constants for `gamma=5/3, Ma=1`:
-- `T3/Te = 0.8386534551`;
-- `P3/Pe = 0.2148343054`;
-- Hertz-normalized mass flux = `0.8289634846`;
-- absolute recoil coefficient = `0.5728914811`.
+- `T3/Te = 0.6691164507`;
+- `P3/Pe = 0.2061848244`;
+- Hertz-normalized mass flux = `0.8156806362`;
+- absolute recoil coefficient = `0.5498261984`.
 
 Acceptance:
 analytical quantities agree within the scripted floating-point tolerance and the

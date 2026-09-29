@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
     const scalar targetMa[] = {0.05, 0.5, 1.0};
     const scalar ambientPressure[] =
     {
-        59403.51400772722,
-        5079.126204780357,
-        869.2696694468876
+        59329.842693844024,
+        5363.4669094782685,
+        1019.6435667900128
     };
 
     for (label i = 0; i < 3; ++i)
