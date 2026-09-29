@@ -1,6 +1,13 @@
 /*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
 FoamFile
 {
+    version     2.0;
     format      ascii;
     class       dictionary;
     location    "constant";
@@ -15,9 +22,11 @@ testTemperature      3500;
 
 hertzKnudsenCoeffs
 {
-    referencePressure        1e5;
-    referenceTemperature     3500;
-    molarMass                0.05;
-    latentHeatVap            6e5;
-    accommodationCoefficient 1.0;
+    referencePressure         1e5;
+    referenceTemperature      3500;
+    molarMass                 0.05;
+    latentHeatVap             6e5;
+    accommodationCoefficient  1.0;
 }
+
+// ************************************************************************* //

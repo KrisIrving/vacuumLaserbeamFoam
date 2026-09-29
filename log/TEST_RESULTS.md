@@ -245,3 +245,30 @@ print the machine-readable regression line with standard C++
 
 The failure affects only diagnostic formatting; model equations and solver
 coupling are unchanged.
+
+## 2026-09-28 — Phase-3 analytical curve regression third attempt
+
+Commit:
+`abc749ca644165e980234263d98520c723517494`
+
+GitHub Actions run:
+`36428475347`
+
+Result: **FAIL (test input format)**
+
+Passed before the failure:
+- `Allwmake`;
+- repository `Alltest`;
+- legacy byte-level field regression;
+- Hertz-Knudsen 0.6 Pa solver smoke test.
+
+Failure:
+`tests/hertzKnudsenCurve/vacuumProperties` had an incomplete OpenFOAM header
+comment, so `vacuumEvaporationModelTest` aborted while reading the dictionary
+before any analytical comparison was performed.
+
+This is a test-fixture formatting error, not a model-equation failure.
+
+Fix:
+replace the test dictionary header with a valid OpenFOAM `FoamFile` header and
+rerun the full CI gate.

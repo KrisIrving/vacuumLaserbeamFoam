@@ -136,3 +136,11 @@ types transitively. Added the missing build dependency; no physics code changed.
 CI run `36428017249` showed that `messageStream Info` cannot set stream
 precision directly in OpenFOAM-v2506. The regression utility now uses
 `std::cout` with 16-digit precision for its machine-readable test line.
+
+### Phase-3 analytical test fixture correction
+
+CI run `36428475347` reached and passed build, tutorials, legacy regression,
+and the pressure-aware solver smoke test. The analytical curve regression then
+failed before model evaluation because its copied `vacuumProperties` fixture
+had an invalid OpenFOAM header. The fixture header was corrected; no production
+model code changed in this commit.
