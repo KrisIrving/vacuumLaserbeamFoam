@@ -77,7 +77,7 @@ jobs:
         shell: bash -l {0}
         run: |
           source ${{ matrix.container-image.source }}
-          ./tests/wangAlloyMixture/Allrun
+          bash ./tests/wangAlloyMixture/Allrun
 
       - name: Upload test logs
         if: ${{ failure() }}
