@@ -176,6 +176,22 @@ scalar knudsenTransitionRelations::pressureResidual
     const scalar Ma
 ) const
 {
+    return pressureResidualFromSaturation
+    (
+        surfaceTemperature,
+        Ma,
+        saturationPressure(surfaceTemperature)
+    );
+}
+
+
+scalar knudsenTransitionRelations::pressureResidualFromSaturation
+(
+    const scalar surfaceTemperature,
+    const scalar Ma,
+    const scalar surfaceSaturationPressure
+) const
+{
     const knudsenJumpState state = jumpState(Ma);
     const scalar M2 = shockMachNumber(surfaceTemperature, Ma);
 
@@ -187,7 +203,7 @@ scalar knudsenTransitionRelations::pressureResidual
         state.peOverP3*shockPressureRatio;
 
     const scalar actualPeOverP1 =
-        saturationPressure(surfaceTemperature)/ambientPressure_;
+        surfaceSaturationPressure/ambientPressure_;
 
     if (predictedPeOverP1 <= 0 || actualPeOverP1 <= 0)
     {
@@ -268,6 +284,106 @@ bool knudsenTransitionRelations::solveMachNumber
 
     Ma = 0.5*(lo + hi);
     return mag(pressureResidual(surfaceTemperature, Ma)) <= 10.0*tolerance;
+}
+
+
+bool knudsenTransitionRelations::solveMachNumberFromSaturation
+(
+    const scalar surfaceTemperature,
+    const scalar surfaceSaturationPressure,
+    scalar& Ma,
+    const scalar MaMin,
+    const scalar MaMax,
+    const scalar tolerance,
+    const label maxIterations
+) const
+{
+    if (MaMin <= 0 || MaMax > 1.0 || MaMin >= MaMax)
+    {
+        FatalErrorInFunction
+            << "Invalid Mach-number bracket ["
+            << MaMin << ", " << MaMax << "]"
+            << exit(FatalError);
+    }
+
+    if (surfaceSaturationPressure <= 0)
+    {
+        FatalErrorInFunction
+            << "Surface saturation pressure must be positive."
+            << exit(FatalError);
+    }
+
+    scalar lo = MaMin;
+    scalar hi = MaMax;
+    scalar flo = pressureResidualFromSaturation
+    (
+        surfaceTemperature,
+        lo,
+        surfaceSaturationPressure
+    );
+    scalar fhi = pressureResidualFromSaturation
+    (
+        surfaceTemperature,
+        hi,
+        surfaceSaturationPressure
+    );
+
+    if (mag(flo) <= tolerance)
+    {
+        Ma = lo;
+        return true;
+    }
+
+    if (mag(fhi) <= tolerance)
+    {
+        Ma = hi;
+        return true;
+    }
+
+    if (flo*fhi > 0)
+    {
+        return false;
+    }
+
+    for (label iter = 0; iter < maxIterations; ++iter)
+    {
+        const scalar mid = 0.5*(lo + hi);
+        const scalar fmid = pressureResidualFromSaturation
+        (
+            surfaceTemperature,
+            mid,
+            surfaceSaturationPressure
+        );
+
+        if (mag(fmid) <= tolerance || (hi - lo) <= tolerance)
+        {
+            Ma = mid;
+            return true;
+        }
+
+        if (flo*fmid <= 0)
+        {
+            hi = mid;
+            fhi = fmid;
+        }
+        else
+        {
+            lo = mid;
+            flo = fmid;
+        }
+    }
+
+    Ma = 0.5*(lo + hi);
+    return
+        mag
+        (
+            pressureResidualFromSaturation
+            (
+                surfaceTemperature,
+                Ma,
+                surfaceSaturationPressure
+            )
+        ) <= 10.0*tolerance;
 }
 
 
