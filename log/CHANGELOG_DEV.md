@@ -252,3 +252,32 @@ initial sonic/transition implementation. The correction changes the
 all independent regression constants. This is a physics correction, not a
 tolerance adjustment. The prior successful Phase-4a regression remains in the
 record as evidence of the original implementation state.
+
+## 2026-09-29 — Phase 4c near-vacuum production model
+
+Branch: `feat/near-vacuum-model`
+
+Added:
+- runtime-selectable `nearVacuumWang` model;
+- pressure-dependent boiling temperature;
+- automatic `Tk0`/`Tk1` determination;
+- cell-wise transition `Ma(T)` solution between the active temperature and
+  the sonic threshold;
+- sonic branch above `Tk1`;
+- explicit refusal of unsupported `Ma<0.05` weak-evaporation configurations;
+- synthetic constitutive regression covering sonic, transition, inactive, and
+  coupled-CFD paths.
+
+The 0.6 Pa production path now has an explicit near-vacuum model architecture,
+but final Ti-6Al-4V material data and experiment validation remain separate
+future stages.
+
+### Phase-4c verification complete
+
+GitHub Actions run `36519951799`: PASS.
+
+Every pre-existing regression gate and the new `nearVacuumWang` regression
+passed. The branch is ready for integration into `dev/vacuum-solver`.
+
+The corrected Wang Eq. (9)-(13) constants, transition-state infrastructure and
+production near-vacuum model are now treated as one verified Phase-4 chain.
