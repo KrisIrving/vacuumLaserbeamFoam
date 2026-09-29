@@ -157,3 +157,19 @@ Next development target:
 Phase 4 will add a literature-derived Knudsen-layer/near-vacuum model in
 incremental, analytically tested steps rather than replacing the reference model
 in one change.
+
+### Phase-3 integration
+
+Pull request: #4 — `Phase 3: pressure-aware evaporation reference model`
+
+Merged into:
+`dev/vacuum-solver`
+
+Merge commit:
+`7d1fed9a61ada6add5fc8c177a8f7fdc2e8a531e`
+
+Final verification before merge:
+GitHub Actions run `36512859745` — PASS.
+
+The protected project baseline `main` remains unchanged at the LaserbeamFoam
+V3.0 tree.
