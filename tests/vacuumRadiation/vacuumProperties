@@ -7,25 +7,22 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
+    version     2.0;
     format      ascii;
     class       dictionary;
     location    "constant";
     object      vacuumProperties;
 }
 
-evaporationModel     legacyAnisimov;
-
-// Experimental environment. The legacy model deliberately ignores these
-// values so that the V3.0 regression remains exact. Pressure-aware models use
-// chamberPressure explicitly.
-chamberPressure      0.6;
-chamberTemperature   300;
+evaporationModel       legacyAnisimov;
+chamberPressure        0.6;
+chamberTemperature     300;
+testTemperature        2000;
+testLiquidFraction     0.0;
 
 radiation
 {
-    // Disabled in the baseline/legacy regression to preserve exact V3.0
-    // numerical behaviour. Phase-5 tests enable this explicitly.
-    enabled             false;
+    enabled             true;
     emissivitySolid     0.4;
     emissivityLiquid    0.1;
 }

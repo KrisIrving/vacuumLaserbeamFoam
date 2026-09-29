@@ -281,3 +281,19 @@ passed. The branch is ready for integration into `dev/vacuum-solver`.
 
 The corrected Wang Eq. (9)-(13) constants, transition-state infrastructure and
 production near-vacuum model are now treated as one verified Phase-4 chain.
+
+## 2026-09-29 — Phase 5 vacuum radiation started
+
+Branch: `feat/vacuum-radiation`
+
+Added:
+- reusable `libvacuumRadiationModel`;
+- grey-body chamber radiation controlled by `vacuumProperties/radiation`;
+- solid/liquid emissivity interpolation;
+- written `Qrad` diagnostic field;
+- semi-implicit radiation source in `TEqn.H`;
+- independent analytical radiation utility/regression;
+- one-step radiation-enabled CFD smoke test.
+
+The existing evaporation sink remains exactly one term in the energy equation.
+No gas-convection heat-transfer term is introduced.

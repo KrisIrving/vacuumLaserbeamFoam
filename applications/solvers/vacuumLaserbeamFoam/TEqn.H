@@ -25,6 +25,7 @@
             LatentHeat*((fvc::ddt(rho, epsilon1) + fvc::div(rhoPhi, epsilon1)));
 
         Qv = evaporationModel->evaporationHeatFlux(T);
+        Qrad = radiationModel.heatFlux(T, epsilon1);
 
         if (damperSwitch)
         {
@@ -46,20 +47,32 @@
 
 
 
-        
+        const volScalarField interfaceDelta
+        (
+            mag(gradAlpha)*thermalDamper
+        );
 
+        tmp<volScalarField> tRadImplicit =
+            radiationModel.implicitCoefficient(T, epsilon1);
+        tmp<volScalarField> tRadExplicit =
+            radiationModel.explicitFlux(T, epsilon1);
+
+        // Semi-implicit linearisation of
+        // qRad = epsilon*sigma*(T^4 - Twall^4):
+        // T^4 ~= 4*T0^3*T - 3*T0^4.
+        // Qv remains a single evaporation sink; radiation is added separately.
         fvScalarMatrix TEqn
         (
             fvm::ddt(rhoCp,T)
           + fvm::div(rhophicp, T)
           - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
           - fvm::laplacian(kappa, T)
+          + fvm::Sp(tRadImplicit()*interfaceDelta, T)
           //- (tau && gradU) // Viscous dissipation
          ==
-            
-        laser.deposition()
-        
-          - Qv*mag(gradAlpha)*thermalDamper
+            laser.deposition()
+          - Qv*interfaceDelta
+          + tRadExplicit()*interfaceDelta
           - TRHS
         );
 
@@ -111,5 +124,6 @@
      && iter <= maxTCorr
     );
 
+    Qrad = radiationModel.heatFlux(T, epsilon1);
     gradT = fvc::grad(T);
 }

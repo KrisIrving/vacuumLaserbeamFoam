@@ -267,3 +267,23 @@ Checks:
 
 This is a constitutive regression using synthetic properties, not Ti-6Al-4V
 experimental validation.
+
+## T5a — Vacuum-radiation analytical/coupling regression
+
+Utility:
+`vacuumRadiationModelTest`
+
+Script:
+`tests/vacuumRadiation/Allrun`
+
+Checks:
+- grey-body heat flux `epsilon*sigma*(T^4-Twall^4)`;
+- solid, liquid and mixed emissivity interpolation;
+- semi-implicit coefficient `4*epsilon*sigma*T^3`;
+- explicit linearisation term
+  `epsilon*sigma*(3*T^4+Twall^4)`;
+- one-step solver coupling with radiation enabled;
+- finite written `Qrad` field.
+
+The baseline tutorial keeps radiation disabled so the legacy V3.0 regression
+remains an independent gate.

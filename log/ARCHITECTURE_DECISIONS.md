@@ -188,3 +188,25 @@ convection threshold. Above `Tk1` it uses the sonic state.
 If the material/environment combination activates liquid evaporation below
 `Tk0`, construction fails with an explicit diagnostic. This is preferred over
 inventing a weak-evaporation closure not supported by the selected source model.
+
+## ADR-017 — Vacuum radiation is a separate surface-flux model
+
+**Status:** accepted
+
+Phase 5 represents chamber radiation as
+
+`qRad = epsilon*sigma*(T^4 - Tchamber^4)`
+
+localized to the VOF metal/void interface with the same interface-delta
+construction used by the other surface heat fluxes.
+
+The model uses separate solid and liquid emissivities interpolated by the local
+liquid fraction. A semi-implicit fourth-power linearisation is used in the
+energy equation for stability.
+
+Radiation is independent of the evaporation model. Conventional gas convection
+is not introduced at the 0.6 Pa target pressure.
+
+The V3.1 radiation implementation was used as an implementation reference, but
+its energy equation was not copied directly: vacuumLaserbeamFoam keeps the
+evaporation sink exactly once and adds radiation as a distinct term.

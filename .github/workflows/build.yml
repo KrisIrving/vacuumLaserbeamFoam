@@ -73,6 +73,12 @@ jobs:
           source ${{ matrix.container-image.source }}
           ./tests/nearVacuumWang/Allrun
 
+      - name: Vacuum radiation regression
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          ./tests/vacuumRadiation/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4

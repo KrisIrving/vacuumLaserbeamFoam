@@ -60,14 +60,14 @@ Completed implementation includes the configuration split, a pressure-aware
 Hertz-Knudsen reference model, a dedicated diagnostic utility, solver smoke
 coverage, and analytical curve regression.
 
-## Phase 4 — Near-vacuum evaporation/recoil (in progress; Phase 4a completed)
+## Phase 4 — Near-vacuum evaporation/recoil (completed)
 
 - Implement literature-grounded near-vacuum/Knudsen-layer closure.
 - Derive evaporation cooling and recoil pressure from one consistent mass/momentum
   transfer model.
 - Validate model curves before coupling to full melt-pool simulations.
 
-## Phase 5 — Vacuum radiation
+## Phase 5 — Vacuum radiation (in progress)
 
 - Add free-surface radiation to chamber walls.
 - No conventional gas convective heat-transfer coefficient at 0.6 Pa.
