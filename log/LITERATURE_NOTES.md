@@ -126,3 +126,30 @@ liquid state begins below `Tk0`. Such a case would enter the `Ma<0.05`
 weak-evaporation/conduction regime, where the source paper explicitly warns
 that the convection-flow assumptions used for the transition relations are not
 valid. No undocumented extrapolation is introduced.
+
+## Wang alloy-composition closure — fast-track extension
+
+The paper's Eqs. (18)-(20) are now mapped explicitly into
+`nearVacuumWang`:
+
+- `Pe = sum(ki Pi)`;
+- `M = sum(Mi ki Pi)/Pe`;
+- `R = Rmol/M`.
+
+The paper defines `ki` as molar fraction, while Table I reports alloy
+composition by mass fraction. The implementation therefore accepts component
+mass fractions and converts them to molar fractions internally using
+`ki = (wi/Mi)/sum(wj/Mj)`.
+
+Each pure-component saturation pressure `Pi(T)` is evaluated from its own
+Clausius-Clapeyron reference state and latent heat. The resulting mixture
+`Pe(T)` is used in the Eq. (16) pressure residual, and the temperature-dependent
+mixture molar mass is used in Eq. (11) through `R=Rmol/M`.
+
+Evaporation heat loss remains `mLoss*Lv` as in Eq. (32), using the configured
+alloy-level latent heat of evaporation. No composition transport or preferential
+depletion of the liquid phase is introduced in this fast-track implementation.
+
+When `componentNames` is absent the previous single-component code path is
+retained, so the existing Phase-4c regression remains a backward-compatibility
+gate.
