@@ -267,3 +267,25 @@ Checks:
 
 This is a constitutive regression using synthetic properties, not Ti-6Al-4V
 experimental validation.
+
+## T8 — Primary WSL2 checkpoint validation
+
+Environment:
+- Windows 11 host;
+- WSL2 Linux runtime;
+- Intel Core i9-14900KF.
+
+The exact OpenFOAM version is recorded at test time rather than assumed.
+
+The first local checkpoint is Phase 4c on `dev/vacuum-solver`. Required
+focused regressions are:
+- legacy equivalence;
+- Hertz-Knudsen analytical curve;
+- corrected sonic Knudsen-layer model;
+- corrected transition relations;
+- nearVacuumWang constitutive/coupled smoke test.
+
+The full command sequence and return-log requirements are maintained in
+`log/LOCAL_TESTING_WSL2.md`.
+
+Phase-5 radiation remains unmerged until this local checkpoint is accepted.
