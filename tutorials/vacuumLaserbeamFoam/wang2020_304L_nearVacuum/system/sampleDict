@@ -7,21 +7,28 @@ FoamFile
     object sampleDict;
 }
 
-type sets;
-libs (sampling);
-interpolationScheme cellPoint;
-setFormat raw;
-
-sets
-(
-    keyholeCenterline
+functions
+{
+    sample
     {
-        type uniform;
-        axis xyz;
-        start (0 240e-6 0);
-        end   (0 0 0);
-        nPoints 481;
-    }
-);
+        type sets;
+        libs (sampling);
 
-fields (alpha.metal);
+        interpolationScheme cellPoint;
+        setFormat raw;
+
+        sets
+        (
+            keyholeCenterline
+            {
+                type uniform;
+                axis xyz;
+                start (0 240e-6 0);
+                end   (0 0 0);
+                nPoints 481;
+            }
+        );
+
+        fields (alpha.metal);
+    }
+}
