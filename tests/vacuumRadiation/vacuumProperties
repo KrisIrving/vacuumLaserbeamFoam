@@ -1,0 +1,30 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      vacuumProperties;
+}
+
+evaporationModel       legacyAnisimov;
+chamberPressure        0.6;
+chamberTemperature     300;
+testTemperature        2000;
+testLiquidFraction     0.0;
+
+radiation
+{
+    enabled             true;
+    emissivitySolid     0.4;
+    emissivityLiquid    0.1;
+}
+
+// ************************************************************************* //
