@@ -13,8 +13,8 @@ startFrom startTime;
 startTime 0;
 stopAt endTime;
 
-// Cheap coupling/stability smoke only.
-endTime 5e-6;
+// Short 8 um activation/stability smoke.
+endTime 10e-6;
 deltaT 1e-9;
 
 writeControl adjustableRunTime;
