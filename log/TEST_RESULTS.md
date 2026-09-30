@@ -476,3 +476,58 @@ the fast-track Wang implementation is now confirmed on the project's primary
 OpenFOAM-v2512 Ubuntu workstation, not only on the repository's v2506 CI
 container. This clears the constitutive/build checkpoint for the 304L
 near-vacuum validation case.
+
+## 2026-09-30 — 304L OpenFOAM-v2512 local checkpoint
+
+Primary machine:
+- Ubuntu 22.04;
+- OpenFOAM v2512;
+- GCC/G++ 11.4.0;
+- 48-core workstation.
+
+Uploaded local logs confirm:
+
+### Build after 304L production changes
+
+Result: **PASS**
+
+`./Allwmake -j 16` rebuilt:
+- `libvacuumEvaporationModels.so`;
+- `vacuumLaserbeamFoam`;
+- `knudsenTransitionTest`;
+- `vacuumEvaporationModelTest`.
+
+The inherited non-fatal `wmkdepend: could not open alphaEqn.H` warning was
+observed again. The build completed with:
+
+`There were no build errors: enjoy laserbeamFoam!`
+
+### Wang 304L constitutive reference
+
+Script:
+`tests/wang304LReference/Allrun`
+
+Result: **PASS**
+
+Observed:
+`PASS: Wang 304L Table-I/II anchored constitutive reference`
+
+This clears the anchored 304L multicomponent constitutive checkpoint on the
+target OpenFOAM-v2512 environment, including the Wang low-Mach step-(4) path.
+
+### Wang 304L one-step CFD case smoke
+
+Script:
+`tests/wang304LCaseSmoke/Allrun`
+
+Result: **PASS**
+
+Observed:
+`PASS: Wang 304L 8-um one-step CFD case smoke`
+
+This confirms the 304L case can pass mesh setup and one full
+`vacuumLaserbeamFoam` coupled time step on OpenFOAM-v2512.
+
+Next gate:
+run the 8 um, 16-rank, 5 us local smoke and inspect thermal/recoil/evaporation
+diagnostics before committing compute time to the 4 um paper-reference run.
