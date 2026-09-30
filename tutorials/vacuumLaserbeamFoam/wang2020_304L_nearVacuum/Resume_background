@@ -3,7 +3,12 @@
 cp system/controlDict.reference system/controlDict
 
 if [ -f log.vacuumLaserbeamFoam ]; then
-    mv log.vacuumLaserbeamFoam log.vacuumLaserbeamFoam.previous
+    LAST_LOG_TIME=$(grep '^[[:space:]]*Time = ' log.vacuumLaserbeamFoam | tail -1 | awk '{print $3}')
+    if [ -n "$LAST_LOG_TIME" ]; then
+        mv log.vacuumLaserbeamFoam "log.vacuumLaserbeamFoam.to_$LAST_LOG_TIME"
+    else
+        mv log.vacuumLaserbeamFoam log.vacuumLaserbeamFoam.previous
+    fi
 fi
 
 nohup mpirun -np 48 vacuumLaserbeamFoam -parallel > log.vacuumLaserbeamFoam 2>&1 &
