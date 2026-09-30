@@ -62,3 +62,26 @@ This is a validation candidate, not a parameter-identical reproduction.
 5. Cr/Ni/Fe vapor-pressure curves use NIST/Chase thermochemical references.
    A common pressure scale anchors the alloy mixture to Wang Table II:
    Pe(2009 K)=20.16 Pa.
+
+## Keyhole-depth extraction
+
+After a reference run, reconstruct/sample and write the centerline depth curve:
+
+```bash
+./extractKeyholeDepth.sh
+```
+
+Output:
+`keyholeDepth.csv`
+
+The sampling line begins in the numerical gas above the original plate surface
+and follows the laser axis downward. The extractor locates the first
+`alpha.metal=0.5` crossing connected to the atmosphere, so a buried gas pore
+does not automatically become the reported keyhole bottom.
+
+Primary comparison window:
+- start depth: approximately 32 um;
+- target depth: approximately 136 um;
+- experiment: approximately 70 us between the two depths;
+- Wang-paper current model: approximately 75 us.
+
