@@ -63,14 +63,44 @@ then
     exit 1
 fi
 
-if ! grep -q '^End$' log.vacuumLaserbeamFoam
+if ! grep -q '^End log.vacuumLaserbeamFoam
 then
     echo "Matched-physics smoke did not reach End" >&2
     exit 1
 fi
 
+LATEST_DIAG="$(grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -1)"
+
+echo "$LATEST_DIAG" | awk '
+{
+    for (i=1; i<=NF; ++i)
+    {
+        split($i, a, "=");
+        if (a[1] == "depositedPower") deposited=a[2]+0;
+        if (a[1] == "interfacePVapMax") recoil=a[2]+0;
+        if (a[1] == "evaporationPower") evap=a[2]+0;
+        if (a[1] == "radiationPower") rad=a[2]+0;
+    }
+
+    if (!(deposited > 0)) exit 31;
+    if (!(recoil > 0)) exit 32;
+    if (!(evap > 0)) exit 33;
+    if (!(rad > 0)) exit 34;
+}'
+
+if [ $? -ne 0 ]; then
+    echo "Matched-physics diagnostic values did not activate as expected" >&2
+    exit 1
+fi
+
 echo
+echo "Selected optics:"
+grep 'Laser optics laser0:' log.vacuumLaserbeamFoam | head -1
+
+echo "First matched-physics diagnostics:"
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | head -1
+
 echo "Latest matched-physics diagnostics:"
-grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -1
+echo "$LATEST_DIAG"
 
 echo "PASS: Wang 304L matched-physics 48-rank smoke"
