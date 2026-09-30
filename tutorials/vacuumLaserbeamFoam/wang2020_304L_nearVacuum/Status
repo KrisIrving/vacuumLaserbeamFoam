@@ -1,34 +1,175 @@
 #!/bin/bash
 
 LOG=log.vacuumLaserbeamFoam
+CONTROL=system/controlDict
 
-if [ -f run.pid ]; then
-    PID=$(cat run.pid)
-    if ps -p "$PID" > /dev/null 2>&1; then
-        echo "Run status            : running (PID $PID)"
-    else
-        echo "Run status            : not running"
-    fi
-else
-    echo "Run status            : foreground/unknown"
+format_seconds()
+{
+    awk -v s="$1" '
+    BEGIN {
+        if (s < 0) s = 0
+        d = int(s/86400)
+        h = int((s-d*86400)/3600)
+        m = int((s-d*86400-h*3600)/60)
+        sec = int(s-d*86400-h*3600-m*60+0.5)
+
+        if (sec >= 60) {
+            sec -= 60
+            m += 1
+        }
+        if (m >= 60) {
+            m -= 60
+            h += 1
+        }
+        if (h >= 24) {
+            h -= 24
+            d += 1
+        }
+
+        if (d > 0)
+            printf "%dd %02dh %02dm %02ds", d, h, m, sec
+        else if (h > 0)
+            printf "%02dh %02dm %02ds", h, m, sec
+        else if (m > 0)
+            printf "%02dm %02ds", m, sec
+        else
+            printf "%ds", sec
+    }'
+}
+
+TARGET_TIME=$(awk '$1 == "endTime" {gsub(";","",$2); print $2; exit}' "$CONTROL")
+
+if [ -z "$TARGET_TIME" ]; then
+    echo "ERROR: could not read endTime from $CONTROL"
+    exit 1
 fi
 
+printf 'Target simulation time : %s s' "$TARGET_TIME"
+awk -v t="$TARGET_TIME" 'BEGIN {printf " (%.3f us)\n", t*1e6}'
+
 if [ ! -f "$LOG" ]; then
+    echo "Run status             : not started"
+    echo "Completion             : NO"
     echo "No $LOG yet."
     exit 0
 fi
 
-printf 'Latest simulation time: '
-grep '^[[:space:]]*Time = ' "$LOG" | tail -1
+CURRENT_TIME=$(grep '^[[:space:]]*Time = ' "$LOG" | tail -1 | awk '{print $3}')
+FIRST_TIME=$(grep '^[[:space:]]*Time = ' "$LOG" | head -1 | awk '{print $3}')
+EXEC_TIME=$(grep 'ExecutionTime = ' "$LOG" | tail -1 | awk '{print $3}')
+DELTA_T=$(grep 'deltaT = ' "$LOG" | tail -1 | awk '{print $3}')
 
-printf 'Latest execution time : '
-grep 'ExecutionTime = ' "$LOG" | tail -1
+if [ -z "$CURRENT_TIME" ]; then
+    CURRENT_TIME=0
+fi
 
-printf 'Latest deltaT         : '
-grep 'deltaT = ' "$LOG" | tail -1
+if [ -z "$FIRST_TIME" ]; then
+    FIRST_TIME=0
+fi
 
-printf 'Latest diagnostics    : '
+if [ -z "$EXEC_TIME" ]; then
+    EXEC_TIME=0
+fi
+
+PROGRESS=$(awk -v c="$CURRENT_TIME" -v t="$TARGET_TIME" '
+BEGIN {
+    if (t <= 0) p=0
+    else p=100*c/t
+    if (p < 0) p=0
+    if (p > 100) p=100
+    printf "%.2f", p
+}')
+
+REMAIN_SIM=$(awk -v c="$CURRENT_TIME" -v t="$TARGET_TIME" '
+BEGIN {
+    r=t-c
+    if (r < 0) r=0
+    printf "%.12g", r
+}')
+
+SOLVER_END=0
+if grep -q '^End$' "$LOG"; then
+    SOLVER_END=1
+fi
+
+TARGET_REACHED=$(awk -v c="$CURRENT_TIME" -v t="$TARGET_TIME" '
+BEGIN {
+    tol=1e-12
+    if (c+tol >= t) print 1
+    else print 0
+}')
+
+RUNNING=0
+PID_TEXT=""
+if [ -f run.pid ]; then
+    PID=$(cat run.pid)
+    if ps -p "$PID" > /dev/null 2>&1; then
+        RUNNING=1
+        PID_TEXT=" (PID $PID)"
+    fi
+fi
+
+if [ "$TARGET_REACHED" = "1" ] && [ "$SOLVER_END" = "1" ]; then
+    RUN_STATE="completed"
+    COMPLETE="YES"
+elif [ "$RUNNING" = "1" ]; then
+    RUN_STATE="running$PID_TEXT"
+    COMPLETE="NO"
+elif [ "$TARGET_REACHED" = "1" ]; then
+    RUN_STATE="target reached; solver finalisation not confirmed"
+    COMPLETE="CHECK"
+else
+    RUN_STATE="not running / foreground status unknown"
+    COMPLETE="NO"
+fi
+
+printf 'Current simulation time: %s s' "$CURRENT_TIME"
+awk -v t="$CURRENT_TIME" 'BEGIN {printf " (%.3f us)\n", t*1e6}'
+printf 'Remaining sim. time   : %s s' "$REMAIN_SIM"
+awk -v t="$REMAIN_SIM" 'BEGIN {printf " (%.3f us)\n", t*1e6}'
+printf 'Progress              : %s %%\n' "$PROGRESS"
+printf 'Run status            : %s\n' "$RUN_STATE"
+printf 'Completion            : %s\n' "$COMPLETE"
+
+if [ "$EXEC_TIME" != "0" ]; then
+    printf 'Elapsed wall time      : %s (%s)\n' "$EXEC_TIME" "$(format_seconds "$EXEC_TIME")"
+fi
+
+if [ "$COMPLETE" = "YES" ]; then
+    echo "Estimated time left    : 0s"
+    echo "Estimated finish       : completed"
+else
+    DONE_INTERVAL=$(awk -v c="$CURRENT_TIME" -v f="$FIRST_TIME" '
+    BEGIN {
+        d=c-f
+        if (d <= 0) d=c
+        printf "%.12g", d
+    }')
+
+    REMAIN_WALL=$(awk -v e="$EXEC_TIME" -v d="$DONE_INTERVAL" -v r="$REMAIN_SIM" '
+    BEGIN {
+        if (e > 0 && d > 0 && r > 0)
+            printf "%.0f", e*r/d
+        else
+            print -1
+    }')
+
+    if awk -v r="$REMAIN_WALL" 'BEGIN {exit !(r >= 0)}'; then
+        printf 'Estimated time left    : %s\n' "$(format_seconds "$REMAIN_WALL")"
+        ETA=$(date -d "+$REMAIN_WALL seconds" '+%Y-%m-%d %H:%M:%S')
+        printf 'Estimated finish       : %s\n' "$ETA"
+    else
+        echo "Estimated time left    : unavailable"
+        echo "Estimated finish       : unavailable"
+    fi
+fi
+
+if [ -n "$DELTA_T" ]; then
+    printf 'Latest deltaT          : %s s\n' "$DELTA_T"
+fi
+
+printf 'Latest diagnostics     : '
 grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1
 
-printf 'Latest laser deposit  : '
+printf 'Latest laser deposit   : '
 grep 'Total Q deposited this timestep:' "$LOG" | tail -1
