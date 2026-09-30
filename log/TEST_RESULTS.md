@@ -625,3 +625,31 @@ Fix implemented:
 
 This fix is **pending local rebuild/regression/restart confirmation** and is not
 yet marked as a completed reference validation.
+
+## 2026-09-30 — 4 um Wang 304L reference reached 120 us
+
+Result: **numerically complete to 120 us; physical validation interval incomplete**
+
+The restarted 4 um / 48-rank case reached 120 us and ended normally.
+
+Measured centerline keyhole depth:
+- first 32 um crossing: approximately 36.07 us;
+- depth at 120 us: 127.78 um;
+- 136 um target not yet reached.
+
+The Wang paper compares the 32-to-136 um growth interval. Therefore the
+reference endpoint is extended to 140 us so that the actual t136 can be
+measured instead of extrapolated.
+
+Solver diagnostics at 120 us:
+- Tmax = 5696.03 K;
+- Umax = 51.70 m/s;
+- global pVapMax = 7.91 MPa;
+- global QvMax = 3.18e10 W/m2;
+- deposited laser power = 210.42 W.
+
+The global pVapMax is not yet treated as directly comparable to the paper's
+keyhole-surface recoil maximum because pVap is evaluated throughout the field
+whereas its momentum contribution is localized by the VOF interface gradient.
+A dedicated interface-recoil diagnostic is required before making that
+comparison.
