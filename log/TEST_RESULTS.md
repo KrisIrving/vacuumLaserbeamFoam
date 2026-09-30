@@ -653,3 +653,32 @@ keyhole-surface recoil maximum because pVap is evaluated throughout the field
 whereas its momentum contribution is localized by the VOF interface gradient.
 A dedicated interface-recoil diagnostic is required before making that
 comparison.
+
+## 2026-10-01 — 140 us Wang 304L keyhole-depth checkpoint
+
+The 4 um / 48-rank reference reached 140 us and ended normally.
+
+Current centreline alpha=0.5 metric:
+- depth at 140 us: 147.52 um;
+- interpolated t32: 36.07 us;
+- interpolated t136: 130.13 us;
+- 32-to-136 um growth interval: 94.06 us.
+
+The same interval obtained by using the first saved output time at or above each
+threshold is 38-to-132 us = 94 us, so the interval is not an artefact of linear
+time interpolation.
+
+However, this remains a **provisional centreline metric**. The Wang paper
+describes keyhole depth below the substrate surface but does not prescribe a
+centreline-alpha extraction algorithm. A single x=z=0 line can underestimate
+the geometric depth if the keyhole bottom bends or shifts laterally, and it can
+become ambiguous after bridge closure or multiple alpha=0.5 crossings.
+
+The post-processing workflow therefore now provides two independent metrics:
+1. atmosphere-connected centreline crossing, with crossing-count diagnostics;
+2. deepest point on the connected 3-D alpha.metal=0.5 main free-surface
+   component, excluding disconnected pore/droplet components.
+
+The 3-D surface metric must be checked before treating the 94 us interval as
+the formal Wang-validation depth result.
+
