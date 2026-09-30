@@ -422,3 +422,57 @@ Interpretation:
 the Phase-4c implementation is numerically regression-tested for the selected
 single-component Wang near-vacuum closure. This is **not** yet validation
 against Ti-6Al-4V material data or the user's 0.6 Pa experiment.
+
+## 2026-09-30 — OpenFOAM-v2512 Ubuntu fast-track checkpoint
+
+Commit tested:
+`d64af0eaa77184991da3b0ae40008cdab0b9f787`
+
+Machine:
+- Ubuntu 22.04;
+- dual-socket / 48-core workstation;
+- OpenFOAM `v2512`;
+- GCC/G++ `11.4.0`.
+
+Result: **PASS**
+
+Build:
+- repository `./Allwmake` completed successfully;
+- the build log ended with
+  `There were no build errors: enjoy laserbeamFoam!`;
+- `libvacuumEvaporationModels.so`, `vacuumLaserbeamFoam`,
+  `knudsenTransitionTest`, and `vacuumEvaporationModelTest` all compiled
+  and linked under OpenFOAM-v2512.
+
+Focused regression results:
+- `tests/knudsenLayerSonic/Allrun`: PASS;
+- `tests/knudsenTransition/Allrun`: PASS;
+- `tests/nearVacuumWang/Allrun`: PASS;
+- `tests/wangAlloyMixture/Allrun`: PASS;
+- `tests/legacyEquivalence/Allrun`: PASS.
+
+Observed sonic constitutive reference values at `T=3000 K`,
+`chamberPressure=0.6 Pa`:
+- `pSat = 84212.46708506653 Pa`;
+- `mDot = 38.79948612505068 kg m^-2 s^-1`;
+- net recoil `= 46301.62063810318 Pa`;
+- evaporation heat flux `= 23279691.67503041 W m^-2`.
+
+Transition solver round trips recovered:
+- `Ma=0.05`, `T=3000 K`, `M2=1.109778263033771`;
+- `Ma≈0.5`, `T=3000 K`, `M2=2.334163368386289`;
+- `Ma=1`, `T=3000 K`, `M2=3.717937692983043`.
+
+The multi-component Wang Eqs. (18)-(20) regression passed at both
+`2500 K` and `3000 K`.
+
+The legacy-equivalence gate also remained byte-identical at output time
+`1e-05` for:
+`T`, `U`, `alpha.metal`, `p_rgh`, `p`, `epsilon1`, `Qv`,
+`condition`, and `meltHistory`.
+
+Interpretation:
+the fast-track Wang implementation is now confirmed on the project's primary
+OpenFOAM-v2512 Ubuntu workstation, not only on the repository's v2506 CI
+container. This clears the constitutive/build checkpoint for the 304L
+near-vacuum validation case.
