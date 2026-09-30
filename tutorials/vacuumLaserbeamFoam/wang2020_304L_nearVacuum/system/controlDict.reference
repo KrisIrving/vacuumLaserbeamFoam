@@ -13,8 +13,8 @@ startFrom latestTime;
 startTime 0;
 stopAt endTime;
 
-// Covers the 70-75 us 32-to-136 um growth interval with margin.
-endTime 120e-6;
+// Extend beyond 120 us so the 32-to-136 um Wang validation interval is fully captured.
+endTime 140e-6;
 deltaT 1e-9;
 
 writeControl adjustableRunTime;
