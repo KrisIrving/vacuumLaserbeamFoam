@@ -11,6 +11,9 @@ evaporationModel nearVacuumWang;
 chamberPressure 20.265;
 chamberTemperature 298;
 
+// Output-time scalar diagnostics for the local 8 um / 5 us validation gate.
+writeDiagnostics true;
+
 nearVacuumWangCoeffs
 {
     referencePressure 20.16;
