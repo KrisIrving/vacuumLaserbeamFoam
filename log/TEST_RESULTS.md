@@ -531,3 +531,40 @@ This confirms the 304L case can pass mesh setup and one full
 Next gate:
 run the 8 um, 16-rank, 5 us local smoke and inspect thermal/recoil/evaporation
 diagnostics before committing compute time to the 4 um paper-reference run.
+
+## 2026-09-30 — 304L 8 um / 5 us local thermal smoke
+
+Machine:
+- Ubuntu workstation;
+- OpenFOAM v2512;
+- 48 MPI ranks.
+
+Result: **PASS for the pre-activation thermal/stability checkpoint**
+
+The run reached `5e-6 s` and finalised normally.
+
+Output-time diagnostics:
+
+| time (us) | Tmax (K) | Umax (m/s) | pVapMax (Pa) | QvMax (W/m2) | deposited power (W) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 769.275 | 4.47e-8 | 0 | 0 | 72.6109 |
+| 2 | 1207.750 | 5.17e-8 | 0 | 0 | 72.6109 |
+| 3 | 1617.725 | 4.63e-8 | 0 | 0 | 72.6109 |
+| 4 | 1720.647 | 9.75e-8 | 0 | 0 | 72.6109 |
+| 5 | 1980.192 | 9.48e-2 | 0 | 0 | 72.6109 |
+
+Additional observations:
+- the run used 48 MPI ranks;
+- the final maximum Courant number was below 5e-4;
+- alpha.metal remained bounded to numerical roundoff;
+- deposited power remained stable at 72.6109 W, about 27.9% of the 260 W
+  incident beam in the initial flat-surface optical state;
+- Tmax exceeded the 1727 K liquidus;
+- the production model's 304L activation temperature is 2009.50 K, so the
+  zero recoil and zero evaporation heat flux at 5 us are expected rather than
+  a coupling failure.
+
+Next gate:
+extend the same 8 um case to 10 us and require finite non-zero pVap/Qv after
+the activation threshold is crossed, while retaining stable alpha, pressure,
+and Courant behaviour.
