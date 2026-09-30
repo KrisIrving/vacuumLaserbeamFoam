@@ -49,39 +49,58 @@
 
         
 
-        const volScalarField interfaceDelta
-        (
-            mag(gradAlpha)*thermalDamper
-        );
+        if (radiationModel.enabled())
+        {
+            const volScalarField interfaceDelta
+            (
+                mag(gradAlpha)*thermalDamper
+            );
 
-        tmp<volScalarField> tRadImplicit =
-            radiationModel.implicitCoefficient(T, epsilon1);
-        tmp<volScalarField> tRadExplicit =
-            radiationModel.explicitFlux(T, epsilon1);
+            tmp<volScalarField> tRadImplicit =
+                radiationModel.implicitCoefficient(T, epsilon1);
+            tmp<volScalarField> tRadExplicit =
+                radiationModel.explicitFlux(T, epsilon1);
 
-        // Semi-implicit linearisation of
-        // qRad = epsilon*sigma*(T^4 - Tchamber^4).
-        // Evaporation remains a separate heat sink.
-        fvScalarMatrix TEqn
-        (
-            fvm::ddt(rhoCp,T)
-          + fvm::div(rhophicp, T)
-          - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
-          - fvm::laplacian(kappa, T)
-          + fvm::Sp(tRadImplicit()*interfaceDelta, T)
-          //- (tau && gradU) // Viscous dissipation
-         ==
-            laser.deposition()
-          - Qv*interfaceDelta
-          + tRadExplicit()*interfaceDelta
-          - TRHS
-        );
+            // Semi-implicit linearisation of
+            // qRad = epsilon*sigma*(T^4 - Tchamber^4).
+            fvScalarMatrix TEqn
+            (
+                fvm::ddt(rhoCp,T)
+              + fvm::div(rhophicp, T)
+              - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
+              - fvm::laplacian(kappa, T)
+              + fvm::Sp(tRadImplicit()*interfaceDelta, T)
+              //- (tau && gradU) // Viscous dissipation
+             ==
+                laser.deposition()
+              - Qv*interfaceDelta
+              + tRadExplicit()*interfaceDelta
+              - TRHS
+            );
 
-        TEqn.relax();
+            TEqn.relax();
+            TEqn.solve();
+        }
+        else
+        {
+            // Preserve the original LaserbeamFoam equation/operation order
+            // exactly when radiation is disabled.
+            fvScalarMatrix TEqn
+            (
+                fvm::ddt(rhoCp,T)
+              + fvm::div(rhophicp, T)
+              - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
+              - fvm::laplacian(kappa, T)
+              //- (tau && gradU) // Viscous dissipation
+             ==
+                laser.deposition()
+              - Qv*mag(gradAlpha)*thermalDamper
+              - TRHS
+            );
 
-        
-
-        TEqn.solve();
+            TEqn.relax();
+            TEqn.solve();
+        }
 
         // T.relax();
 
