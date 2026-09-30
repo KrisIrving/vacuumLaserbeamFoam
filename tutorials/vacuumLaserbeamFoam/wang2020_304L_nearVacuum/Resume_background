@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cp system/controlDict.reference system/controlDict
+
+if [ -f log.vacuumLaserbeamFoam ]; then
+    mv log.vacuumLaserbeamFoam log.vacuumLaserbeamFoam.previous
+fi
+
+nohup mpirun -np 48 vacuumLaserbeamFoam -parallel > log.vacuumLaserbeamFoam 2>&1 &
+echo $! > run.pid
+
+echo "Resumed 4 um Wang 304L reference run from latest processor time."
+echo "PID: $(cat run.pid)"
+echo "Target simulation time: 120 us"
+echo "MPI ranks: 48"
+echo "Use ./Status to inspect progress."
