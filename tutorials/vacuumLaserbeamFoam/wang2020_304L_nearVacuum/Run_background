@@ -1,0 +1,8 @@
+#!/bin/bash
+
+nohup ./Allrun.smoke > log.Allrun 2>&1 &
+echo $! > run.pid
+
+echo "Started 304L smoke run in background."
+echo "PID: $(cat run.pid)"
+echo "Use ./Status to inspect progress."
