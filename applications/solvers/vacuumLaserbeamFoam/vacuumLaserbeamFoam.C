@@ -195,6 +195,21 @@ int main(int argc, char *argv[])
 
         runTime.write();
 
+        if (writeVacuumDiagnostics && runTime.outputTime())
+        {
+            const scalar depositedPower =
+                fvc::domainIntegrate(laser.deposition()).value();
+
+            Info<< "VACUUM_DIAGNOSTICS"
+                << " time=" << runTime.value()
+                << " Tmax=" << gMax(T.primitiveField())
+                << " Umax=" << gMax(mag(U.primitiveField()))
+                << " pVapMax=" << gMax(pVap.primitiveField())
+                << " QvMax=" << gMax(Qv.primitiveField())
+                << " depositedPower=" << depositedPower
+                << endl;
+        }
+
         // Write ray paths to VTK files
         if (runTime.outputTime())
         {
