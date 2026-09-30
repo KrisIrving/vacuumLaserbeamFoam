@@ -484,6 +484,37 @@ laserHeatSource::laserHeatSource
     }
 
 
+    forAll(laserDicts_, laserI)
+    {
+        const dictionary& opticalDict = laserDicts_[laserI];
+
+        word opticalModel("drudeResistivity");
+        if (opticalDict.found("opticalModel"))
+        {
+            opticalDict.lookup("opticalModel") >> opticalModel;
+        }
+
+        Info<< "Laser optics " << laserNames_[laserI]
+            << ": opticalModel=" << opticalModel;
+
+        if (opticalModel == "fixedComplexIndex")
+        {
+            const scalar n =
+                readScalar(opticalDict.lookup("refractiveIndex"));
+            const scalar k =
+                readScalar(opticalDict.lookup("extinctionCoefficient"));
+            const scalar normalReflectivity =
+                (sqr(n - 1.0) + sqr(k))
+               /(sqr(n + 1.0) + sqr(k));
+
+            Info<< " n=" << n
+                << " k=" << k
+                << " normalAbsorptivity=" << 1.0 - normalReflectivity;
+        }
+
+        Info<< endl;
+    }
+
     // Update laserBoundary
     laserBoundary_ = fvc::average(laserBoundary_);
 
