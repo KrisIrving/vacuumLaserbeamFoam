@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LCaseSmoke"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+
+rm -rf "$RUN_CASE/0"
+cp -a "$RUN_CASE/initial" "$RUN_CASE/0"
+
+foamDictionary "$RUN_CASE/system/controlDict" -entry endTime -set 1e-9 > /dev/null
+foamDictionary "$RUN_CASE/system/controlDict" -entry writeControl -set timeStep > /dev/null
+foamDictionary "$RUN_CASE/system/controlDict" -entry writeInterval -set 1 > /dev/null
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+    setFields > log.setFields 2>&1
+    vacuumLaserbeamFoam > log.vacuumLaserbeamFoam 2>&1
+)
+
+grep -q "Selecting vacuum evaporation model nearVacuumWang"     "$RUN_CASE/log.vacuumLaserbeamFoam"
+grep -q "active regime        = common-to-sonic (Wang step 4)"     "$RUN_CASE/log.vacuumLaserbeamFoam"
+grep -q "Laser power = 260" "$RUN_CASE/log.vacuumLaserbeamFoam"
+grep -q "Total Q deposited this timestep:" "$RUN_CASE/log.vacuumLaserbeamFoam"
+
+if grep -Eiq '(^|[^A-Za-z])(nan|inf)([^A-Za-z]|$)'     "$RUN_CASE/log.vacuumLaserbeamFoam"; then
+    echo "Non-finite value detected in 304L smoke log" >&2
+    exit 31
+fi
+
+latest_time="$(foamListTimes -case "$RUN_CASE" -latestTime | tail -1)"
+for field in T U alpha.metal p_rgh Qv; do
+    if [[ ! -f "$RUN_CASE/$latest_time/$field" ]]; then
+        echo "Missing output field $field at $latest_time" >&2
+        exit 32
+    fi
+done
+
+echo "PASS: Wang 304L 8-um one-step CFD case smoke"
