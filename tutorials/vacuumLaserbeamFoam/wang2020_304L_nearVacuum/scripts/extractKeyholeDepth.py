@@ -22,10 +22,8 @@ def read_profile(path: Path):
             continue
         vals = [float(v) for v in FLOAT.findall(stripped)]
         if len(vals) >= 4:
-            # axis xyz -> x y z alpha
             y, alpha = vals[1], vals[-1]
         elif len(vals) >= 2:
-            # Fallback if the OpenFOAM writer collapses the coordinate.
             y, alpha = vals[0], vals[-1]
         else:
             continue
@@ -38,28 +36,39 @@ def read_profile(path: Path):
     return sorted(points, key=lambda p: p[0], reverse=True)
 
 
-def interface_y(points, surface_y: float):
-    # Follow the atmosphere-connected gas column from high y downward.
-    prev = None
-    for y, alpha in points:
-        if y > surface_y and alpha >= 0.5:
-            # A bad initial profile: metal exists above the nominal surface.
-            continue
+def analyse_profile(points, surface_y: float):
+    # Ignore all geometry above the original substrate surface. Overflowing
+    # metal/spatter above y=surface_y must not create an artificial long
+    # interpolation segment to the keyhole bottom.
+    below = [(y, a) for y, a in points if y <= surface_y + 1e-12]
+    if len(below) < 2:
+        return None, 0, 0
 
-        if prev is None:
-            prev = (y, alpha)
-            continue
+    gas_to_metal = 0
+    metal_to_gas = 0
 
-        py, pa = prev
+    for (py, pa), (y, alpha) in zip(below[:-1], below[1:]):
+        if pa < 0.5 <= alpha:
+            gas_to_metal += 1
+        elif pa >= 0.5 > alpha:
+            metal_to_gas += 1
+
+    # If the first point immediately below the nominal surface is metal, the
+    # atmosphere-connected depression has zero depth along this centreline.
+    if below[0][1] >= 0.5:
+        return surface_y, gas_to_metal, metal_to_gas
+
+    # Starting in gas, the first gas->metal crossing is the bottom of the
+    # atmosphere-connected centreline cavity. Any later crossings correspond
+    # to disconnected gas pockets along this one-dimensional line.
+    for (py, pa), (y, alpha) in zip(below[:-1], below[1:]):
         if pa < 0.5 <= alpha:
             if abs(alpha - pa) < 1e-14:
-                return y
+                return y, gas_to_metal, metal_to_gas
             frac = (0.5 - pa) / (alpha - pa)
-            return py + frac * (y - py)
+            return py + frac * (y - py), gas_to_metal, metal_to_gas
 
-        prev = (y, alpha)
-
-    return None
+    return None, gas_to_metal, metal_to_gas
 
 
 def time_from_path(path: Path):
@@ -96,36 +105,66 @@ def main():
     for path in candidates:
         t = time_from_path(path)
         pts = read_profile(path)
-        iy = interface_y(pts, args.surface_y)
+        iy, gas_to_metal, metal_to_gas = analyse_profile(pts, args.surface_y)
         if iy is None:
             depth = float("nan")
         else:
             depth = max(args.surface_y - iy, 0.0)
-        rows.append((t, depth, path))
+        rows.append((t, depth, gas_to_metal, metal_to_gas, path))
 
-    # If multiple files exist at a time, keep the deepest valid result.
     by_time = {}
-    for t, depth, path in rows:
+    for row in rows:
+        t, depth, *_ = row
         old = by_time.get(t)
         if old is None or (
             math.isfinite(depth)
-            and (not math.isfinite(old[0]) or depth > old[0])
+            and (not math.isfinite(old[1]) or depth > old[1])
         ):
-            by_time[t] = (depth, path)
+            by_time[t] = row
 
     with args.output.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["time_s", "keyhole_depth_m", "keyhole_depth_um", "source"])
+        w.writerow(
+            [
+                "time_s",
+                "keyhole_depth_m",
+                "keyhole_depth_um",
+                "gas_to_metal_crossings",
+                "metal_to_gas_crossings",
+                "source",
+            ]
+        )
         for t in sorted(by_time):
-            depth, path = by_time[t]
+            _, depth, g2m, m2g, path = by_time[t]
             depth_um = depth * 1e6 if math.isfinite(depth) else float("nan")
-            w.writerow([f"{t:.12g}", f"{depth:.12g}", f"{depth_um:.8g}", path])
+            w.writerow(
+                [
+                    f"{t:.12g}",
+                    f"{depth:.12g}",
+                    f"{depth_um:.8g}",
+                    g2m,
+                    m2g,
+                    path,
+                ]
+            )
 
-    finite = [(t, d) for t, (d, _) in by_time.items() if math.isfinite(d)]
+    finite = [(t, row[1]) for t, row in by_time.items() if math.isfinite(row[1])]
     if finite:
         t, d = max(finite, key=lambda x: x[0])
         print(f"Latest sampled time: {t:.12g} s")
         print(f"Centerline keyhole depth: {d*1e6:.6g} um")
+
+    complex_times = [
+        t
+        for t, row in by_time.items()
+        if row[2] > 1 or row[3] > 0
+    ]
+    if complex_times:
+        print(
+            "WARNING: multiple below-surface alpha=0.5 crossings occur at "
+            f"{len(complex_times)} sampled times; use the 3-D surface metric "
+            "for the formal keyhole depth."
+        )
 
 
 if __name__ == "__main__":
