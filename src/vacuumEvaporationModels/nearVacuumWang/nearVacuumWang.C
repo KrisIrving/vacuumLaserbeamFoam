@@ -113,6 +113,7 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
     componentReferencePressures_(),
     componentReferenceTemperatures_(),
     componentLatentHeats_(),
+    componentPressureScale_(1.0),
     boilingTemperature_(0.0),
     activationTemperature_(0.0),
     Tk0_(0.0),
@@ -241,6 +242,68 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
         {
             componentMoleFractions_[componenti] =
                 amountFractions[componenti]/amountSum;
+        }
+
+        if
+        (
+            coeffs.found("alloyReferencePressure")
+         || coeffs.found("alloyReferenceTemperature")
+        )
+        {
+            if
+            (
+                !coeffs.found("alloyReferencePressure")
+             || !coeffs.found("alloyReferenceTemperature")
+            )
+            {
+                FatalIOErrorInFunction(modelDict)
+                    << "alloyReferencePressure and alloyReferenceTemperature "
+                    << "must be supplied together."
+                    << exit(FatalIOError);
+            }
+
+            const dimensionedScalar alloyReferencePressure
+            (
+                "alloyReferencePressure",
+                dimPressure,
+                coeffs
+            );
+            const dimensionedScalar alloyReferenceTemperature
+            (
+                "alloyReferenceTemperature",
+                dimTemperature,
+                coeffs
+            );
+
+            scalar rawReferencePressure = 0.0;
+            scalar rawReferenceMolarMass = 0.0;
+            mixtureProperties
+            (
+                alloyReferenceTemperature.value(),
+                rawReferencePressure,
+                rawReferenceMolarMass
+            );
+
+            if
+            (
+                alloyReferencePressure.value() <= 0
+             || alloyReferenceTemperature.value() <= 0
+             || rawReferencePressure <= VSMALL
+            )
+            {
+                FatalIOErrorInFunction(modelDict)
+                    << "Invalid alloy saturation-pressure reference state."
+                    << exit(FatalIOError);
+            }
+
+            componentPressureScale_ =
+                alloyReferencePressure.value()/rawReferencePressure;
+
+            Info<< "        alloy Pe anchor       = "
+                << alloyReferencePressure.value() << " Pa at "
+                << alloyReferenceTemperature.value() << " K" << nl
+                << "        component Pe scale    = "
+                << componentPressureScale_ << endl;
         }
 
         if
@@ -406,7 +469,8 @@ void Foam::vacuumEvaporationModels::nearVacuumWang::mixtureProperties
     forAll(componentNames_, componenti)
     {
         const scalar partialSaturationPressure =
-            componentMoleFractions_[componenti]
+            componentPressureScale_
+           *componentMoleFractions_[componenti]
            *componentSaturationPressure(componenti, temperature);
 
         saturationPressureValue += partialSaturationPressure;
