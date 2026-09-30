@@ -523,9 +523,12 @@ bool Foam::vacuumEvaporationModels::nearVacuumWang::solveMachNumberForState
     scalar& Ma
 ) const
 {
+    // Wang step (4) approaches Ma -> 0 continuously at the chamber-pressure
+    // boiling point. Ma=0 is a regular limit of Eqs. (9)-(17), so include
+    // the exact endpoint instead of using an artificial positive cutoff.
     const scalar MaMin =
         (useSubcriticalCommonBranch_ && temperature < Tk0_)
-      ? 1e-8
+      ? 0.0
       : 0.05;
 
     if (!componentMode_)
