@@ -382,3 +382,33 @@ without testing additional solver behavior.
 
 Already accepted historical regressions are not retroactively rewritten solely
 to change execution topology.
+
+## T9c — Wang matched-physics closure gate
+
+Purpose:
+close the known model-form differences before another expensive 4 um reference
+run.
+
+Changes under test:
+- Johnson-Christy Fe fixed complex refractive index at 1070 nm;
+- standard complex Fresnel/specular reflection for that optical mode;
+- Wang Table-II grey-body radiation, emissivity 0.4;
+- interface-local recoil and integrated heat/force diagnostics.
+
+Fast gates:
+1. build with `./Allwmake -j 48`;
+2. serial `tests/vacuumRadiation/Allrun`;
+3. 48-rank `tests/wang304LMatchedSmoke/Allrun`.
+
+Smoke acceptance:
+- `fixedComplexIndex` is selected and reported;
+- radiation is enabled;
+- run reaches 10 us without Fatal/NaN/Inf;
+- deposited power is finite and non-zero;
+- interface recoil, evaporation-power, radiation-power and recoil-force
+  diagnostics are finite;
+- evaporation/recoil activates after the chamber-pressure boiling threshold.
+
+Only after this gate passes should the 4 um / 140 us Wang reference be rerun
+from t=0. The formal comparison metric remains the connected 3-D
+alpha.metal=0.5 keyhole depth.
