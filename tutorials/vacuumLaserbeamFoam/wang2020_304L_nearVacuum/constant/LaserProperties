@@ -32,7 +32,14 @@ N_sub_divisions 1;
 
 wavelength 1.070e-6;
 
-// Inherited LaserbeamFoam optical surrogate; see README.
+// Wang-validation optical closure. Wang et al. use iron optical constants
+// as the 304L surrogate. Johnson-Christy Fe data interpolated from
+// 0.984 and 1.088 um to 1.070 um:
+opticalModel fixedComplexIndex;
+refractiveIndex 2.961346153846154;
+extinctionCoefficient 4.013269230769231;
+
+// Retained for easy fallback to opticalModel drudeResistivity.
 e_num_density 5.83e29;
 
 dep_cutoff 0.5;
