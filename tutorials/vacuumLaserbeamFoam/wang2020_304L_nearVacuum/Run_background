@@ -1,8 +1,10 @@
 #!/bin/bash
 
-nohup ./Allrun.smoke > log.Allrun 2>&1 &
+nohup ./Allrun.reference > log.Allrun 2>&1 &
 echo $! > run.pid
 
-echo "Started 304L smoke run in background."
+echo "Started 4 um Wang 304L reference run in background."
 echo "PID: $(cat run.pid)"
+echo "Target simulation time: 120 us"
+echo "MPI ranks: 48"
 echo "Use ./Status to inspect progress."
