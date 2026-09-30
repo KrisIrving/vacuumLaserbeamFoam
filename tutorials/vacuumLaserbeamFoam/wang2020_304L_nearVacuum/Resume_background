@@ -11,6 +11,6 @@ echo $! > run.pid
 
 echo "Resumed 4 um Wang 304L reference run from latest processor time."
 echo "PID: $(cat run.pid)"
-echo "Target simulation time: 120 us"
+echo "Target simulation time: 140 us"
 echo "MPI ranks: 48"
 echo "Use ./Status to inspect progress."
