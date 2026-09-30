@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 | OpenFOAM: The Open Source CFD Toolbox           |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      vacuumProperties;
+}
+
+evaporationModel     nearVacuumWang;
+
+chamberPressure      20.265;
+chamberTemperature   298;
+testTemperature      2020;
+
+nearVacuumWangCoeffs
+{
+    // Alloy-level reference values. The component path below supplies Pe(T)
+    // and M(T); these entries keep the single-component helper well-posed.
+    referencePressure       20.16;
+    referenceTemperature    2009;
+    molarMass               0.055845;
+    latentHeatVap           6.36e6;
+
+    thresholdTemperatureMin 1000;
+    thresholdTemperatureMax 5000;
+
+    // Wang Table II reference point for 304L.
+    alloyReferencePressure       20.16;
+    alloyReferenceTemperature    2009;
+
+    // Wang Table I composition, given by mass fraction and internally
+    // converted to molar fraction for Eqs. (18)-(20).
+    componentNames (Cr Ni Fe);
+
+    components
+    {
+        Cr
+        {
+            massFraction         0.18;
+            molarMass            0.0519961;
+            referencePressure    101325;
+            referenceTemperature 2952.078;
+            latentHeatVap        6.528895261154893e6;
+        }
+
+        Ni
+        {
+            massFraction         0.08;
+            molarMass            0.0586934;
+            referencePressure    101325;
+            referenceTemperature 3156.584;
+            latentHeatVap        6.432819434153015e6;
+        }
+
+        Fe
+        {
+            massFraction         0.74;
+            molarMass            0.055845;
+            referencePressure    101325;
+            referenceTemperature 3133.345;
+            latentHeatVap        6.259774057660581e6;
+        }
+    }
+}
+
+// ************************************************************************* //
