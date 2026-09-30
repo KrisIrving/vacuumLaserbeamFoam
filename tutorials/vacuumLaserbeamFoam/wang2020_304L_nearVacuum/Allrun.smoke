@@ -2,7 +2,7 @@
 set -euo pipefail
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-NP=16
+NP=48
 
 rm -rf 0 processor* postProcessing smokeDiagnostics.log
 cp -r initial 0
