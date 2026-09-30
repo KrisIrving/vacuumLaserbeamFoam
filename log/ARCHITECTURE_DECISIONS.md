@@ -218,3 +218,54 @@ repository.
 Any case-management helper used here is maintained independently in
 `vacuumLaserbeamFoam` and must remain consistent with this project's
 OpenFOAM-v2512/LaserbeamFoam execution conventions.
+
+## ADR-018 — Preserve legacy optics; add a Wang fixed-complex-index mode
+
+**Status:** accepted
+
+LaserbeamFoam already performs Fresnel reflection and specular ray tracing.
+The Wang-304L mismatch is therefore not addressed by replacing the ray tracer.
+
+Two optical closures are retained:
+- `drudeResistivity`: the original LaserbeamFoam resistivity/free-electron
+  route, kept as the backward-compatible default;
+- `fixedComplexIndex`: direct complex refractive index `n + ik` used by the
+  Wang validation case.
+
+For the 1070 nm Wang 304L case, iron is used as the optical surrogate, matching
+the paper's stated approximation. Johnson-Christy Fe data bracketing 1070 nm
+are linearly interpolated to:
+- n = 2.961346153846154;
+- k = 4.013269230769231.
+
+The fixed-index path evaluates standard unpolarised complex Fresnel reflection
+and always uses specular reflection. It does not use the historical
+`theta >= pi/2 -> 50% absorption` fallback; interface-normal sign is removed
+from the incidence angle using `abs(d.n)`.
+
+This is a literature-alignment change, not a fitted absorptivity.
+
+## ADR-019 — Align Wang surface losses and compare interface recoil directly
+
+**Status:** accepted
+
+The Wang 304L benchmark enables grey-body chamber radiation with emissivity
+0.4 and chamber temperature 298 K. Radiation remains separate from
+evaporation heat loss and is localised with the VOF interface delta.
+
+Conventional gas-convection heat transfer is not added because the present
+outer phase is a numerical pseudo-gas and no pressure-consistent continuum
+convection closure is being introduced merely to tune the benchmark.
+
+Validation diagnostics now distinguish:
+- whole-domain `pVapMax`;
+- interface-cell `interfacePVapMax`;
+- integrated recoil-force vector;
+- absorbed laser power;
+- evaporation heat-loss power;
+- radiation heat-loss power;
+- VOF interface area.
+
+The interface-local pressure and integrated force are the quantities intended
+for comparison with Wang's reported keyhole-surface recoil pressure and axial
+recoil force.
