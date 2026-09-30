@@ -1,24 +1,15 @@
 #!/bin/bash
-set -eo pipefail
-. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-NP=48
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
 
-rm -rf 0 processor* postProcessing
-cp -r initial 0
-
-controlBackup="$(mktemp)"
-cp system/controlDict "$controlBackup"
-restore_control()
-{
-    cp "$controlBackup" system/controlDict
-    rm -f "$controlBackup"
-}
-trap restore_control EXIT
+echo "Preparing 4 um reference dictionaries"
+cp system/blockMeshDict.reference4um system/blockMeshDict
 cp system/controlDict.reference system/controlDict
 
-runApplication blockMesh -dict system/blockMeshDict.reference4um
-runApplication setFields
-runApplication decomposePar -dict system/decomposeParDict.reference -force
+echo "Copying 'initial' to 0"
+cp -r initial 0
 
-mpirun -np "$NP" vacuumLaserbeamFoam -parallel 2>&1 | tee log.vacuumLaserbeamFoam.parallel
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
