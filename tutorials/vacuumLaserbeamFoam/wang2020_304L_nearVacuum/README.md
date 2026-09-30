@@ -85,3 +85,32 @@ Primary comparison window:
 - experiment: approximately 70 us between the two depths;
 - Wang-paper current model: approximately 75 us.
 
+## 8 um / 5 us local smoke checkpoint
+
+The smoke run is intentionally local rather than a GitHub CI workload:
+
+```bash
+./Allrun.smoke
+```
+
+It uses 16 MPI ranks and runs to 5 us. At every 1 us output it prints one
+machine-readable line:
+
+```text
+VACUUM_DIAGNOSTICS time=... Tmax=... Umax=... pVapMax=... QvMax=... depositedPower=...
+```
+
+Those lines are copied to `smokeDiagnostics.log`.
+
+At the end, the latest time is reconstructed for:
+`T`, `U`, `alpha.metal`, `pVap`, `Qv`, and `Deposition`.
+
+This checkpoint is considered successful when:
+- the run reaches 5 us without FatalError/NaN/Inf;
+- deposited laser power is finite and non-zero;
+- Tmax rises above the initial 298 K;
+- pVap and Qv remain finite;
+- the final alpha.metal field remains bounded and physically oriented.
+
+It is a short-time physical/numerical gate, not the 4 um paper validation.
+
