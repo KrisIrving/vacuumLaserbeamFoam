@@ -99,6 +99,11 @@ BEGIN {
     else print 0
 }')
 
+FATAL=0
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"; then
+    FATAL=1
+fi
+
 RUNNING=0
 PID_TEXT=""
 if [ -f run.pid ]; then
@@ -112,6 +117,9 @@ fi
 if [ "$TARGET_REACHED" = "1" ] && [ "$SOLVER_END" = "1" ]; then
     RUN_STATE="completed"
     COMPLETE="YES"
+elif [ "$FATAL" = "1" ]; then
+    RUN_STATE="failed (FOAM/MPI fatal error in log)"
+    COMPLETE="FAILED"
 elif [ "$RUNNING" = "1" ]; then
     RUN_STATE="running$PID_TEXT"
     COMPLETE="NO"
@@ -138,6 +146,9 @@ fi
 if [ "$COMPLETE" = "YES" ]; then
     echo "Estimated time left    : 0s"
     echo "Estimated finish       : completed"
+elif [ "$COMPLETE" = "FAILED" ]; then
+    echo "Estimated time left    : stopped"
+    echo "Estimated finish       : failed before target"
 else
     REMAIN_WALL=$(awk -v target="$TARGET_TIME" '
     /^[[:space:]]*Time = / {
