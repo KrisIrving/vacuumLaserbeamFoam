@@ -1,0 +1,72 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/vacuumRadiation"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+)
+
+check_flux()
+{
+    temperature="$1"
+    liquidFraction="$2"
+    label="$3"
+
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry testTemperature -set "$temperature" > /dev/null
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry testLiquidFraction -set "$liquidFraction" > /dev/null
+
+    (
+        cd "$RUN_CASE"
+        vacuumRadiationModelTest > "log.radiation.$label" 2>&1
+    )
+
+    line="$(grep '^VACUUM_RADIATION_TEST ' "$RUN_CASE/log.radiation.$label" | tail -1)"
+
+    if [ -z "$line" ]; then
+        echo "Missing VACUUM_RADIATION_TEST output for $label" >&2
+        exit 1
+    fi
+
+    read tag T f emiss q A B <<EOF
+$line
+EOF
+
+    awk -v T="$T" -v f="$f" -v emiss="$emiss" -v q="$q" -v A="$A" -v B="$B" '
+    BEGIN {
+        sigma=5.670374419e-8;
+        Tw=300.0;
+        eS=0.4;
+        eL=0.1;
+        e=eS+(eL-eS)*f;
+        qRef=e*sigma*(T^4-Tw^4);
+        ARef=4.0*e*sigma*T^3;
+        BRef=e*sigma*(3.0*T^4+Tw^4);
+        tol=3e-9;
+        if (sqrt((emiss-e)^2) > tol) exit 11;
+        if (sqrt((q-qRef)^2) > tol*(qRef>1?qRef:1)) exit 12;
+        if (sqrt((A-ARef)^2) > tol*(ARef>1?ARef:1)) exit 13;
+        if (sqrt((B-BRef)^2) > tol*(BRef>1?BRef:1)) exit 14;
+    }'
+
+    if [ $? -ne 0 ]; then
+        echo "Radiation analytical comparison failed for $label" >&2
+        exit 1
+    fi
+
+    echo "PASS: $label T=$T liquidFraction=$f emissivity=$emiss Qrad=$q"
+}
+
+check_flux 2000 0.0 solid
+check_flux 2000 1.0 liquid
+check_flux 1200 0.5 mushy
+
+echo "PASS: vacuum radiation analytical regression"
