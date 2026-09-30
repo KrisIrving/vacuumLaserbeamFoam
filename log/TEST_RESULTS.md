@@ -682,3 +682,49 @@ The post-processing workflow therefore now provides two independent metrics:
 The 3-D surface metric must be checked before treating the 94 us interval as
 the formal Wang-validation depth result.
 
+## 2026-10-01 — 140 us dual-metric keyhole-depth validation
+
+The 4 um Wang 304L reference was post-processed with two independent metrics:
+
+1. centreline atmosphere-connected `alpha.metal=0.5` crossing;
+2. deepest point on the surface-connected 3-D `alpha.metal=0.5` main interface component.
+
+Measured results:
+
+| Metric | t32 (us) | t136 (us) | 32-to-136 us interval | depth at 140 us |
+| --- | ---: | ---: | ---: | ---: |
+| Centreline | 36.0676 | 130.126 | 94.0584 us | 147.522 um |
+| 3-D connected surface | 33.4462 | 127.328 | 93.8816 us | 147.370 um |
+
+Agreement between the two growth-time metrics is 0.1768 us, about 0.19%.
+Across all 71 saved times, the median 3-D-minus-centreline depth is 0.667 um
+and the maximum absolute difference is 3.675 um, less than one 4 um mesh cell.
+
+After the 3-D metric first reaches 32 um:
+- mean absolute depth difference between metrics is about 1.00 um;
+- median bottom lateral offset from the laser axis is 8.0 um;
+- maximum bottom lateral offset is 14.42 um;
+- bottom support is 11 to 24 nearby interface vertices (median 18);
+- the selected main interface is always identified as surface connected.
+
+The full interface contains 2 connected components at many late times and 3
+components at 84 us. The depth extractor deliberately selects the broad
+surface-connected main component, so disconnected pores/droplets are excluded
+from the formal keyhole depth.
+
+Conclusion:
+the approximately 94 us 32-to-136 um growth interval is robust to the depth
+definition and is not a centreline post-processing artefact. The formal
+validation metric should use the 3-D connected-surface result:
+**93.88 us**.
+
+For comparison, Wang et al. report about 70 us in the near-vacuum x-ray
+experiment and 75 us for their current evaporation model. Therefore the
+current vacuumLaserbeamFoam case is about 34% slower than the experiment and
+25% slower than the Wang-model result over the same nominal depth interval.
+
+This is a multiphysics validation discrepancy, not a constitutive-regression
+failure. The next investigation should prioritize the remaining model
+differences (optical absorption/ray interaction and surface heat-loss closure)
+and add interface-local recoil diagnostics before altering the Wang
+evaporation equations.
