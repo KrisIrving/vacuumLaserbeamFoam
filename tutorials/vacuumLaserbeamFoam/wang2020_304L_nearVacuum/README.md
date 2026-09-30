@@ -44,8 +44,26 @@ Smoke:
 
 Reference, 48 MPI ranks:
 ```bash
-./Allrun.reference
+./Allclean
+./Run_background
+./Status
 ```
+
+`Run_background` launches `Allrun.reference`, which prepares the 4 um
+512,000-cell mesh and the 120 us reference control dictionary before running
+`vacuumLaserbeamFoam` on 48 MPI ranks.
+
+During the run, `./Status` reports target/current physical time, percentage,
+recent-pace ETA, completion state, deltaT, and the latest vacuum diagnostics.
+
+After completion:
+```bash
+./extractKeyholeDepth.sh
+./Status
+```
+
+The second `./Status` also reports the latest extracted centerline keyhole
+depth from `keyholeDepth.csv`.
 
 ## Deliberately visible model differences
 
@@ -93,7 +111,7 @@ The smoke run is intentionally local rather than a GitHub CI workload:
 ./Allrun.smoke
 ```
 
-It uses 48 MPI ranks. The first completed checkpoint ran to 5 us; the next activation checkpoint runs to 10 us. At every 1 us output it prints one
+It uses 48 MPI ranks. The completed checkpoints ran to 5 us and 10 us. At every 1 us output it prints one
 machine-readable line:
 
 ```text
@@ -125,7 +143,7 @@ This checkpoint is considered successful when:
 
 The 5 us local run reached Tmax=1980.19 K, still below the 2009.50 K
 near-vacuum activation threshold, so pVap and Qv correctly remained zero.
-The 10 us extension is intended to cross that threshold and verify stable
+The 10 us extension crossed that threshold and verified stable
 recoil/evaporation activation before the 4 um paper run.
 
 It is a short-time physical/numerical gate, not the 4 um paper validation.
