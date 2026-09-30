@@ -177,14 +177,44 @@ Consequences:
   nonlinear iterate;
 - the same relation solver can later be tabled/cached instead of solved per cell.
 
-## ADR-016 — Near-vacuum model does not extrapolate below Ma=0.05
+## ADR-016 — Represent Wang step-(4) low-Mach common-atmosphere states
+
+**Status:** superseded and updated after the 304L benchmark was introduced
+
+The initial implementation deliberately stopped at `Ma=0.05`. Applying the
+actual Wang 304L / ~20 Pa benchmark showed that the boiling activation
+temperature lies below `Tk0`, so that restriction excluded a physically
+required part of the selected Wang procedure.
+
+The production `nearVacuumWang` model now uses:
+- inactive state below the chamber-pressure boiling activation;
+- Wang step-(4) common-atmosphere solution with `0 < Ma < 0.05` between
+  activation and `Tk0`;
+- the normal transition branch for `0.05 <= Ma < 1`;
+- the sonic branch above `Tk1`.
+
+The low-Mach branch uses the same common-atmosphere pressure relation and tends
+continuously toward zero Mach number near boiling. It is not an empirical
+linear extrapolation.
+
+
+## ADR-017 — electronBeamFoam is an operations-pattern reference only
 
 **Status:** accepted
 
-The production `nearVacuumWang` model uses the Wang transition relations only
-where the active liquid-surface state is at or above the paper's `Ma=0.05`
-convection threshold. Above `Tk1` it uses the sonic state.
+The separate repository `KrisIrving/electronBeamFoam` may be consulted for
+case-management ergonomics such as:
+- compact `./Status` commands;
+- detached/background launch helpers;
+- separate reconstruction helpers;
+- predictable `log.*` files;
+- clear tutorial/case directory organization.
 
-If the material/environment combination activates liquid evaporation below
-`Tk0`, construction fails with an explicit diagnostic. This is preferred over
-inventing a weak-evaporation closure not supported by the selected source model.
+No electron-beam heat-source model, material model, solver equation, numerical
+parameter, benchmark result, or source implementation is to be imported into
+the vacuum evaporation-model development merely because it exists in that
+repository.
+
+Any case-management helper used here is maintained independently in
+`vacuumLaserbeamFoam` and must remain consistent with this project's
+OpenFOAM-v2512/LaserbeamFoam execution conventions.
