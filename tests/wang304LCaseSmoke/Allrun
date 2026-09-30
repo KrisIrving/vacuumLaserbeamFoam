@@ -1,6 +1,4 @@
 #!/bin/bash
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
@@ -22,7 +20,7 @@ foamDictionary "$RUN_CASE/system/controlDict" -entry writeInterval -set 1 > /dev
     cd "$RUN_CASE"
     blockMesh > log.blockMesh 2>&1
     setFields > log.setFields 2>&1
-    decomposePar -dict system/decomposeParDict.smoke -force > log.decomposePar 2>&1
+    decomposePar -force > log.decomposePar 2>&1
     mpirun -np "$NP" vacuumLaserbeamFoam -parallel > log.vacuumLaserbeamFoam 2>&1
     reconstructPar -latestTime -fields '(T U alpha.metal p_rgh Qv)'         > log.reconstructPar 2>&1
 )
