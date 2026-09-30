@@ -24,6 +24,8 @@ License
 #include "SortableList.H"
 #include "globalIndex.H"
 
+#include <complex>
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -633,7 +635,57 @@ void laserHeatSource::updateDeposition
         );
         const vector V_incident(dict.lookup("V_incident"));
         const scalar wavelength(readScalar(dict.lookup("wavelength")));
-        const scalar e_num_density(readScalar(dict.lookup("e_num_density")));
+
+        word opticalModel("drudeResistivity");
+        if (dict.found("opticalModel"))
+        {
+            dict.lookup("opticalModel") >> opticalModel;
+        }
+
+        const scalar e_num_density
+        (
+            dict.lookupOrDefault<scalar>("e_num_density", 0.0)
+        );
+        const scalar refractiveIndex
+        (
+            dict.lookupOrDefault<scalar>("refractiveIndex", 0.0)
+        );
+        const scalar extinctionCoefficient
+        (
+            dict.lookupOrDefault<scalar>("extinctionCoefficient", 0.0)
+        );
+
+        if
+        (
+            opticalModel != "drudeResistivity"
+         && opticalModel != "fixedComplexIndex"
+        )
+        {
+            FatalIOErrorInFunction(dict)
+                << "Unknown opticalModel " << opticalModel << ". Available: "
+                << "drudeResistivity, fixedComplexIndex"
+                << exit(FatalIOError);
+        }
+
+        if (opticalModel == "drudeResistivity" && e_num_density <= 0.0)
+        {
+            FatalIOErrorInFunction(dict)
+                << "drudeResistivity requires e_num_density > 0"
+                << exit(FatalIOError);
+        }
+
+        if
+        (
+            opticalModel == "fixedComplexIndex"
+         && (refractiveIndex <= 0.0 || extinctionCoefficient < 0.0)
+        )
+        {
+            FatalIOErrorInFunction(dict)
+                << "fixedComplexIndex requires refractiveIndex > 0 and "
+                << "extinctionCoefficient >= 0"
+                << exit(FatalIOError);
+        }
+
         const scalar dep_cutoff(dict.lookupOrDefault<scalar>("dep_cutoff", 0.5));
 
         const scalar Radius_Flavour
@@ -670,7 +722,10 @@ void laserHeatSource::updateDeposition
             nAngular,
             V_incident,
             wavelength,
+            opticalModel,
             e_num_density,
+            refractiveIndex,
+            extinctionCoefficient,
             dep_cutoff,
             Radius_Flavour,
             useLocalSearch,
@@ -696,7 +751,10 @@ void laserHeatSource::updateDeposition
     const label nAngular,
     const vector& V_incident,
     const scalar wavelength,
+    const word& opticalModel,
     const scalar e_num_density,
+    const scalar refractiveIndex,
+    const scalar extinctionCoefficient,
     const scalar dep_cutoff,
     const scalar Radius_Flavour,
     const Switch useLocalSearch,
@@ -718,20 +776,26 @@ void laserHeatSource::updateDeposition
     (
         "Q_cond", dimensionSet(1, 2, -3, 0, 0), currentLaserPower
     );
-    const scalar plasma_frequency = Foam::sqrt
-    (
+    scalar plasma_frequency = 0.0;
+    scalar angular_frequency = 0.0;
+
+    if (opticalModel == "drudeResistivity")
+    {
+        plasma_frequency = Foam::sqrt
         (
-            e_num_density
-           *constant::electromagnetic::e.value()
-           *constant::electromagnetic::e.value()
-        )
-       /(
-           constant::atomic::me.value()
-          *constant::electromagnetic::epsilon0.value()
-       )
-    );
-    const scalar angular_frequency =
-        2.0*pi*constant::universal::c.value()/wavelength;
+            (
+                e_num_density
+               *constant::electromagnetic::e.value()
+               *constant::electromagnetic::e.value()
+            )
+           /(
+               constant::atomic::me.value()
+              *constant::electromagnetic::epsilon0.value()
+           )
+        );
+        angular_frequency =
+            2.0*pi*constant::universal::c.value()/wavelength;
+    }
 
     if (debug)
     {
@@ -889,78 +953,111 @@ void laserHeatSource::updateDeposition
                     // Interface detected
                     // Deposit a fraction of the power and calculate the reflection
 
-                    const scalar damping_frequency =
-                        plasma_frequency*plasma_frequency
-                       *constant::electromagnetic::epsilon0.value()
-                       *resistivity_in[myCellID];
+                    scalar absorptivity = 0.0;
+                    bool useSpecularReflection = false;
 
-                    const scalar e_r =
-                        1.0
-                        - (
-                            sqr(plasma_frequency)/(sqr(angular_frequency)
-                          + sqr(damping_frequency))
-                        );
-
-                    const scalar e_i =
-                        (damping_frequency/angular_frequency)
-                       *(
-                            sqr(plasma_frequency)
+                    if (opticalModel == "fixedComplexIndex")
+                    {
+                        scalar cosTheta =
+                            mag(curRay.direction_ & nFilteredI[myCellID])
                            /(
-                               sqr(angular_frequency) + sqr(damping_frequency)
-                            )
-                        );
+                                mag(curRay.direction_)
+                               *mag(nFilteredI[myCellID])
+                            );
+                        cosTheta = min(max(cosTheta, scalar(0)), scalar(1));
 
-                    const scalar ref_index =
-                        Foam::sqrt
+                        const scalar sin2Theta =
+                            max(1.0 - sqr(cosTheta), scalar(0));
+
+                        const std::complex<scalar> N
                         (
-                            (Foam::sqrt((e_r*e_r) +(e_i*e_i)) + e_r)/2.0
+                            refractiveIndex,
+                            extinctionCoefficient
                         );
+                        const std::complex<scalar> cosThetaT =
+                            std::sqrt
+                            (
+                                std::complex<scalar>(1.0, 0.0)
+                              - sin2Theta/(N*N)
+                            );
 
-                    const scalar ext_coefficient =
-                        Foam::sqrt
-                        (
-                            (Foam::sqrt((e_r*e_r) +(e_i*e_i)) - e_r)/2.0
-                        );
+                        const std::complex<scalar> rs =
+                            (cosTheta - N*cosThetaT)
+                           /(cosTheta + N*cosThetaT);
+                        const std::complex<scalar> rp =
+                            (N*cosTheta - cosThetaT)
+                           /(N*cosTheta + cosThetaT);
 
-                    scalar argument =
-                        (
-                            curRay.direction_ & nFilteredI[myCellID]
-                        )/(mag(curRay.direction_)*mag(nFilteredI[myCellID]));
+                        const scalar reflectivity =
+                            0.5*(std::norm(rs) + std::norm(rp));
 
-                    if (argument >= (1.0 - SMALL))
-                    {
-                        argument = 1.0;
+                        absorptivity =
+                            min(max(1.0 - reflectivity, scalar(0)), scalar(1));
+                        useSpecularReflection = true;
                     }
-                    else if (argument <= (-1.0 + SMALL))
+                    else
                     {
-                        argument = -1.0;
-                    }
+                        const scalar damping_frequency =
+                            plasma_frequency*plasma_frequency
+                           *constant::electromagnetic::epsilon0.value()
+                           *resistivity_in[myCellID];
 
-                   const scalar theta_in = std::acos(argument);
+                        const scalar e_r =
+                            1.0
+                            - (
+                                sqr(plasma_frequency)/(sqr(angular_frequency)
+                              + sqr(damping_frequency))
+                            );
 
-                    const scalar alpha_laser =
-                        Foam::sqrt
-                        (
+                        const scalar e_i =
+                            (damping_frequency/angular_frequency)
+                           *(
+                                sqr(plasma_frequency)
+                               /(
+                                   sqr(angular_frequency)
+                                 + sqr(damping_frequency)
+                                )
+                            );
+
+                        const scalar ref_index =
                             Foam::sqrt
                             (
-                                sqr
                                 (
-                                    sqr(ref_index)
-                                  - sqr(ext_coefficient)
-                                  - sqr(Foam::sin(theta_in))
-                                )
-                              + (
-                                    4.0*sqr(ref_index)*sqr(ext_coefficient)
-                                )
-                            )
-                          + sqr(ref_index)
-                          - sqr(ext_coefficient)
-                          - sqr(Foam::sin(theta_in))/2.0
-                        );
+                                    Foam::sqrt((e_r*e_r) + (e_i*e_i))
+                                  + e_r
+                                )/2.0
+                            );
 
-                    const scalar beta_laser =
-                        Foam::sqrt
-                        (
+                        const scalar ext_coefficient =
+                            Foam::sqrt
+                            (
+                                (
+                                    Foam::sqrt((e_r*e_r) + (e_i*e_i))
+                                  - e_r
+                                )/2.0
+                            );
+
+                        scalar argument =
+                            (
+                                curRay.direction_ & nFilteredI[myCellID]
+                            )/(
+                                mag(curRay.direction_)
+                               *mag(nFilteredI[myCellID])
+                            );
+
+                        if (argument >= (1.0 - SMALL))
+                        {
+                            argument = 1.0;
+                        }
+                        else if (argument <= (-1.0 + SMALL))
+                        {
+                            argument = -1.0;
+                        }
+
+                        const scalar theta_in = std::acos(argument);
+
+                        const scalar alpha_laser =
+                            Foam::sqrt
                             (
                                 Foam::sqrt
                                 (
@@ -972,80 +1069,92 @@ void laserHeatSource::updateDeposition
                                     )
                                   + 4.0*sqr(ref_index)*sqr(ext_coefficient)
                                 )
-                              - sqr(ref_index)
-                              + sqr(ext_coefficient)
-                              + sqr(Foam::sin(theta_in))
-                            )/2.0
-                        );
+                              + sqr(ref_index)
+                              - sqr(ext_coefficient)
+                              - sqr(Foam::sin(theta_in))/2.0
+                            );
 
-                    const scalar R_s =
-                        (
+                        const scalar beta_laser =
+                            Foam::sqrt
+                            (
+                                (
+                                    Foam::sqrt
+                                    (
+                                        sqr
+                                        (
+                                            sqr(ref_index)
+                                          - sqr(ext_coefficient)
+                                          - sqr(Foam::sin(theta_in))
+                                        )
+                                      + 4.0*sqr(ref_index)*sqr(ext_coefficient)
+                                    )
+                                  - sqr(ref_index)
+                                  + sqr(ext_coefficient)
+                                  + sqr(Foam::sin(theta_in))
+                                )/2.0
+                            );
+
+                        const scalar R_s =
                             (
                                 sqr(alpha_laser)
                               + sqr(beta_laser)
                               - 2.0*alpha_laser*Foam::cos(theta_in)
                               + sqr(Foam::cos(theta_in))
                             )
-                            /(
+                           /(
                                 sqr(alpha_laser)
                               + sqr(beta_laser)
                               + 2.0*alpha_laser*Foam::cos(theta_in)
                               + sqr(Foam::cos(theta_in))
-                            )
-                        );
+                            );
 
-                    const scalar R_p =
-                        R_s
-                        *(
-                            (
-                                sqr(alpha_laser)
-                              + sqr(beta_laser)
-                              - (
-                                    2.0*alpha_laser*Foam::sin(theta_in)
+                        const scalar R_p =
+                            R_s
+                           *(
+                                (
+                                    sqr(alpha_laser)
+                                  + sqr(beta_laser)
+                                  - 2.0*alpha_laser*Foam::sin(theta_in)
                                    *Foam::tan(theta_in)
-                                )
-                              + (
-                                    sqr(Foam::sin(theta_in))
+                                  + sqr(Foam::sin(theta_in))
                                    *sqr(Foam::tan(theta_in))
                                 )
-                            )
-                           /(
-                                sqr(alpha_laser)
-                              + sqr(beta_laser)
-                              + (
-                                    2.0*alpha_laser*Foam::sin(theta_in)
+                               /(
+                                    sqr(alpha_laser)
+                                  + sqr(beta_laser)
+                                  + 2.0*alpha_laser*Foam::sin(theta_in)
                                    *Foam::tan(theta_in)
+                                  + sqr(Foam::sin(theta_in))
+                                   *sqr(Foam::tan(theta_in))
                                 )
-                              + sqr(Foam::sin(theta_in))*sqr(Foam::tan(theta_in))
-                            )
-                        );
+                            );
 
-                    const scalar absorptivity = 1.0 - ((R_s + R_p)/2.0);
+                        absorptivity = 1.0 - ((R_s + R_p)/2.0);
 
-                    if (theta_in >= pi/2.0)
-                    {
-                        // Dump half of energy and propogate further - once the
-                        // optics is its own function we shoule work out what
-                        // pi-theta returns for the absorptivity and pass this
-                        // here instead of 0.5
-                        deposition_[myCellID] += 0.5*curRay.power_/VI[myCellID];//yDimI[myCellID];
-                        curRay.power_ *= 0.5;
+                        if (theta_in >= pi/2.0)
+                        {
+                            absorptivity = 0.5;
+                            useSpecularReflection = false;
+                        }
+                        else
+                        {
+                            useSpecularReflection = true;
+                        }
                     }
-                    else
+
+                    deposition_[myCellID] +=
+                        absorptivity*curRay.power_/VI[myCellID];
+                    curRay.power_ *= (1.0 - absorptivity);
+
+                    if (useSpecularReflection)
                     {
-                        deposition_[myCellID] += absorptivity*curRay.power_/VI[myCellID];
-                        curRay.power_ *= (1.0 - absorptivity);
                         curRay.direction_ -=
                             (
                                 (
-                                    (
-                                        (
-                                            2.0*curRay.direction_
-                                          & nFilteredI[myCellID]
-                                        )/magSqr(nFilteredI[myCellID])
-                                    )
-                                )*nFilteredI[myCellID]
-                            );
+                                    2.0*curRay.direction_
+                                  & nFilteredI[myCellID]
+                                )/magSqr(nFilteredI[myCellID])
+                            )*nFilteredI[myCellID];
                     }
                 }
                 else 
