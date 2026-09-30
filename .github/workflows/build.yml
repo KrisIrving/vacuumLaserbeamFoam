@@ -79,6 +79,12 @@ jobs:
           source ${{ matrix.container-image.source }}
           bash ./tests/wangAlloyMixture/Allrun
 
+      - name: Wang 304L reference regression
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          bash ./tests/wang304LReference/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
