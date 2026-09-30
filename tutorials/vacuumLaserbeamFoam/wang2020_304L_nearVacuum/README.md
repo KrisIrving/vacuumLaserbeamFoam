@@ -85,7 +85,7 @@ Primary comparison window:
 - experiment: approximately 70 us between the two depths;
 - Wang-paper current model: approximately 75 us.
 
-## 8 um / 5 us local smoke checkpoint
+## 8 um local activation/stability checkpoint
 
 The smoke run is intentionally local rather than a GitHub CI workload:
 
@@ -93,7 +93,7 @@ The smoke run is intentionally local rather than a GitHub CI workload:
 ./Allrun.smoke
 ```
 
-It uses 48 MPI ranks and runs to 5 us. At every 1 us output it prints one
+It uses 48 MPI ranks. The first completed checkpoint ran to 5 us; the next activation checkpoint runs to 10 us. At every 1 us output it prints one
 machine-readable line:
 
 ```text
@@ -105,12 +105,28 @@ Those lines are copied to `smokeDiagnostics.log`.
 At the end, the latest time is reconstructed for:
 `T`, `U`, `alpha.metal`, `pVap`, `Qv`, and `Deposition`.
 
+Convenience commands:
+
+```bash
+./Run_background
+./Status
+./Reconstruct
+```
+
+These are case-management helpers only. They do not alter the evaporation
+model or import electron-beam physics.
+
 This checkpoint is considered successful when:
-- the run reaches 5 us without FatalError/NaN/Inf;
+- the requested end time is reached without FatalError/NaN/Inf;
 - deposited laser power is finite and non-zero;
 - Tmax rises above the initial 298 K;
 - pVap and Qv remain finite;
 - the final alpha.metal field remains bounded and physically oriented.
+
+The 5 us local run reached Tmax=1980.19 K, still below the 2009.50 K
+near-vacuum activation threshold, so pVap and Qv correctly remained zero.
+The 10 us extension is intended to cross that threshold and verify stable
+recoil/evaporation activation before the 4 um paper run.
 
 It is a short-time physical/numerical gate, not the 4 um paper validation.
 
