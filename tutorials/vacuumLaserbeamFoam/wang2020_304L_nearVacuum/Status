@@ -198,3 +198,11 @@ grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1
 
 printf 'Latest laser deposit   : '
 grep 'Total Q deposited this timestep:' "$LOG" | tail -1
+
+if [ -f keyholeDepth.csv ]; then
+    LAST_DEPTH=$(tail -1 keyholeDepth.csv)
+    if [ -n "$LAST_DEPTH" ] && [ "$LAST_DEPTH" != "time_s,keyhole_depth_m,keyhole_depth_um,source" ]; then
+        printf 'Latest keyhole depth   : '
+        echo "$LAST_DEPTH" | awk -F',' '{printf "%s um at %s s\n", $3, $1}'
+    fi
+fi
