@@ -70,3 +70,22 @@ The fast-track does not yet add:
 
 These are deferred so they cannot block the near-vacuum keyhole model needed
 for the immediate simulations.
+
+## 2026-09-30 primary-machine checkpoint
+
+The primary test platform was changed from WSL2 to the Ubuntu 22.04 48-core
+workstation so that validation and production CFD can continue on the same
+machine without environment migration.
+
+Local test of commit
+`d64af0eaa77184991da3b0ae40008cdab0b9f787` under OpenFOAM-v2512 and
+GCC/G++ 11.4.0 passed:
+- full `Allwmake`;
+- sonic Knudsen regression and one-step CFD coupling;
+- Eq. (16)-(17) transition regression;
+- single-component `nearVacuumWang` constitutive/coupled regression;
+- Wang Eqs. (18)-(20) alloy-mixture regression;
+- legacy LaserbeamFoam field-equivalence regression.
+
+The fast-track development therefore advances to the 304L / near-vacuum paper
+benchmark. WSL2 is retained only as an optional secondary cross-platform check.
