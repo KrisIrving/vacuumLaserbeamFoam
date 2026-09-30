@@ -353,3 +353,19 @@ Changes:
 
 The 5 us run is explicitly assigned to the local Ubuntu workstation. No GitHub
 CI result is required to advance the project.
+
+## 2026-09-30 — 48-core local-test policy
+
+Per the primary-machine workflow, all current and future full-CFD validation
+runs are now configured for 48 MPI ranks.
+
+Updated:
+- 304L one-step CFD smoke;
+- 304L 8 um / 5 us smoke;
+- 304L 4 um paper-reference run;
+- smoke/reference decomposition dictionaries;
+- validation documentation.
+
+Future local rebuild commands should use `./Allwmake -j 48`.
+Pure constitutive utilities remain serial because MPI adds only startup
+overhead to those non-CFD checks.
