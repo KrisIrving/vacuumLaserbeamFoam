@@ -212,8 +212,16 @@ grep 'Total Q deposited this timestep:' "$LOG" | tail -1
 
 if [ -f keyholeDepth.csv ]; then
     LAST_DEPTH=$(tail -1 keyholeDepth.csv)
-    if [ -n "$LAST_DEPTH" ] && [ "$LAST_DEPTH" != "time_s,keyhole_depth_m,keyhole_depth_um,source" ]; then
-        printf 'Latest keyhole depth   : '
+    if [ -n "$LAST_DEPTH" ]; then
+        printf 'Centerline depth       : '
         echo "$LAST_DEPTH" | awk -F',' '{printf "%s um at %s s\n", $3, $1}'
+    fi
+fi
+
+if [ -f keyholeDepthSurface.csv ]; then
+    LAST_SURFACE_DEPTH=$(tail -1 keyholeDepthSurface.csv)
+    if [ -n "$LAST_SURFACE_DEPTH" ]; then
+        printf '3-D connected depth    : '
+        echo "$LAST_SURFACE_DEPTH" | awk -F',' '{printf "%s um at %s s; bottom offset %s um\n", $3, $1, $6}'
     fi
 fi
