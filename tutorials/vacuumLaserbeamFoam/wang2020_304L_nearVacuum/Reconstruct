@@ -1,0 +1,7 @@
+#!/bin/bash
+
+reconstructPar -latestTime
+touch case.foam
+
+echo "Reconstruction complete."
+echo "ParaView marker: $(pwd)/case.foam"
