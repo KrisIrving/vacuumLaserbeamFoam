@@ -151,6 +151,16 @@ def main():
         depth = max(args.surface_y - y, 0.0)
         offset = math.hypot(x, z)
 
+        # A single isolated iso-surface vertex can exaggerate the raw minimum.
+        # Count neighbouring main-component vertices that support the bottom
+        # within one 4-um cell vertically and two cells laterally.
+        support = sum(
+            1
+            for idx in comp
+            if vertices[idx][1] <= y + 4e-6
+            and math.hypot(vertices[idx][0] - x, vertices[idx][2] - z) <= 8e-6
+        )
+
         rows.append(
             (
                 time_from_path(path),
@@ -158,6 +168,7 @@ def main():
                 x,
                 z,
                 offset,
+                support,
                 len(comp),
                 len(components),
                 surface_connected,
@@ -182,6 +193,7 @@ def main():
                 "bottom_x_um",
                 "bottom_z_um",
                 "bottom_offset_um",
+                "bottom_support_vertices",
                 "main_component_vertices",
                 "interface_components",
                 "surface_connected",
@@ -195,6 +207,7 @@ def main():
                 x,
                 z,
                 offset,
+                support,
                 nvert,
                 ncomp,
                 connected,
@@ -208,6 +221,7 @@ def main():
                     f"{x*1e6:.8g}",
                     f"{z*1e6:.8g}",
                     f"{offset*1e6:.8g}",
+                    support,
                     nvert,
                     ncomp,
                     "yes" if connected else "fallback",
@@ -222,7 +236,13 @@ def main():
         "Bottom lateral offset from laser axis: "
         f"{latest[4]*1e6:.6g} um"
     )
-    print(f"Interface connected components: {latest[6]}")
+    print(f"Bottom support vertices: {latest[5]}")
+    print(f"Interface connected components: {latest[7]}")
+    if latest[5] < 3:
+        print(
+            "WARNING: deepest point has weak local surface support; inspect "
+            "the interface geometry before using it as the formal depth."
+        )
 
 
 if __name__ == "__main__":
