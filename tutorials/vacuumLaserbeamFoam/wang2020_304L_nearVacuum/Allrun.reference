@@ -2,7 +2,7 @@
 set -euo pipefail
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-NP="${NP:-32}"
+NP=32
 
 rm -rf 0 processor* postProcessing
 cp -r initial 0
@@ -19,6 +19,6 @@ cp system/controlDict.reference system/controlDict
 
 runApplication blockMesh -dict system/blockMeshDict.reference4um
 runApplication setFields
-runApplication decomposePar -force
+runApplication decomposePar -dict system/decomposeParDict.reference -force
 
 mpirun -np "$NP" vacuumLaserbeamFoam -parallel 2>&1 | tee log.vacuumLaserbeamFoam.parallel
