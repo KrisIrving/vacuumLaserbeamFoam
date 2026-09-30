@@ -117,7 +117,8 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
     boilingTemperature_(0.0),
     activationTemperature_(0.0),
     Tk0_(0.0),
-    Tk1_(0.0)
+    Tk1_(0.0),
+    useSubcriticalCommonBranch_(false)
 {
     if (chamberPressure_.value() <= 0)
     {
@@ -384,15 +385,7 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
             << exit(FatalIOError);
     }
 
-    if (activationTemperature_ < Tk0_)
-    {
-        FatalIOErrorInFunction(modelDict)
-            << "The active liquid-surface temperature "
-            << activationTemperature_ << " K lies below Tk0=" << Tk0_
-            << " K. This would require the Ma<0.05 weak-evaporation regime, "
-            << "which is intentionally not extrapolated by this model."
-            << exit(FatalIOError);
-    }
+    useSubcriticalCommonBranch_ = activationTemperature_ < Tk0_;
 
     Info<< "    nearVacuumWang thresholds" << nl
         << "        component mode       = "
@@ -403,7 +396,15 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
         << "        Tk0 (Ma=0.05)        = " << Tk0_ << " K" << nl
         << "        Tk1 (Ma=1)           = " << Tk1_ << " K" << nl
         << "        active regime        = "
-        << (activationTemperature_ >= Tk1_ ? "sonic" : "transition-to-sonic")
+        << (
+            activationTemperature_ >= Tk1_
+          ? "sonic"
+          : (
+                useSubcriticalCommonBranch_
+              ? "common-to-sonic (Wang step 4)"
+              : "transition-to-sonic"
+            )
+        )
         << endl;
 
     if (componentMode_)
@@ -522,9 +523,20 @@ bool Foam::vacuumEvaporationModels::nearVacuumWang::solveMachNumberForState
     scalar& Ma
 ) const
 {
+    const scalar MaMin =
+        (useSubcriticalCommonBranch_ && temperature < Tk0_)
+      ? 1e-8
+      : 0.05;
+
     if (!componentMode_)
     {
-        return relations_.solveMachNumber(temperature, Ma);
+        return relations_.solveMachNumber
+        (
+            temperature,
+            Ma,
+            MaMin,
+            1.0
+        );
     }
 
     scalar pSat = 0.0;
@@ -535,7 +547,9 @@ bool Foam::vacuumEvaporationModels::nearVacuumWang::solveMachNumberForState
     (
         temperature,
         pSat,
-        Ma
+        Ma,
+        MaMin,
+        1.0
     );
 }
 
