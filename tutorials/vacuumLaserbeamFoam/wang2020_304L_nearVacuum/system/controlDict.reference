@@ -9,7 +9,7 @@ FoamFile
 
 application vacuumLaserbeamFoam;
 
-startFrom startTime;
+startFrom latestTime;
 startTime 0;
 stopAt endTime;
 
