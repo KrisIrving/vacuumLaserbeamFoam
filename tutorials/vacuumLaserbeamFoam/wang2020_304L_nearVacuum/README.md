@@ -65,21 +65,27 @@ After completion:
 The second `./Status` also reports the latest extracted centerline keyhole
 depth from `keyholeDepth.csv`.
 
-## Deliberately visible model differences
+## Wang-matched multiphysics state
 
-This is a validation candidate, not a parameter-identical reproduction.
+The case now aligns the major benchmark-specific closures that were previously
+different:
 
-1. The outer phase remains LaserbeamFoam's incompressible numerical pseudo-gas;
-   chamber pressure enters the evaporation model explicitly.
-2. LaserbeamFoam currently uses its inherited Drude/resistivity optical closure.
-   Wang et al. used Fresnel absorption with iron's complex refractive index for
-   304L.
-3. Surface radiation/convection from Wang Eq. (32) are not yet merged into this
-   fast-track case. Evaporation cooling is active.
-4. No explicit VOF mass sink from evaporation is added.
-5. Cr/Ni/Fe vapor-pressure curves use NIST/Chase thermochemical references.
-   A common pressure scale anchors the alloy mixture to Wang Table II:
-   Pe(2009 K)=20.16 Pa.
+1. Laser reflection remains LaserbeamFoam ray tracing, but the validation case
+   uses a direct Fe complex refractive index and standard unpolarised Fresnel
+   reflection instead of the inherited Drude/resistivity surrogate.
+2. At 1070 nm, Johnson-Christy Fe data are interpolated to
+   n=2.961346153846154 and k=4.013269230769231.
+3. Grey-body surface radiation is enabled with emissivity 0.4 and chamber
+   temperature 298 K, separate from evaporation cooling.
+4. The solver reports interface-local recoil pressure, integrated recoil force,
+   evaporation heat-loss power, radiation power and interface area.
+
+Remaining deliberate modelling differences:
+- the outer phase remains LaserbeamFoam's incompressible numerical pseudo-gas;
+- there is no explicit VOF mass sink/interface recession from evaporation;
+- Cr/Ni/Fe pure-component vapour-pressure curves use documented external
+  thermochemical references and are collectively anchored to Wang Table II,
+  Pe(2009 K)=20.16 Pa.
 
 ## Keyhole-depth extraction
 
