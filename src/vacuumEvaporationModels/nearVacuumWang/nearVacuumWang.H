@@ -53,6 +53,7 @@ class nearVacuumWang
     scalar activationTemperature_;
     scalar Tk0_;
     scalar Tk1_;
+    bool useSubcriticalCommonBranch_;
 
     scalar componentSaturationPressure
     (
