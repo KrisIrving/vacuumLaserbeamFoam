@@ -47,6 +47,7 @@ class nearVacuumWang
     scalarList componentReferencePressures_;
     scalarList componentReferenceTemperatures_;
     scalarList componentLatentHeats_;
+    scalar componentPressureScale_;
 
     scalar boilingTemperature_;
     scalar activationTemperature_;
