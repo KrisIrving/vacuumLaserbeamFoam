@@ -65,6 +65,24 @@ check_state()
 # so liquid evaporation remains inactive at exactly 2009 K.
 check_state     2009     tableIIAnchor     20.16     0     0     0
 
+# Regression for the exact low-Mach endpoint that previously failed in the
+# 4-um CFD run. At the chamber-pressure boiling point the Wang common-atmosphere
+# solution approaches Ma=0 continuously; the state must remain finite.
+boundary_line="$(run_model 2009.503556 boilingEndpoint)"
+if [ -z "$boundary_line" ]; then
+    echo "No constitutive output at Wang boiling endpoint" >&2
+    exit 21
+fi
+read -r tag T pSat mDot recoil qEvap <<< "$boundary_line"
+awk -v pSat="$pSat" -v mDot="$mDot" -v recoil="$recoil" -v q="$qEvap" '
+BEGIN {
+    if (!(pSat > 0)) exit 22;
+    if (!(mDot >= 0)) exit 23;
+    if (!(recoil >= 0)) exit 24;
+    if (!(q >= 0)) exit 25;
+}'
+
+
 # Wang near-vacuum step (4): Tb < T < Tk0, so Ma is below 0.05 but non-zero.
 check_state     2020     lowMachCommonAtmosphere     22.56936343153303     0.0008801890121715992     1.572972736944557     5598.002117411371
 
