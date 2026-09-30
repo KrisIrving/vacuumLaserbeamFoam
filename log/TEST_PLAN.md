@@ -342,10 +342,12 @@ Gate A — 8 um smoke:
 - blockMesh and setFields succeed;
 - the solver selects `nearVacuumWang`;
 - log reports `common-to-sonic (Wang step 4)`;
-- no NaN/Inf/fatal error through 5 us;
+- no NaN/Inf/fatal error through 10 us;
 - laser deposition is non-zero and temperature rises from 298 K;
-- a physically oriented surface depression begins or the run remains stable
-  long enough to justify the 4 um reference run.
+- the model crosses the ~2009.5 K activation threshold with finite non-zero
+  recoil pressure and evaporation heat flux;
+- the interface and pressure solution remain stable long enough to justify the
+  4 um reference run.
 
 Gate B — 4 um reference:
 - run with the paper-resolution 4 um mesh;
