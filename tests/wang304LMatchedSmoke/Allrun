@@ -1,0 +1,72 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedSmoke"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+
+cd "$RUN_CASE"
+
+rm -rf 0 [1-9]* processor* postProcessing VTKs log.* run.pid case.foam     keyholeDepth.csv keyholeDepthSurface.csv
+
+echo "Copying 'initial' to 0"
+cp -r initial 0
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
+
+if ! grep -q 'Laser optics laser0: opticalModel=fixedComplexIndex'     log.vacuumLaserbeamFoam
+then
+    echo "Missing fixedComplexIndex optical selection" >&2
+    exit 1
+fi
+
+if ! grep -q 'Vacuum radiation model' log.vacuumLaserbeamFoam
+then
+    echo "Missing vacuum radiation model startup" >&2
+    exit 1
+fi
+
+if ! grep -q 'interfacePVapMax=' log.vacuumLaserbeamFoam
+then
+    echo "Missing interface recoil diagnostic" >&2
+    exit 1
+fi
+
+if ! grep -q 'radiationPower=' log.vacuumLaserbeamFoam
+then
+    echo "Missing radiation power diagnostic" >&2
+    exit 1
+fi
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' log.vacuumLaserbeamFoam
+then
+    echo "Matched-physics smoke ended with a fatal solver error" >&2
+    exit 1
+fi
+
+if grep -Eiq '(^|[^A-Za-z])(nan|inf)([^A-Za-z]|$)' log.vacuumLaserbeamFoam
+then
+    echo "Matched-physics smoke contains NaN/Inf" >&2
+    exit 1
+fi
+
+if ! grep -q '^End$' log.vacuumLaserbeamFoam
+then
+    echo "Matched-physics smoke did not reach End" >&2
+    exit 1
+fi
+
+echo
+echo "Latest matched-physics diagnostics:"
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -1
+
+echo "PASS: Wang 304L matched-physics 48-rank smoke"
