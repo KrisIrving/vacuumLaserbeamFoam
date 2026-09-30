@@ -1,6 +1,4 @@
 #!/bin/bash
-set -euo pipefail
-
 # The reference solver is normally run in parallel. Reconstruct alpha.metal
 # first if reconstructed time directories are not already present.
 if compgen -G "processor0/[0-9]*" > /dev/null; then
