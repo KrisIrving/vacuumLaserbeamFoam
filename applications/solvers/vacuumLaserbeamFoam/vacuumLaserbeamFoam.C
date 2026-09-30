@@ -201,13 +201,55 @@ int main(int argc, char *argv[])
             const scalar depositedPower =
                 fvc::domainIntegrate(laser.deposition()).value();
 
+            const scalar interfaceArea =
+                fvc::domainIntegrate(mag(gradAlpha)).value();
+
+            const scalar evaporationPower =
+                fvc::domainIntegrate
+                (
+                    Qv*mag(gradAlpha)*thermalDamper
+                ).value();
+
+            const scalar radiationPower =
+                fvc::domainIntegrate
+                (
+                    Qrad*mag(gradAlpha)*thermalDamper
+                ).value();
+
+            // Continuum-surface-force equivalent of the recoil traction used
+            // in UEqn. The laser/keyhole axis in this case is y; Wang labels
+            // the corresponding build-depth direction z.
+            const vector recoilForce =
+                fvc::domainIntegrate(pVap*gradAlpha*damper).value();
+
+            scalar interfacePVapMax = 0.0;
+            const scalarField& alphaI = alpha1.primitiveField();
+            const scalarField& pVapI = pVap.primitiveField();
+
+            forAll(alphaI, celli)
+            {
+                if (alphaI[celli] > 0.01 && alphaI[celli] < 0.99)
+                {
+                    interfacePVapMax =
+                        max(interfacePVapMax, pVapI[celli]);
+                }
+            }
+            reduce(interfacePVapMax, maxOp<scalar>());
+
             Info<< "VACUUM_DIAGNOSTICS"
                 << " time=" << runTime.value()
                 << " Tmax=" << gMax(T.primitiveField())
                 << " Umax=" << gMax(mag(U.primitiveField()))
                 << " pVapMax=" << gMax(pVap.primitiveField())
+                << " interfacePVapMax=" << interfacePVapMax
                 << " QvMax=" << gMax(Qv.primitiveField())
                 << " depositedPower=" << depositedPower
+                << " evaporationPower=" << evaporationPower
+                << " radiationPower=" << radiationPower
+                << " interfaceArea=" << interfaceArea
+                << " recoilForceX=" << recoilForce.x()
+                << " recoilForceY=" << recoilForce.y()
+                << " recoilForceZ=" << recoilForce.z()
                 << endl;
         }
 
