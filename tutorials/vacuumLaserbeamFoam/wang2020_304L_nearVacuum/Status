@@ -139,25 +139,50 @@ if [ "$COMPLETE" = "YES" ]; then
     echo "Estimated time left    : 0s"
     echo "Estimated finish       : completed"
 else
-    DONE_INTERVAL=$(awk -v c="$CURRENT_TIME" -v f="$FIRST_TIME" '
-    BEGIN {
-        d=c-f
-        if (d <= 0) d=c
-        printf "%.12g", d
-    }')
+    REMAIN_WALL=$(awk -v target="$TARGET_TIME" '
+    /^[[:space:]]*Time = / {
+        sim=$3
+    }
+    /ExecutionTime = / {
+        if (sim != "") {
+            n++
+            t[n]=sim
+            e[n]=$3
+        }
+    }
+    END {
+        remaining=target-t[n]
+        if (remaining <= 0) {
+            print 0
+            exit
+        }
 
-    REMAIN_WALL=$(awk -v e="$EXEC_TIME" -v d="$DONE_INTERVAL" -v r="$REMAIN_SIM" '
-    BEGIN {
-        if (e > 0 && d > 0 && r > 0)
-            printf "%.0f", e*r/d
-        else
-            print -1
-    }')
+        if (n >= 2) {
+            k=n-20
+            if (k < 1) k=1
+
+            dSim=t[n]-t[k]
+            dExec=e[n]-e[k]
+
+            if (dSim > 0 && dExec > 0) {
+                printf "%.0f", remaining*dExec/dSim
+                exit
+            }
+        }
+
+        if (n >= 1 && t[n] > 0 && e[n] > 0) {
+            printf "%.0f", remaining*e[n]/t[n]
+            exit
+        }
+
+        print -1
+    }' "$LOG")
 
     if awk -v r="$REMAIN_WALL" 'BEGIN {exit !(r >= 0)}'; then
         printf 'Estimated time left    : %s\n' "$(format_seconds "$REMAIN_WALL")"
         ETA=$(date -d "+$REMAIN_WALL seconds" '+%Y-%m-%d %H:%M:%S')
         printf 'Estimated finish       : %s\n' "$ETA"
+        echo "ETA basis              : recent solver pace (up to 20 steps)"
     else
         echo "Estimated time left    : unavailable"
         echo "Estimated finish       : unavailable"
