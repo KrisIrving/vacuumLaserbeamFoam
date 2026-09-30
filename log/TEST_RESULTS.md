@@ -603,3 +603,25 @@ Interpretation:
 this clears the 8 um short-time activation/stability gate. The next physical
 validation stage is the 4 um reference-resolution Wang 304L case.
 
+## 2026-09-30 — 4 um reference interrupted at Wang boiling endpoint
+
+The first 4 um / 48-rank reference attempt advanced to approximately
+`54.0337 us` before stopping with:
+
+`Could not solve the Wang transition state at T=2009.503556 K`
+
+The failure occurred essentially at the 304L chamber-pressure boiling
+activation temperature. This identified a numerical endpoint defect in the
+step-(4) Mach solve: the implementation bracketed the low-Mach branch from
+`Ma=1e-8` instead of admitting the regular `Ma=0` limit.
+
+Fix implemented:
+- permit `Ma=0` in the Knudsen jump relations;
+- use `MaMin=0` for the subcritical common-atmosphere branch;
+- add a constitutive regression at `T=2009.503556 K`;
+- make the reference control dictionary restart from `latestTime`;
+- add `Resume_background` so the existing decomposed checkpoint can continue;
+- make `Status` report FOAM/MPI fatal exits explicitly.
+
+This fix is **pending local rebuild/regression/restart confirmation** and is not
+yet marked as a completed reference validation.
