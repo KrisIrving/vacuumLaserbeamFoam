@@ -262,6 +262,8 @@ autoPtr<vacuumEvaporationModel> evaporationModel
     )
 );
 
+vacuumRadiationModel radiationModel(mesh, vacuumProperties);
+
 
 const Polynomial<8> polykappa_m(transportPropertiesMetal.lookup("poly_kappa"));
 const Polynomial<8> polykappa_g(transportPropertiesGas.lookup("poly_kappa"));
@@ -538,6 +540,26 @@ volScalarField pVap
     ),
     mesh,
     dimensionedScalar("0", dimensionSet(1,-1,-2,0,0,0,0), 0.0)
+);
+
+// Net outward radiative heat flux at the metal/void interface [W/m2].
+volScalarField Qrad
+(
+    IOobject
+    (
+        "Qrad",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar
+    (
+        "0",
+        dimensionSet(1,0,-3,0,0,0,0),
+        0.0
+    )
 );
 
 // Evaporation Cooling
