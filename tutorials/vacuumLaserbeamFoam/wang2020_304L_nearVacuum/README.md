@@ -50,7 +50,7 @@ Reference, 48 MPI ranks:
 ```
 
 `Run_background` launches `Allrun.reference`, which prepares the 4 um
-512,000-cell mesh and the 120 us reference control dictionary before running
+512,000-cell mesh and the 140 us reference control dictionary before running
 `vacuumLaserbeamFoam` on 48 MPI ranks.
 
 During the run, `./Status` reports target/current physical time, percentage,
