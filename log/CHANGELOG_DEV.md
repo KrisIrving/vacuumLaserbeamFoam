@@ -308,3 +308,28 @@ Not yet claimed:
 - composition transport / preferential elemental depletion.
 
 Those items require the subsequent local and CFD validation checkpoints.
+
+## 2026-09-30 — 304L near-vacuum validation implementation
+
+Branch: `feat/wang2020-fasttrack`
+
+Production changes:
+- added optional `alloyReferencePressure/alloyReferenceTemperature` scaling for
+  multi-component saturation curves while preserving relative vapor composition;
+- completed the Wang near-vacuum step-(4) low-Mach branch below `Tk0`;
+- added optional clamped-linear metal `cp(T)` and `k(T)` from
+  solidus/liquidus tabulated values without changing the default legacy path.
+
+Verification infrastructure:
+- added `tests/wang304LReference` with 304L Cr/Ni/Fe composition and
+  Table-II saturation-pressure anchor;
+- added `tests/wang304LCaseSmoke` for a one-step end-to-end CFD gate;
+- added an 8 um setup mesh and 4 um paper-resolution validation mesh;
+- added atmosphere-connected centerline keyhole-depth extraction.
+
+A first CI attempt of `wang304LReference` exposed a test-fixture precision
+problem: `foamDictionary` rewrote high-precision component latent heats with
+reduced output precision. All pre-existing gates passed in that run. The 304L
+test was corrected to replace only `testTemperature` with `sed`, preserving
+the original thermodynamic constants. This correction changes no production
+physics.
