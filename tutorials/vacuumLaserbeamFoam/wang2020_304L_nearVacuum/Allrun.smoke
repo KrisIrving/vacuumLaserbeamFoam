@@ -2,6 +2,10 @@
 
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
+echo "Preparing 8 um / 10 us smoke dictionaries"
+cp system/blockMeshDict.smoke8um system/blockMeshDict
+cp system/controlDict.smoke10us system/controlDict
+
 echo "Copying 'initial' to 0"
 cp -r initial 0
 
