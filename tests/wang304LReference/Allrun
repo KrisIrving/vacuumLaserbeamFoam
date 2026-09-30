@@ -24,7 +24,9 @@ run_model()
     local temperature="$1"
     local label="$2"
 
-    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry testTemperature -set "$temperature" > /dev/null
+    # Preserve the high-precision component constants: foamDictionary
+    # rewrites the full dictionary with lower output precision.
+    sed -i -E "s/^testTemperature[[:space:]]+[^;]+;/testTemperature      $temperature;/" "$RUN_CASE/constant/vacuumProperties"
 
     (
         cd "$RUN_CASE"
