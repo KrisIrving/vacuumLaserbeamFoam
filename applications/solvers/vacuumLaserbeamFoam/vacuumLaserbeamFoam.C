@@ -68,6 +68,7 @@ Authors
 #include "Polynomial.H"
 #include "laserHeatSource.H"
 #include "vacuumEvaporationModel.H"
+#include "vacuumRadiationModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
