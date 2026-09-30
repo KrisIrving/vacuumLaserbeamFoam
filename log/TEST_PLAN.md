@@ -313,3 +313,48 @@ Acceptance:
 
 This test establishes constitutive correctness only. A 304L / near-vacuum CFD
 benchmark is the next validation stage.
+
+## T4h — 304L Wang near-vacuum reference regression
+
+Script:
+`tests/wang304LReference/Allrun`
+
+Configuration:
+- Cr/Ni/Fe = 18/8/74 wt%;
+- chamber = 20.265 Pa, 298 K;
+- alloy saturation-pressure anchor = 20.16 Pa at 2009 K;
+- pure-component Cr/Ni/Fe curves from the documented NIST/Chase references.
+
+Checks:
+1. 2009 K reproduces the Table-II alloy pressure anchor and remains below the
+   chamber-pressure boiling activation;
+2. 2020 K exercises Wang near-vacuum step (4), with 0 < Ma < 0.05;
+3. 2300 K exercises the normal transition branch;
+4. 3000 K exercises the sonic branch;
+5. all existing single-component and synthetic-alloy regressions remain green.
+
+## T9 — Wang 304L near-vacuum CFD validation
+
+Case:
+`tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum`
+
+Gate A — 8 um smoke:
+- blockMesh and setFields succeed;
+- the solver selects `nearVacuumWang`;
+- log reports `common-to-sonic (Wang step 4)`;
+- no NaN/Inf/fatal error through 5 us;
+- laser deposition is non-zero and temperature rises from 298 K;
+- a physically oriented surface depression begins or the run remains stable
+  long enough to justify the 4 um reference run.
+
+Gate B — 4 um reference:
+- run with the paper-resolution 4 um mesh;
+- extract atmosphere-connected centerline keyhole depth from alpha.metal=0.5;
+- compare the growth interval from approximately 32 to 136 um against the
+  experimental 70 us and paper-model 75 us reference;
+- compare peak recoil-pressure order of magnitude against the paper's
+  approximately 5-atm keyhole-bottom value;
+- document deviations attributable to the currently different optical and
+  surface-loss closures.
+
+The 8 um smoke is a numerical setup test, not a physical validation result.
