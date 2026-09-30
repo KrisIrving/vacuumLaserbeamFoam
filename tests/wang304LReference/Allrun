@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LReference"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+# Wang Table II: 304L liquidus = 1727 K.
+sed -i '0,/Tliquidus[[:space:]]*1723;/s//Tliquidus           1727;/'     "$RUN_CASE/constant/transportProperties"
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+)
+
+run_model()
+{
+    local temperature="$1"
+    local label="$2"
+
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry testTemperature -set "$temperature" > /dev/null
+
+    (
+        cd "$RUN_CASE"
+        vacuumEvaporationModelTest > "log.model.$label" 2>&1
+    )
+
+    grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.model.$label" | tail -1
+}
+
+check_state()
+{
+    local temperature="$1"
+    local label="$2"
+    local ePsat="$3"
+    local eMdot="$4"
+    local eRecoil="$5"
+    local eQ="$6"
+
+    local line
+    line="$(run_model "$temperature" "$label")"
+    read -r tag T pSat mDot recoil qEvap <<< "$line"
+
+    awk         -v T="$T"         -v targetT="$temperature"         -v pSat="$pSat"         -v mDot="$mDot"         -v recoil="$recoil"         -v q="$qEvap"         -v ePsat="$ePsat"         -v eMdot="$eMdot"         -v eRecoil="$eRecoil"         -v eQ="$eQ" '
+    BEGIN {
+        tol=8e-8;
+        if (T != targetT) exit 11;
+        if (sqrt((pSat-ePsat)^2) > tol*(ePsat>1?ePsat:1)) exit 12;
+        if (sqrt((mDot-eMdot)^2) > tol*(eMdot>1?eMdot:1)) exit 13;
+        if (sqrt((recoil-eRecoil)^2) > tol*(eRecoil>1?eRecoil:1)) exit 14;
+        if (sqrt((q-eQ)^2) > tol*(eQ>1?eQ:1)) exit 15;
+    }'
+
+    grep -q "component mode       = Wang Eqs. (18)-(20)"         "$RUN_CASE/log.model.$label"
+    grep -q "active regime        = common-to-sonic (Wang step 4)"         "$RUN_CASE/log.model.$label"
+}
+
+# Table-II anchor: Pe(2009 K) = 20.16 Pa. Chamber pressure is slightly higher,
+# so liquid evaporation remains inactive at exactly 2009 K.
+check_state     2009     tableIIAnchor     20.16     0     0     0
+
+# Wang near-vacuum step (4): Tb < T < Tk0, so Ma is below 0.05 but non-zero.
+check_state     2020     lowMachCommonAtmosphere     22.56936343153303     0.0008801890121715992     1.572972736944557     5598.002117411371
+
+# Intermediate transition state.
+check_state     2300     transition     278.15168769309065     0.14104477101452056     143.66729527505754     897044.7436523507
+
+# Above Tk1 the model must be sonic.
+check_state     3000     sonic     19211.032674783848     9.252648301740672     10542.464063561532     58846843.19907068
+
+grep -q "alloy Pe anchor       = 20.16 Pa at 2009 K"     "$RUN_CASE/log.model.lowMachCommonAtmosphere"
+
+echo "PASS: Wang 304L Table-I/II anchored constitutive reference"
