@@ -85,6 +85,12 @@ jobs:
           source ${{ matrix.container-image.source }}
           bash ./tests/wang304LReference/Allrun
 
+      - name: Wang 304L CFD case smoke
+        shell: bash -l {0}
+        run: |
+          source ${{ matrix.container-image.source }}
+          bash ./tests/wang304LCaseSmoke/Allrun
+
       - name: Upload test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
