@@ -358,3 +358,25 @@ Gate B — 4 um reference:
   surface-loss closures.
 
 The 8 um smoke is a numerical setup test, not a physical validation result.
+
+## Primary-machine parallel execution policy
+
+From 2026-09-30 onward, the Ubuntu 48-core workstation is the primary
+development/validation machine.
+
+Execution policy:
+- repository rebuilds: use `./Allwmake -j 48`;
+- every test that advances `vacuumLaserbeamFoam` or another full CFD solver:
+  decompose and run on **48 MPI ranks**;
+- 8 um 304L smoke: 48 MPI ranks;
+- 4 um 304L paper-reference run: 48 MPI ranks;
+- future 0.6 Pa powder/single-track CFD tests: 48 MPI ranks.
+
+Small constitutive/analytical utilities such as
+`vacuumEvaporationModelTest` and `knudsenTransitionTest` remain serial
+because they do not advance a CFD domain and complete essentially
+instantaneously; wrapping them in 48 MPI ranks would add launch overhead
+without testing additional solver behavior.
+
+Already accepted historical regressions are not retroactively rewritten solely
+to change execution topology.
