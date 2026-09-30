@@ -243,6 +243,11 @@ IOdictionary vacuumProperties
     )
 );
 
+const Switch writeVacuumDiagnostics
+(
+    vacuumProperties.lookupOrDefault<Switch>("writeDiagnostics", false)
+);
+
 // Runtime-selectable evaporation/recoil model.
 // Vacuum/environment configuration lives in vacuumProperties, while the
 // legacy material parameters remain in transportProperties for exact
@@ -529,7 +534,7 @@ volScalarField pVap
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
-        IOobject::NO_WRITE
+        IOobject::AUTO_WRITE
     ),
     mesh,
     dimensionedScalar("0", dimensionSet(1,-1,-2,0,0,0,0), 0.0)
