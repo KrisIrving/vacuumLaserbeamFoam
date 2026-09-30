@@ -333,3 +333,23 @@ reduced output precision. All pre-existing gates passed in that run. The 304L
 test was corrected to replace only `testTemperature` with `sed`, preserving
 the original thermodynamic constants. This correction changes no production
 physics.
+
+## 2026-09-30 — 5 us local-smoke diagnostics
+
+After the local OpenFOAM-v2512 304L constitutive and one-step CFD gates passed,
+the validation case was advanced to the 8 um / 5 us short-time physics gate.
+
+Changes:
+- `pVap` is now written as an output field;
+- added optional `writeDiagnostics` in `vacuumProperties`, defaulting to
+  `false` so existing cases and regressions are unchanged;
+- when enabled, output times report one compact line containing:
+  `Tmax`, `Umax`, `pVapMax`, `QvMax`, and integrated deposited laser
+  power;
+- the 304L validation case enables these diagnostics;
+- `Allrun.smoke` runs 16 MPI ranks to 5 us, collects
+  `smokeDiagnostics.log`, and reconstructs the final
+  `T/U/alpha.metal/pVap/Qv/Deposition` fields.
+
+The 5 us run is explicitly assigned to the local Ubuntu workstation. No GitHub
+CI result is required to advance the project.
