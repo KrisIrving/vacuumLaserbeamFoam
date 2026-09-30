@@ -1,33 +1,11 @@
 #!/bin/bash
-set -eo pipefail
-. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-NP=48
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
 
-rm -rf 0 processor* postProcessing smokeDiagnostics.log
+echo "Copying 'initial' to 0"
 cp -r initial 0
 
 runApplication blockMesh
 runApplication setFields
-runApplication decomposePar -dict system/decomposeParDict.smoke -force
-
-mpirun -np "$NP" vacuumLaserbeamFoam -parallel 2>&1 | tee log.vacuumLaserbeamFoam.parallel
-
-grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam.parallel \
-    > smokeDiagnostics.log || true
-
-if [[ ! -s smokeDiagnostics.log ]]; then
-    echo "ERROR: no VACUUM_DIAGNOSTICS lines were produced." >&2
-    exit 41
-fi
-
-reconstructPar -latestTime \
-    -fields '(T U alpha.metal pVap Qv Deposition)' \
-    > log.reconstructPar.latest 2>&1
-
-echo
-echo "Latest 304L smoke diagnostic:"
-tail -1 smokeDiagnostics.log
-echo
-echo "Reconstructed final fields:"
-foamListTimes -latestTime
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
