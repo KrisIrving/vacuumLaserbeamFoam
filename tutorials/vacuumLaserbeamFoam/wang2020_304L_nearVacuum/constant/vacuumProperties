@@ -14,6 +14,14 @@ chamberTemperature 298;
 // Output-time scalar diagnostics for the local 8 um / 5 us validation gate.
 writeDiagnostics true;
 
+// Wang Table-II grey-body surface radiation.
+radiation
+{
+    enabled true;
+    emissivitySolid 0.4;
+    emissivityLiquid 0.4;
+}
+
 nearVacuumWangCoeffs
 {
     referencePressure 20.16;
