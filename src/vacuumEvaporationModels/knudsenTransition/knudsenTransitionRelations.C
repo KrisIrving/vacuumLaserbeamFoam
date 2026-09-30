@@ -78,10 +78,10 @@ scalar knudsenTransitionRelations::saturationPressure(const scalar T) const
 
 knudsenJumpState knudsenTransitionRelations::jumpState(const scalar Ma) const
 {
-    if (Ma <= 0 || Ma > 1.0)
+    if (Ma < 0 || Ma > 1.0)
     {
         FatalErrorInFunction
-            << "Knudsen-layer Mach number must satisfy 0 < Ma <= 1."
+            << "Knudsen-layer Mach number must satisfy 0 <= Ma <= 1."
             << exit(FatalError);
     }
 
@@ -229,7 +229,7 @@ bool knudsenTransitionRelations::solveMachNumber
     const label maxIterations
 ) const
 {
-    if (MaMin <= 0 || MaMax > 1.0 || MaMin >= MaMax)
+    if (MaMin < 0 || MaMax > 1.0 || MaMin >= MaMax)
     {
         FatalErrorInFunction
             << "Invalid Mach-number bracket ["
@@ -298,7 +298,7 @@ bool knudsenTransitionRelations::solveMachNumberFromSaturation
     const label maxIterations
 ) const
 {
-    if (MaMin <= 0 || MaMax > 1.0 || MaMin >= MaMax)
+    if (MaMin < 0 || MaMax > 1.0 || MaMin >= MaMax)
     {
         FatalErrorInFunction
             << "Invalid Mach-number bracket ["
