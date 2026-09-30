@@ -148,3 +148,19 @@ recoil/evaporation activation before the 4 um paper run.
 
 It is a short-time physical/numerical gate, not the 4 um paper validation.
 
+
+
+## Formal keyhole-depth metric
+
+For validation, use the connected 3-D `alpha.metal=0.5` main free-surface
+component as the formal keyhole-depth metric. The centreline metric remains a
+useful low-cost cross-check.
+
+In the completed 4 um / 140 us reference case, the two metrics agree within
+0.19% on the 32-to-136 um growth interval:
+
+- centreline: 94.0584 us;
+- 3-D connected surface: 93.8816 us.
+
+The 3-D metric is preferred because it remains valid when the keyhole bottom
+bends laterally and excludes disconnected pore/droplet interface components.
