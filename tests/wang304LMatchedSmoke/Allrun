@@ -6,12 +6,15 @@ SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
 RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedSmoke"
 
 rm -rf "$RUN_CASE"
-mkdir -p "$(dirname "$RUN_CASE")"
-cp -a "$SOURCE_CASE" "$RUN_CASE"
+mkdir -p "$RUN_CASE"
+cp -a "$SOURCE_CASE/initial" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/constant" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/system" "$RUN_CASE/"
 
 cd "$RUN_CASE"
 
-rm -rf 0 [1-9]* processor* postProcessing VTKs log.* run.pid case.foam     keyholeDepth.csv keyholeDepthSurface.csv
+cp system/blockMeshDict.smoke8um system/blockMeshDict
+cp system/controlDict.smoke10us system/controlDict
 
 echo "Copying 'initial' to 0"
 cp -r initial 0
@@ -23,7 +26,8 @@ runApplication setFields
 runApplication decomposePar
 runParallel vacuumLaserbeamFoam
 
-if ! grep -q 'Laser optics laser0: opticalModel=fixedComplexIndex'     log.vacuumLaserbeamFoam
+if ! grep -q 'Laser optics laser0: opticalModel=fixedComplexIndex' \
+    log.vacuumLaserbeamFoam
 then
     echo "Missing fixedComplexIndex optical selection" >&2
     exit 1
