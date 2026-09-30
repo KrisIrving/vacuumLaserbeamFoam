@@ -568,3 +568,38 @@ Next gate:
 extend the same 8 um case to 10 us and require finite non-zero pVap/Qv after
 the activation threshold is crossed, while retaining stable alpha, pressure,
 and Courant behaviour.
+
+## 2026-09-30 — 304L 8 um / 10 us evaporation-activation smoke
+
+Machine:
+- Ubuntu workstation;
+- OpenFOAM v2512;
+- 48 MPI ranks.
+
+Result: **PASS**
+
+The local run reached the 10 us target and ended normally.
+
+Output-time diagnostics show the evaporation/recoil closure activating between
+5 and 6 us:
+
+| time (us) | Tmax (K) | Umax (m/s) | pVapMax (Pa) | QvMax (W/m2) | deposited power (W) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 | 1980.192 | 0.0948 | 0 | 0 | 72.6109 |
+| 6 | 2287.109 | 0.7602 | 99.78 | 7.994e5 | 72.6109 |
+| 7 | 2590.888 | 1.5113 | 947.31 | 7.021e6 | 72.6108 |
+| 8 | 2899.477 | 2.1012 | 5549.37 | 3.692e7 | 72.6107 |
+| 9 | 3220.584 | 2.8365 | 23960.69 | 1.476e8 | 72.6106 |
+| 10 | 3571.579 | 4.3331 | 86870.39 | 5.026e8 | 72.6116 |
+
+At the 10 us target:
+- maximum Courant number remained about 0.025;
+- alpha.metal remained bounded to roundoff;
+- the solver wrote `End` and finalised the parallel run;
+- deposited optical power remained essentially constant while recoil pressure,
+  evaporation cooling, and melt velocity increased smoothly after activation.
+
+Interpretation:
+this clears the 8 um short-time activation/stability gate. The next physical
+validation stage is the 4 um reference-resolution Wang 304L case.
+
