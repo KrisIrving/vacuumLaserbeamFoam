@@ -381,3 +381,48 @@ relations are regular there:
 
 The 4 um reference case is now restartable from its latest write, and a
 dedicated `Resume_background` helper was added.
+
+## 2026-10-01 — Wang matched-physics gap-closure pass
+
+Implemented after the first 4 um reference produced a robust
+32-to-136 um growth interval of 93.88 us versus about 75 us in Wang's current
+model.
+
+### Optical closure
+- preserved the original LaserbeamFoam Drude/resistivity Fresnel path as
+  `opticalModel drudeResistivity`;
+- added `opticalModel fixedComplexIndex`;
+- the fixed-index path evaluates standard unpolarised complex Fresnel
+  reflectivity and specular reflection;
+- interface-normal sign is removed from the incidence angle instead of using
+  the historical 50% absorption fallback;
+- the Wang 304L case now uses Johnson-Christy Fe values interpolated to
+  1070 nm: n=2.961346153846154, k=4.013269230769231;
+- the corresponding normal-incidence single-hit absorptivity is about 0.3725.
+
+### Surface radiation
+- ported the separately developed `vacuumRadiationModel` into the active
+  fast-track branch;
+- kept radiation distinct from evaporation heat loss;
+- coupled it semi-implicitly in the temperature equation;
+- enabled epsilon=0.4 for the Wang 304L validation case.
+
+### Diagnostics
+Added output-time quantities for direct physical comparison:
+- `interfacePVapMax`;
+- integrated recoil-force x/y/z components;
+- evaporation heat-loss power;
+- radiation heat-loss power;
+- VOF interface area;
+- existing absorbed/deposited laser power remains reported.
+
+### Test isolation
+- added a serial analytical radiation regression;
+- added a dedicated 48-rank 8 um / 10 us matched-physics smoke test;
+- froze explicit smoke control/mesh dictionaries so the smoke test cannot
+  accidentally inherit a locally overwritten 4 um / 140 us reference state;
+- the matched smoke copies only `initial`, `constant`, and `system`, so it
+  does not copy large local processor/output directories.
+
+Status: **implementation complete, pending local build and smoke validation.**
+
