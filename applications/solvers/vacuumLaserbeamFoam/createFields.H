@@ -150,6 +150,51 @@ const dimensionedScalar Tliquidus2
     transportPropertiesGas//.lookup("Tliquidus")
 );
 
+const Switch useClampedLinearMetalThermalProperties
+(
+    transportPropertiesMetal.lookupOrDefault<Switch>
+    (
+        "useClampedLinearThermalProperties",
+        false
+    )
+);
+
+const scalar metalCpSolidus
+(
+    transportPropertiesMetal.lookupOrDefault<scalar>("cpSolidus", 0.0)
+);
+const scalar metalCpLiquidus
+(
+    transportPropertiesMetal.lookupOrDefault<scalar>("cpLiquidus", 0.0)
+);
+const scalar metalKappaSolidus
+(
+    transportPropertiesMetal.lookupOrDefault<scalar>("kappaSolidus", 0.0)
+);
+const scalar metalKappaLiquidus
+(
+    transportPropertiesMetal.lookupOrDefault<scalar>("kappaLiquidus", 0.0)
+);
+
+if
+(
+    useClampedLinearMetalThermalProperties
+ && (
+        metalCpSolidus <= 0
+     || metalCpLiquidus <= 0
+     || metalKappaSolidus <= 0
+     || metalKappaLiquidus <= 0
+     || Tliquidus1.value() <= Tsolidus1.value()
+    )
+)
+{
+    FatalIOErrorInFunction(transportPropertiesMetal)
+        << "useClampedLinearThermalProperties requires positive "
+        << "cpSolidus/cpLiquidus/kappaSolidus/kappaLiquidus and "
+        << "Tliquidus > Tsolidus."
+        << exit(FatalIOError);
+}
+
 const dimensionedScalar LatentHeat1
 (
     "LatentHeat",
