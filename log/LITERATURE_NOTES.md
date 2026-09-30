@@ -153,3 +153,103 @@ depletion of the liquid phase is introduced in this fast-track implementation.
 When `componentNames` is absent the previous single-component code path is
 retained, so the existing Phase-4c regression remains a backward-compatibility
 gate.
+
+## 304L near-vacuum benchmark parameter provenance
+
+Primary source:
+Wang, Zhang & Yan, Physical Review Applied 14, 064039 (2020),
+DOI 10.1103/PhysRevApplied.14.064039.
+
+### Paper-direct quantities
+
+For the near-vacuum stationary-laser benchmark the paper directly supplies:
+- 304L composition Cr/Ni/Fe = 18/8/74 wt% (Table I);
+- Ts/Tl = 1697/1727 K;
+- rho = 7200 kg/m3;
+- Lm = 2.74e5 J/kg;
+- Lv = 6.36e6 J/kg;
+- alloy Pe = 20.16 Pa at Tb = 2009 K;
+- cp(Ts/Tl) = 712/837 J/(kg K);
+- k(Ts/Tl) = 19.2/22 W/(m K);
+- emissivity = 0.4;
+- sigma0 = 1.76 N/m;
+- d(sigma)/dT = -4.3e-4 N/(m K);
+- chamber = 0.0002 atm and 298 K;
+- laser = 260 W, 100 um spot, 1070 nm;
+- reference mesh size = 4 um.
+
+The paper's Eq. (29) uses concentration coefficient N=4.6 and beam radius Rb
+containing 99% of beam energy. LaserbeamFoam's Gaussian exponent is
+`-Radius_Flavour*r^2/Rb^2`, so the equivalent setting is
+`Radius_Flavour = N/2 = 2.3`.
+
+### External pure-element thermodynamics
+
+The paper defines Eqs. (18)-(20) using pure-component saturation pressures but
+does not tabulate the complete Cr/Ni/Fe Clausius-Clapeyron input set.
+
+The fast-track implementation therefore uses NIST Chemistry WebBook / Chase
+(1998) thermochemistry to define pure-element normal-boiling reference states:
+- Cr: M=51.9961 g/mol, Tref=2952.078 K;
+- Ni: M=58.6934 g/mol, Tref=3156.584 K;
+- Fe: M=55.845 g/mol, Tref=3133.345 K.
+
+Latent heats used in the component Clausius-Clapeyron curves are evaluated from
+the NIST gas/liquid enthalpy difference at those phase boundaries:
+- Cr: 6.528895261154893e6 J/kg;
+- Ni: 6.432819434153015e6 J/kg;
+- Fe: 6.259774057660581e6 J/kg.
+
+NIST source pages:
+- https://webbook.nist.gov/cgi/cbook.cgi?ID=C7440473
+- https://webbook.nist.gov/cgi/cbook.cgi?ID=C7440020
+- https://webbook.nist.gov/cgi/cbook.cgi?ID=C7439896
+
+### Alloy pressure anchor
+
+Direct Raoult-like Eq. (18) evaluation with the above pure-element references
+does not exactly reproduce Wang Table-II `Pe(2009 K)=20.16 Pa`. To avoid
+silently replacing the paper's measured/alloy-level reference, an optional
+common pressure scale was added.
+
+When `alloyReferencePressure` and `alloyReferenceTemperature` are provided,
+all component partial pressures are multiplied by one common factor so that the
+total mixture pressure passes through the supplied alloy reference point. The
+same factor is applied to every component, so the relative vapor composition
+and Eq. (19) mixture molar mass are unchanged.
+
+For the current 304L NIST curves the raw Eq. (18) pressure at 2009 K is
+approximately 72.113676 Pa and the scale factor is approximately
+0.279558622, giving exactly 20.16 Pa at 2009 K.
+
+### Wang near-vacuum step (4)
+
+For the anchored 304L case at 20.265 Pa / 298 K:
+- boiling activation is about 2009.5 K;
+- Tk0 (Ma=0.05) is about 2039.7 K;
+- Tk1 (Ma=1) is about 2530.6 K.
+
+Thus the active evaporation range begins below Tk0. The original conservative
+implementation rejected this configuration. The production model now follows
+the paper's near-vacuum step (4) by solving the same common-atmosphere residual
+with a low-Mach bracket approaching zero between boiling and Tk0, then
+continuing through the existing Ma=0.05-to-1 transition and sonic branch.
+
+A dedicated 304L regression checks the Table-II anchor, a low-Mach state at
+2020 K, an intermediate state at 2300 K, and the sonic state at 3000 K.
+
+### Thermal-property representation
+
+Table II supplies cp and k only at Ts and Tl. A new optional
+`useClampedLinearThermalProperties` path linearly interpolates between the
+tabulated solidus/liquidus values, holds the solidus value below Ts, and holds
+the liquidus value above Tl. The default remains disabled, preserving every
+existing LaserbeamFoam regression.
+
+### Known optical mismatch
+
+Wang et al. calculate reflection/absorption with Fresnel equations and use
+iron's complex refractive index for 304L due to lack of reliable alloy data.
+LaserbeamFoam V3 instead uses its inherited Drude/electrical-resistivity optical
+closure. The first 304L CFD smoke/reference case deliberately records this as a
+model-form difference rather than tuning resistivity to force agreement.
