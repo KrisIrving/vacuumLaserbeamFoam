@@ -1,0 +1,60 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    object transportProperties;
+}
+
+interfaceTrackingScheme isoAdvector;
+phases (metal gas);
+
+metal
+{
+    transportModel Newtonian;
+    nu 8.333333333333333e-7;
+    rho 7200;
+    Tsolidus 1697;
+    Tliquidus 1727;
+    LatentHeat 2.74e5;
+
+    // Not tabulated by Wang; negligible micro-scale buoyancy placeholder.
+    beta 5.0e-6;
+
+    // Required fallback polynomials. The clamped paper-tabulated path below
+    // overrides the metal values used by the energy equation.
+    poly_kappa (22 0 0 0 0 0 0 0);
+    poly_cp    (837 0 0 0 0 0 0 0);
+
+    useClampedLinearThermalProperties true;
+    cpSolidus 712;
+    cpLiquidus 837;
+    kappaSolidus 19.2;
+    kappaLiquidus 22;
+
+    // Inherited optical surrogate. Not a Wang Table-II parameter.
+    elec_resistivity 1.0e-6;
+}
+
+gas
+{
+    // Numerical pseudo-gas, not a physical 20 Pa continuum-gas closure.
+    transportModel Newtonian;
+    nu 1.48e-05;
+    rho 1.0;
+    Tsolidus 1.0;
+    Tliquidus 10.0;
+    LatentHeat 1;
+    beta 4.0e-5;
+    poly_kappa (0.04 0 0 0 0 0 0 0);
+    poly_cp    (520 0 0 0 0 0 0 0);
+}
+
+sigma 1.76;
+Marangoni_Constant -4.3e-4;
+
+// Legacy entries retained for backward-compatible readers.
+p0 20.16;
+Tvap 2009;
+Mm 0.0545;
+LatentHeatVap 6.36e6;

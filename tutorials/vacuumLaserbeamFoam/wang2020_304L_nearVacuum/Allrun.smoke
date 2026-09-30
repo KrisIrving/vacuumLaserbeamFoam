@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+rm -rf 0
+cp -r initial 0
+
+runApplication blockMesh
+runApplication setFields
+runApplication vacuumLaserbeamFoam
