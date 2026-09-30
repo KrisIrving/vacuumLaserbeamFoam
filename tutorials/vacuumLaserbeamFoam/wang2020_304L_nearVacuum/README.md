@@ -42,9 +42,9 @@ Smoke:
 ./Allrun.smoke
 ```
 
-Reference, default 32 MPI ranks:
+Reference, 48 MPI ranks:
 ```bash
-NP=32 ./Allrun.reference
+./Allrun.reference
 ```
 
 ## Deliberately visible model differences
@@ -93,7 +93,7 @@ The smoke run is intentionally local rather than a GitHub CI workload:
 ./Allrun.smoke
 ```
 
-It uses 16 MPI ranks and runs to 5 us. At every 1 us output it prints one
+It uses 48 MPI ranks and runs to 5 us. At every 1 us output it prints one
 machine-readable line:
 
 ```text
