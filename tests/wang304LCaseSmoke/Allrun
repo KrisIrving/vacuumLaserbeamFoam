@@ -5,12 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
 RUN_CASE="$REPO_ROOT/tests/run/wang304LCaseSmoke"
+NP=48
 
 rm -rf "$RUN_CASE"
 mkdir -p "$(dirname "$RUN_CASE")"
 cp -a "$SOURCE_CASE" "$RUN_CASE"
 
-rm -rf "$RUN_CASE/0"
+rm -rf "$RUN_CASE/0" "$RUN_CASE"/processor*
 cp -a "$RUN_CASE/initial" "$RUN_CASE/0"
 
 foamDictionary "$RUN_CASE/system/controlDict" -entry endTime -set 1e-9 > /dev/null
@@ -21,7 +22,9 @@ foamDictionary "$RUN_CASE/system/controlDict" -entry writeInterval -set 1 > /dev
     cd "$RUN_CASE"
     blockMesh > log.blockMesh 2>&1
     setFields > log.setFields 2>&1
-    vacuumLaserbeamFoam > log.vacuumLaserbeamFoam 2>&1
+    decomposePar -dict system/decomposeParDict.smoke -force > log.decomposePar 2>&1
+    mpirun -np "$NP" vacuumLaserbeamFoam -parallel > log.vacuumLaserbeamFoam 2>&1
+    reconstructPar -latestTime -fields '(T U alpha.metal p_rgh Qv)'         > log.reconstructPar 2>&1
 )
 
 grep -q "Selecting vacuum evaporation model nearVacuumWang"     "$RUN_CASE/log.vacuumLaserbeamFoam"
@@ -37,9 +40,9 @@ fi
 latest_time="$(foamListTimes -case "$RUN_CASE" -latestTime | tail -1)"
 for field in T U alpha.metal p_rgh Qv; do
     if [[ ! -f "$RUN_CASE/$latest_time/$field" ]]; then
-        echo "Missing output field $field at $latest_time" >&2
+        echo "Missing reconstructed output field $field at $latest_time" >&2
         exit 32
     fi
 done
 
-echo "PASS: Wang 304L 8-um one-step CFD case smoke"
+echo "PASS: Wang 304L 8-um one-step CFD case smoke on 48 MPI ranks"
