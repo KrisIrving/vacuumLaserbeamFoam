@@ -369,3 +369,15 @@ Updated:
 Future local rebuild commands should use `./Allwmake -j 48`.
 Pure constitutive utilities remain serial because MPI adds only startup
 overhead to those non-CFD checks.
+
+## 2026-09-30 — Wang Ma=0 endpoint/restart fix
+
+A 4 um reference run exposed a low-Mach endpoint failure at
+`T=2009.503556 K`, essentially the chamber-pressure boiling point.
+
+The step-(4) solver now includes the exact `Ma=0` endpoint. Wang's jump
+relations are regular there:
+`T3/Te -> 1`, `P3/Pe -> 1`, mass-flux ratio -> 0, and recoil coefficient -> 1.
+
+The 4 um reference case is now restartable from its latest write, and a
+dedicated `Resume_background` helper was added.
