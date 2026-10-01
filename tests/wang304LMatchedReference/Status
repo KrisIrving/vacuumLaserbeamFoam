@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedReference"
+
+if [ ! -d "$RUN_CASE" ]; then
+    echo "Matched reference case has not been created yet."
+    echo "Run $SCRIPT_DIR/Run_background first."
+    exit 1
+fi
+
+cd "$RUN_CASE"
+./Status
