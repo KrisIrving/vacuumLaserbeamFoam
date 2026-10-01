@@ -728,3 +728,53 @@ failure. The next investigation should prioritize the remaining model
 differences (optical absorption/ray interaction and surface heat-loss closure)
 and add interface-local recoil diagnostics before altering the Wang
 evaporation equations.
+
+## 2026-10-01 — Wang matched-physics precheck
+
+Local primary-machine results reported from the 48-core Ubuntu/OpenFOAM-v2512
+workstation:
+
+### Radiation analytical regression
+
+Command:
+`./tests/vacuumRadiation/Allrun`
+
+Result: **PASS**
+
+Reported states:
+- 2000 K, solid emissivity 0.4: Qrad = 362720.2426848244 W/m2;
+- 2000 K, liquid emissivity 0.1: Qrad = 90680.06067120608 W/m2;
+- 1200 K, liquid fraction 0.5, emissivity 0.25:
+  Qrad = 29280.39590611125 W/m2.
+
+The standalone radiation model and its solid/liquid interpolation therefore
+match the analytical regression.
+
+### Wang 304L constitutive reference
+
+Command:
+`./tests/wang304LReference/Allrun`
+
+Result: **PASS**
+
+The anchored Cr/Ni/Fe near-vacuum constitutive reference remains intact after
+the optical/radiation changes.
+
+### 48-rank matched-physics smoke
+
+Command:
+`./tests/wang304LMatchedSmoke/Allrun`
+
+The script launched blockMesh, setFields, decomposePar and
+`vacuumLaserbeamFoam (48 processes)`. After the solver command returned, the
+post-run shell checker failed to parse because the generated test script had a
+malformed quoted `grep '^End$'` line, causing the following awk block to be
+parsed as shell syntax.
+
+This is a **test-harness failure**, not evidence of a CFD failure. The existing
+run output is intentionally preserved and should be checked with the new
+`tests/wang304LMatchedSmoke/Check` helper before rerunning the CFD.
+
+Matched-physics smoke status: **pending post-check of the already completed
+run output**.
+
