@@ -1,0 +1,89 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedSmoke"
+LOG="$RUN_CASE/log.vacuumLaserbeamFoam"
+
+if [ ! -f "$LOG" ]; then
+    echo "Missing $LOG" >&2
+    exit 1
+fi
+
+if ! grep -q 'Laser optics laser0: opticalModel=fixedComplexIndex' "$LOG"
+then
+    echo "Missing fixedComplexIndex optical selection" >&2
+    exit 1
+fi
+
+if ! grep -q 'Vacuum radiation model' "$LOG"
+then
+    echo "Missing vacuum radiation model startup" >&2
+    exit 1
+fi
+
+if ! grep -q 'interfacePVapMax=' "$LOG"
+then
+    echo "Missing interface recoil diagnostic" >&2
+    exit 1
+fi
+
+if ! grep -q 'radiationPower=' "$LOG"
+then
+    echo "Missing radiation power diagnostic" >&2
+    exit 1
+fi
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"
+then
+    echo "Matched-physics smoke ended with a fatal solver error" >&2
+    exit 1
+fi
+
+if grep -Eiq '(^|[^A-Za-z])(nan|inf)([^A-Za-z]|$)' "$LOG"
+then
+    echo "Matched-physics smoke contains NaN/Inf" >&2
+    exit 1
+fi
+
+if ! grep -q '^End$' "$LOG"
+then
+    echo "Matched-physics smoke did not reach End" >&2
+    exit 1
+fi
+
+LATEST_DIAG="$(grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1)"
+
+echo "$LATEST_DIAG" | awk '
+{
+    for (i=1; i<=NF; ++i)
+    {
+        split($i, a, "=");
+        if (a[1] == "depositedPower") deposited=a[2]+0;
+        if (a[1] == "interfacePVapMax") recoil=a[2]+0;
+        if (a[1] == "evaporationPower") evap=a[2]+0;
+        if (a[1] == "radiationPower") rad=a[2]+0;
+    }
+
+    if (!(deposited > 0)) exit 31;
+    if (!(recoil > 0)) exit 32;
+    if (!(evap > 0)) exit 33;
+    if (!(rad > 0)) exit 34;
+}'
+
+if [ $? -ne 0 ]; then
+    echo "Matched-physics diagnostic values did not activate as expected" >&2
+    exit 1
+fi
+
+echo
+echo "Selected optics:"
+grep 'Laser optics laser0:' "$LOG" | head -1
+
+echo "First matched-physics diagnostics:"
+grep '^VACUUM_DIAGNOSTICS ' "$LOG" | head -1
+
+echo "Latest matched-physics diagnostics:"
+echo "$LATEST_DIAG"
+
+echo "PASS: Wang 304L matched-physics 48-rank smoke"
