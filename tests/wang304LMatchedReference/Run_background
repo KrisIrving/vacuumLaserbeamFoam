@@ -1,0 +1,31 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedReference"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$RUN_CASE"
+
+cp -a "$SOURCE_CASE/initial" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/constant" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/system" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/scripts" "$RUN_CASE/"
+cp "$SOURCE_CASE/Allrun.reference" "$RUN_CASE/"
+cp "$SOURCE_CASE/Status" "$RUN_CASE/"
+cp "$SOURCE_CASE/extractKeyholeDepth.sh" "$RUN_CASE/"
+
+cd "$RUN_CASE"
+
+nohup ./Allrun.reference > log.Allrun 2>&1 &
+echo $! > run.pid
+
+echo "Started independent 4 um Wang 304L matched-physics reference."
+echo "Case: $RUN_CASE"
+echo "PID: $(cat run.pid)"
+echo "Target simulation time: 140 us"
+echo "MPI ranks: 48"
+echo "Use:"
+echo "  cd $RUN_CASE"
+echo "  ./Status"
