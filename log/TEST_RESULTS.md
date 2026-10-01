@@ -778,3 +778,45 @@ run output is intentionally preserved and should be checked with the new
 Matched-physics smoke status: **pending post-check of the already completed
 run output**.
 
+## 2026-10-01 — Wang matched-physics 8 um / 10 us smoke
+
+Result: **PASS** on the primary 48-core OpenFOAM-v2512 workstation.
+
+Selected optics:
+- opticalModel = fixedComplexIndex;
+- n = 2.961346154;
+- k = 4.013269231;
+- reported normal absorptivity = 0.3725128503.
+
+At 1 us:
+- Tmax = 925.90 K;
+- depositedPower = 97.1236 W;
+- recoil/evaporation inactive;
+- radiationPower = 1.74e-5 W.
+
+The 1-us deposited power agrees closely with the flat-surface Fresnel expectation
+260 W * 0.37251285 = approximately 96.85 W, supporting correct activation of
+the fixed-complex-index optical path.
+
+At 10 us:
+- Tmax = 4322.50 K;
+- Umax = 16.98 m/s;
+- pVapMax = interfacePVapMax = 838550.9 Pa;
+- QvMax = 3.5072e9 W/m2;
+- depositedPower = 100.655 W;
+- evaporationPower = 1.20784 W;
+- radiationPower = 0.007856 W;
+- interfaceArea = 1.02679e-7 m2;
+- recoilForceY = -2.22140e-4 N.
+
+Compared with the earlier Drude 10-us smoke (about 72.61 W deposited,
+3571.6 K Tmax, 4.33 m/s Umax and 86.9 kPa pVapMax), the Wang-matched optical
+closure produces substantially stronger heating, flow and recoil at the same
+time.
+
+Radiative loss is negligible relative to absorbed laser power and evaporation
+loss at 10 us; it is retained for paper consistency but is not expected to be
+the mechanism that closes the faster-keyhole discrepancy.
+
+Gate T9c is accepted. Proceed to an independent 4 um / 140 us matched-physics
+reference from t=0 and compare the same connected-3D 32-to-136 um metric.
