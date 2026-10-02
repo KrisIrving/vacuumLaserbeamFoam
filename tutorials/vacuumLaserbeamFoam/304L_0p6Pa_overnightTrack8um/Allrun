@@ -1,0 +1,25 @@
+#!/bin/bash
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ ! -f constant/powderParticles.csv ] || [ ! -f system/setFieldsDict ]; then
+    "$SCRIPT_DIR/PreparePowderBed"
+fi
+
+if [ ! -d 0 ]; then
+    echo "Copying 'initial' to 0"
+    cp -r initial 0
+fi
+
+if [ ! -d constant/polyMesh ]; then
+    runApplication blockMesh
+fi
+
+if [ ! -d processor0 ]; then
+    runApplication setFields
+    runApplication decomposePar
+fi
+
+runParallel vacuumLaserbeamFoam
