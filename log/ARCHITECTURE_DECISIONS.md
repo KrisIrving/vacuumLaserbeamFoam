@@ -269,3 +269,30 @@ Validation diagnostics now distinguish:
 The interface-local pressure and integrated force are the quantities intended
 for comparison with Wang's reported keyhole-surface recoil pressure and axial
 recoil force.
+
+## ADR-020 — Freeze Wang 304L matched validation v1
+
+**Status:** accepted
+
+The Wang 304L / 0.0002-atm benchmark is frozen after matching the primary
+keyhole-growth metric and obtaining consistent recoil-load magnitude without
+empirical coefficient tuning.
+
+Frozen validation choices:
+- Fe fixed-complex-index Fresnel optics at 1070 nm;
+- Wang near-vacuum alloy evaporation closure;
+- grey-body radiation with emissivity 0.4;
+- connected 3-D alpha.metal=0.5 keyhole depth;
+- paper-comparison recoil load reported as integral(p dS), following Wang's
+  stated z-direction pressure convention;
+- normal-traction projection sum p|dAy| retained separately as the
+  vacuumLaserbeamFoam physical CSF diagnostic.
+
+The two force measures must not be conflated.
+
+No empirical recoil multiplier or vapor-pressure retuning is introduced to
+force agreement with Fig. 10/11. The isolated hottest-face recoil pressure is
+kept as a mesh/interpolation sensitivity metric for future refinement.
+
+The next development stage may build on this frozen benchmark toward the actual
+target configuration: lower chamber pressure, powder bed, and moving laser.
