@@ -57,45 +57,77 @@ def read_legacy_vtk(path: Path):
             faces.append(face)
 
     data_kind = None
-    ndata = None
-    idata = None
-    for key in ("POINT_DATA", "CELL_DATA"):
-        if key in tokens:
-            j = tokens.index(key)
-            if idata is None or j < idata:
-                data_kind = key
-                idata = j
-                ndata = int(tokens[j + 1])
+    pvap = None
+    pos = 0
+    current_kind = None
+    current_count = None
 
-    if idata is None:
-        raise RuntimeError(f"No POINT_DATA/CELL_DATA in {path}")
+    while pos < len(tokens):
+        tok = tokens[pos]
 
-    try:
-        ifield = tokens.index("FIELD", idata)
-    except ValueError as exc:
-        raise RuntimeError(f"No FIELD data in {path}") from exc
+        if tok in ("POINT_DATA", "CELL_DATA") and pos + 1 < len(tokens):
+            current_kind = tok
+            current_count = int(tokens[pos + 1])
+            pos += 2
+            continue
 
-    nfields = int(tokens[ifield + 2])
-    pos = ifield + 3
-    fields = {}
+        if tok == "FIELD" and pos + 2 < len(tokens):
+            nfields = int(tokens[pos + 2])
+            pos += 3
 
-    for _ in range(nfields):
-        name = tokens[pos]
-        ncomp = int(tokens[pos + 1])
-        ntuple = int(tokens[pos + 2])
-        pos += 4  # skip datatype
-        count = ncomp*ntuple
-        vals = [float(x) for x in tokens[pos:pos+count]]
-        pos += count
-        fields[name] = [
-            vals[i:i+ncomp]
-            for i in range(0, len(vals), ncomp)
-        ]
+            for _ in range(nfields):
+                name = tokens[pos]
+                ncomp = int(tokens[pos + 1])
+                ntuple = int(tokens[pos + 2])
+                pos += 4  # skip datatype
+                count = ncomp*ntuple
+                vals = [float(x) for x in tokens[pos:pos+count]]
+                pos += count
 
-    if "pVap" not in fields:
+                if name == "pVap":
+                    pvap = [
+                        vals[i]
+                        for i in range(0, len(vals), ncomp)
+                    ]
+                    data_kind = current_kind
+            continue
+
+        if tok == "SCALARS" and pos + 2 < len(tokens):
+            name = tokens[pos + 1]
+            ncomp = 1
+            if pos + 3 < len(tokens):
+                try:
+                    ncomp = int(tokens[pos + 3])
+                    pos += 4
+                except ValueError:
+                    pos += 3
+            else:
+                pos += 3
+
+            if pos + 1 < len(tokens) and tokens[pos] == "LOOKUP_TABLE":
+                pos += 2
+
+            if current_count is None:
+                raise RuntimeError(
+                    f"SCALARS encountered before POINT/CELL_DATA in {path}"
+                )
+
+            count = current_count*ncomp
+            vals = [float(x) for x in tokens[pos:pos+count]]
+            pos += count
+
+            if name == "pVap":
+                pvap = [
+                    vals[i]
+                    for i in range(0, len(vals), ncomp)
+                ]
+                data_kind = current_kind
+            continue
+
+        pos += 1
+
+    if pvap is None or data_kind is None:
         raise RuntimeError(f"pVap field not present in {path}")
-
-    pvap = [row[0] for row in fields["pVap"]]
 
     expected = npoints if data_kind == "POINT_DATA" else len(faces)
     if len(pvap) != expected:
