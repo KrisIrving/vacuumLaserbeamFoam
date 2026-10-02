@@ -19,7 +19,7 @@ def save_all(path_no_ext):
 
 def parse_diag(path):
     rows = []
-    pattern = re.compile(r"(\\w+)=([+\\-0-9.eE]+)")
+    pattern = re.compile(r"(\w+)=([+\-0-9.eE]+)")
     for line in Path(path).read_text(errors="ignore").splitlines():
         if not line.startswith("VACUUM_DIAGNOSTICS "):
             continue
