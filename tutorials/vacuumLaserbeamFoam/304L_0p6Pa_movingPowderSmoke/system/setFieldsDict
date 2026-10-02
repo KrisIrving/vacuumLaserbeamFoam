@@ -1,0 +1,111 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "system";
+    object setFieldsDict;
+}
+
+defaultFieldValues
+(
+    volScalarFieldValue alpha.metal 0
+);
+
+regions
+(
+    // 200 um substrate, inherited from the validated Wang geometry.
+    boxToCell
+    {
+        box (-1 -1 -1) (1 200e-6 1);
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // Deterministic monolayer powder fixture.
+    // Radius=20 um gives 2.5 cells/radius on the 8 um smoke mesh.
+    // These spheres are a numerical integration fixture, not a calibrated PSD.
+    sphereToCell
+    {
+        origin (-80e-6 220e-6 0);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (-40e-6 220e-6 0);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (0 220e-6 0);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (40e-6 220e-6 0);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (80e-6 220e-6 0);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+
+    // Staggered neighbouring rows.
+    sphereToCell
+    {
+        origin (-60e-6 220e-6 34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (-20e-6 220e-6 34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (20e-6 220e-6 34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (60e-6 220e-6 34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+
+    sphereToCell
+    {
+        origin (-60e-6 220e-6 -34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (-20e-6 220e-6 -34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (20e-6 220e-6 -34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+    sphereToCell
+    {
+        origin (60e-6 220e-6 -34.6e-6);
+        radius 20e-6;
+        fieldValues (volScalarFieldValue alpha.metal 1);
+    }
+);
