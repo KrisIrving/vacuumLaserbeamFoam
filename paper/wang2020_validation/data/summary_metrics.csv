@@ -1,0 +1,11 @@
+metric,series,value,unit,note
+keyhole_growth_32_136,X-ray experiment,70.0,us,Wang paper
+keyhole_growth_32_136,Wang current model,75.0,us,Wang paper
+keyhole_growth_32_136,vacuumLaserbeamFoam matched,76.2318,us,3-D connected alpha=0.5
+keyhole_growth_32_136,initial Drude optical baseline,93.8816,us,development baseline
+early_deposited_power,Drude CFD at 1 us,72.6109,W,flat initial surface
+early_deposited_power,Fe Fresnel theory,96.8533411,W,260 W x 0.3725128503
+early_deposited_power,Fe Fresnel CFD at 1 us,97.12355036,W,matched smoke
+recoil_load,Wang current model,4.0,mN,paper approx.
+recoil_load,matched at equivalent stage,3.52,mN,full integral p dS
+recoil_load,matched history peak,4.70457,mN,122 us
