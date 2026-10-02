@@ -1,0 +1,113 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_generatedPowderTrackSmoke"
+RUN_CASE="$REPO_ROOT/tests/run/304L0p6PaGeneratedPowderSmoke"
+GENERATOR="$REPO_ROOT/tools/powderBed/generatePowderBed.py"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$RUN_CASE"
+cp -a "$SOURCE_CASE/initial" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/constant" "$RUN_CASE/"
+cp -a "$SOURCE_CASE/system" "$RUN_CASE/"
+cp "$SOURCE_CASE/powderBedConfig.json" "$RUN_CASE/"
+
+python3 "$GENERATOR" \
+    --config "$RUN_CASE/powderBedConfig.json" \
+    --set-fields "$RUN_CASE/system/setFieldsDict" \
+    --particles "$RUN_CASE/constant/powderParticles.csv" \
+    --manifest "$RUN_CASE/constant/powderManifest.json" \
+    | tee "$RUN_CASE/log.powderGenerator"
+
+python3 - "$RUN_CASE/constant/powderManifest.json" <<'PY'
+import json
+import pathlib
+import sys
+
+m = json.loads(pathlib.Path(sys.argv[1]).read_text())
+if m["particleCount"] != 56:
+    raise SystemExit(f"Unexpected particle count {m['particleCount']}")
+if not (0.22 <= m["actualSolidFraction"] < 0.23):
+    raise SystemExit(f"Unexpected solid fraction {m['actualSolidFraction']}")
+if m["minimumInterparticleGap_m"] < -1e-12:
+    raise SystemExit("Generated powder contains overlapping spheres")
+if m["highestParticleTop_m"] > 260e-6 + 1e-12:
+    raise SystemExit("Generated powder exceeds the configured layer thickness")
+PY
+
+cd "$RUN_CASE"
+
+echo "Copying 'initial' to 0"
+cp -r initial 0
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
+
+LOG=log.vacuumLaserbeamFoam
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"
+then
+    echo "Generated-powder smoke ended with a fatal solver error" >&2
+    exit 1
+fi
+
+if grep -Eiq '(^|[^A-Za-z])(nan|inf)([^A-Za-z]|$)' "$LOG"
+then
+    echo "Generated-powder smoke contains NaN/Inf" >&2
+    exit 1
+fi
+
+if ! grep -q '^End$' "$LOG"
+then
+    echo "Generated-powder smoke did not reach End" >&2
+    exit 1
+fi
+
+FIRST_POS="$(grep 'Laser mean position = ' "$LOG" | head -1)"
+LAST_POS="$(grep 'Laser mean position = ' "$LOG" | tail -1)"
+if [ -z "$FIRST_POS" ] || [ -z "$LAST_POS" ] || [ "$FIRST_POS" = "$LAST_POS" ]
+then
+    echo "Moving laser was not confirmed" >&2
+    exit 1
+fi
+
+LATEST_DIAG="$(grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1)"
+
+echo "$LATEST_DIAG" | awk '
+{
+    for (i=1; i<=NF; ++i)
+    {
+        split($i, a, "=");
+        if (a[1] == "time") t=a[2]+0;
+        if (a[1] == "depositedPower") deposited=a[2]+0;
+        if (a[1] == "interfacePVapMax") recoil=a[2]+0;
+        if (a[1] == "evaporationPower") evap=a[2]+0;
+    }
+    if (!(t >= 19.9e-6)) exit 31;
+    if (!(deposited > 0)) exit 32;
+    if (!(recoil > 0)) exit 33;
+    if (!(evap > 0)) exit 34;
+}'
+
+if [ $? -ne 0 ]; then
+    echo "Generated-powder diagnostics did not satisfy the smoke gate" >&2
+    exit 1
+fi
+
+echo
+cat log.powderGenerator
+echo
+echo "First laser position:"
+echo "$FIRST_POS"
+echo "Last laser position:"
+echo "$LAST_POS"
+echo
+echo "Latest diagnostics:"
+echo "$LATEST_DIAG"
+echo
+echo "PASS: generated powder bed / 0.6 Pa / moving laser / 48-rank smoke"
