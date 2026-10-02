@@ -1,0 +1,46 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "Preparing deterministic overnight powder bed"
+./PreparePowderBed
+
+python3 - constant/powderManifest.json <<'PY'
+import json, pathlib, sys
+m=json.loads(pathlib.Path(sys.argv[1]).read_text())
+if m['particleCount'] != 144:
+    raise SystemExit(f"Unexpected deterministic particle count: {m['particleCount']} != 144")
+if not (0.22 <= m['actualSolidFraction'] < 0.23):
+    raise SystemExit(f"Unexpected solid fraction: {m['actualSolidFraction']}")
+if m['minimumInterparticleGap_m'] < -1e-12:
+    raise SystemExit("Powder overlap exceeds tolerance")
+if m['highestParticleTop_m'] > 260e-6 + 1e-12:
+    raise SystemExit("Powder exceeds 60 um layer limit")
+print(
+    f"Powder PASS: particles={m['particleCount']} "
+    f"solidFraction={m['actualSolidFraction']:.8g} "
+    f"D10={1e6*m['diameterD10_m']:.4g}um "
+    f"D50={1e6*m['diameterD50_m']:.4g}um "
+    f"D90={1e6*m['diameterD90_m']:.4g}um"
+)
+PY
+
+rm -rf 0 processor* constant/polyMesh
+rm -f log.blockMesh log.setFields log.decomposePar
+
+cp -r initial 0
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+
+if [ ! -d processor0 ]; then
+    echo "Preflight failed: processor0 not created" >&2
+    exit 1
+fi
+
+echo
+echo "PASS: overnight 8-um / 160k-cell / 144-particle / 48-rank preflight"
+echo "Next: ./Run_background"
