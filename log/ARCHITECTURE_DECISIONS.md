@@ -333,3 +333,28 @@ ray tracer.
 The first 3-D integration fixture uses OpenFOAM-v2512 `sphereToCell`
 initialization. A calibrated powder-size distribution/packing workflow will be
 introduced separately after this coupling gate passes.
+
+## ADR-023 — Reproducible geometric powder-bed generator
+
+**Status:** accepted
+
+Target-stage powder initial conditions are generated from a small versioned
+configuration rather than maintained as hand-authored thousands-line
+`setFieldsDict` files.
+
+The generator uses sequential vertical deposition:
+1. sample particle diameter from the configured PSD;
+2. choose an x-z location from a seeded pseudo-random stream;
+3. drop the sphere vertically until it contacts the substrate or an existing
+   sphere;
+4. reject candidates whose top exceeds the layer-thickness limit.
+
+The generator emits:
+- OpenFOAM `setFieldsDict`;
+- exact particle centre/radius CSV;
+- JSON manifest with seed, D10/D50/D90, particle count, geometrical solid
+  fraction, highest top and overlap diagnostics.
+
+This is a transparent geometric initial-condition model, not DEM. When the
+experimental PSD/layer parameters are available, they will replace only the
+configuration; the generator/manifest workflow remains unchanged.
