@@ -519,3 +519,52 @@ Acceptance:
 
 Passing T11 establishes the reusable powder-bed infrastructure. It does not
 validate the engineering PSD or 2 m/s scan speed.
+
+## T12 — Overnight long-track engineering integration
+
+Case:
+`tutorials/vacuumLaserbeamFoam/304L_0p6Pa_overnightTrack8um`
+
+Purpose:
+exercise the passed 0.6 Pa/generated-powder/moving-laser chain for a much
+longer physical time and track length before substituting final experimental
+PSD/scan inputs.
+
+Configuration:
+- 8 um mesh;
+- 800 x 320 x 320 um domain;
+- 160,000 cells;
+- 48 MPI ranks;
+- 0.6 Pa chamber pressure;
+- 260 W / 100 um Fe-Fresnel laser;
+- engineering scan speed 2 m/s;
+- x=-300 to +300 um;
+- 600 um track;
+- 300 us target;
+- 5 us binary writes;
+- generated powder seed 304006;
+- 760 x 280 um powder footprint;
+- 60 um layer limit;
+- uniform 24-44 um engineering diameter support;
+- target geometrical solid fraction 0.22;
+- expected deterministic particle count 144.
+
+Preflight:
+`./Preflight`
+
+Launch:
+`./Run_background`
+
+Progress:
+`./Status`
+
+Post-process:
+`./PostprocessTrack`
+
+The moving-keyhole metric follows the beam in a local window extending
+100 um behind, 60 um ahead and +/-75 um transversely. It reports depth below
+the original y=200 um substrate surface and bottom offset relative to the
+instantaneous laser position.
+
+This is an engineering long-duration integration run, not an experiment-matched
+production result.
