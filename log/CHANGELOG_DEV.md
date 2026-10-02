@@ -426,3 +426,18 @@ Added output-time quantities for direct physical comparison:
 
 Status: **implementation complete, pending local build and smoke validation.**
 
+## 2026-10-02 — Begin 0.6 Pa / powder / moving-laser stage
+
+Created branch `feat/0p6Pa-powder-movingLaser` from the frozen Wang validation
+line.
+
+Added:
+- 3-D 304L 0.6 Pa moving-powder smoke tutorial;
+- 13-sphere deterministic single-layer powder fixture;
+- 2 m/s tabulated moving-laser smoke path;
+- 20 us / 8 um / 48-rank integration configuration;
+- isolated automated smoke gate and status helper.
+
+No evaporation-model coefficients were changed.
+
+Status: **implementation ready for local integration test; not yet PASS.**
