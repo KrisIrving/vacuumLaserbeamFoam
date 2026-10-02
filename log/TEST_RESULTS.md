@@ -917,3 +917,46 @@ The recoil post-process is therefore refined to report:
 
 This refinement requires only re-post-processing the existing CFD result.
 
+## 2026-10-02 — Refined keyhole-surface recoil diagnostics
+
+The refined recoil post-process reports both extreme face pressure and
+area-weighted high-pressure statistics on the connected alpha.metal=0.5
+keyhole surface.
+
+At 140 us:
+- face-centre pRecoil max = 19.44 atm;
+- area-weighted p99 pRecoil = 5.12 atm;
+- signed cavity-only |Fy| = 1.184e-3 N;
+- orientation-independent cavity-only sum p|dAy| = 1.512e-3 N;
+- keyhole-surface Tmax = 4692.9 K;
+- pVap is sampled as VTK CELL_DATA.
+
+Whole-history extrema:
+- face-centre pRecoil max = 43.16 atm at 122 us;
+- area-weighted p99 pRecoil = 10.53 atm at 122 us;
+- cavity-only orientation-independent axial recoil max =
+  2.0265e-3 N at 122 us.
+
+For the Wang Fig. 10 comparison time, t32 + 75 us = 100.734 us, interpolation
+of the uploaded recoil time series gives approximately:
+- face-centre pRecoil max = 33.72 atm;
+- area-weighted p99 pRecoil = 6.29 atm;
+- keyhole-surface Tmax = 4802 K;
+- signed cavity-only |Fy| = 1.57e-3 N;
+- cavity-only sum p|dAy| = 1.66e-3 N.
+
+The area-weighted p99 is much closer to Wang's reported ~5-atm keyhole-bottom
+surface pressure than the single hottest face maximum. However, the
+cavity-only axial recoil remains below the paper's reported ~4e-3 N.
+
+Before modifying evaporation physics, the force-integration support must be
+matched. The previous post-process deliberately excluded all y >= 200 um
+interface triangles, whereas Wang discusses significant near-vacuum keyhole-rim
+recoil and overflow in the same validation section and defines Fz over the
+keyhole-surface area. The post-process is therefore extended to report both:
+- below-substrate cavity-only recoil;
+- full atmosphere-connected main-interface recoil;
+- the above-surface/rim contribution.
+
+No CFD rerun is required for this comparison.
+
