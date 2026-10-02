@@ -1,0 +1,41 @@
+#!/bin/bash
+
+RUN_CASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/tests/run/304L0p6PaGeneratedPowderSmoke"
+LOG="$RUN_CASE/log.vacuumLaserbeamFoam"
+
+if [ -f "$RUN_CASE/constant/powderManifest.json" ]; then
+    echo "Powder manifest:"
+    python3 - "$RUN_CASE/constant/powderManifest.json" <<'PY'
+import json
+import pathlib
+import sys
+m=json.loads(pathlib.Path(sys.argv[1]).read_text())
+print(
+    f"particles={m['particleCount']} "
+    f"solidFraction={m['actualSolidFraction']:.6g} "
+    f"D10={1e6*m['diameterD10_m']:.4g}um "
+    f"D50={1e6*m['diameterD50_m']:.4g}um "
+    f"D90={1e6*m['diameterD90_m']:.4g}um"
+)
+PY
+fi
+
+if [ ! -f "$LOG" ]; then
+    echo "Solver log not present."
+    exit 0
+fi
+
+echo "Latest time:"
+grep '^[[:space:]]*Time = ' "$LOG" | tail -1
+echo "Latest laser position:"
+grep 'Laser mean position = ' "$LOG" | tail -1
+echo "Latest diagnostics:"
+grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"; then
+    echo "Run status: FAILED"
+elif grep -q '^End$' "$LOG"; then
+    echo "Run status: COMPLETED"
+else
+    echo "Run status: RUNNING/INCOMPLETE"
+fi
