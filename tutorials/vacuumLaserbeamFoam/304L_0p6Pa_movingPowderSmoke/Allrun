@@ -1,0 +1,12 @@
+#!/bin/bash
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+echo "Preparing 0.6 Pa / moving-laser / powder smoke"
+echo "Copying 'initial' to 0"
+cp -r initial 0
+
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
