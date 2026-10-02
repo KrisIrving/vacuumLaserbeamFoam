@@ -1,0 +1,64 @@
+\subsection{Implementation and validation of the near-vacuum evaporation model}
+
+A near-vacuum evaporation closure based on Wang et al.~\cite{Wang2020}
+was implemented as a runtime-selectable model in \texttt{vacuumLaserbeamFoam}.
+The implementation evaluates the Knudsen-layer jump state as a function of
+Mach number and solves the common-atmosphere transition state at prescribed
+surface temperature. The transition temperatures $T_{k0}$ and $T_{k1}$,
+corresponding to $\mathrm{Ma}=0.05$ and $\mathrm{Ma}=1$, are determined
+automatically. Below the activation temperature, evaporation is disabled;
+between the activation temperature and $T_{k1}$ the transition Mach number is
+solved iteratively, while the strong-evaporation branch uses $\mathrm{Ma}=1$.
+The regular $\mathrm{Ma}\rightarrow0$ endpoint was included explicitly to
+avoid a numerical endpoint failure at the chamber-pressure boiling threshold.
+
+For alloys, component mass fractions are converted to molar fractions and the
+total saturation pressure and vapor molar mass are evaluated following Wang
+et al.'s multicomponent formulation. For 304L stainless steel,
+Cr/Ni/Fe=18/8/74 wt\% was used. The mixture saturation-pressure curve was
+anchored to $P_e=20.16$ Pa at $T=2009$ K.
+
+The recoil pressure is applied to the VOF interface through the interface
+gradient in the momentum equation, while the evaporative heat flux is
+localized to the interface in the energy equation. Grey-body radiation is
+treated as a separate surface heat-loss term. The chamber pressure enters the
+evaporation closure directly; the outer phase remains an incompressible
+numerical pseudo-gas and is not intended to represent chamber-scale rarefied
+gas dynamics.
+
+\subsection{304L near-vacuum benchmark}
+
+The stationary-laser 304L benchmark was performed at 0.0002 atm
+($\approx20.265$ Pa) and 298 K using a 260 W, 100 $\mu$m laser at 1070 nm.
+The reference mesh spacing was 4 $\mu$m ($80^3$ cells), and the simulation was
+advanced to 140 $\mu$s using 48 MPI ranks. For this validation case, the
+inherited Drude/resistivity optical surrogate was replaced by a fixed complex
+refractive index for Fe based on Johnson--Christy optical data
+\cite{JohnsonChristy1974}. At 1070 nm, the interpolated values were
+$n=2.96135$ and $k=4.01327$, corresponding to a normal-incidence single-hit
+absorptivity of approximately 0.3725. The deposited laser power at 1 $\mu$s
+was 97.12 W, close to the flat-surface Fresnel expectation of 96.85 W.
+
+The formal keyhole depth was extracted from the deepest point of the
+atmosphere-connected three-dimensional
+$\alpha_{\mathrm{metal}}=0.5$ interface component. The keyhole depth increased
+from 32 to 136 $\mu$m in 76.23 $\mu$s. Wang et al. reported approximately
+75 $\mu$s for their current evaporation model and approximately 70 $\mu$s
+for the corresponding x-ray experiment. An independent centerline extraction
+gave 76.02 $\mu$s.
+
+During the 32--136 $\mu$m growth interval, the mean deposited laser power was
+212.96 W, the mean evaporative heat loss was 7.76 W, and the mean radiative
+loss was 0.0737 W. At the recoil-comparison stage corresponding to 75 $\mu$s
+after the 32-$\mu$m-depth reference state, the full connected-surface
+pressure-load integral was approximately 3.52 mN, compared with the
+approximately 4 mN z-direction recoil force reported by Wang et al. The
+time-history peak of this integral was 4.70 mN. The area-weighted 99th
+percentile of the surface recoil pressure was approximately 6.29 atm; the
+single-face maximum was substantially larger and is retained as a
+mesh/interpolation-sensitivity diagnostic rather than used for calibration.
+
+These constitutive, optical, keyhole-growth and recoil-load checks support
+freezing the 304L near-vacuum implementation without empirical rescaling of
+the evaporation coefficients. Subsequent 0.6 Pa powder-bed simulations use
+this closure unchanged.
