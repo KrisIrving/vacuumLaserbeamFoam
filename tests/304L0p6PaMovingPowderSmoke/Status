@@ -1,0 +1,26 @@
+#!/bin/bash
+
+RUN_CASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/tests/run/304L0p6PaMovingPowderSmoke"
+LOG="$RUN_CASE/log.vacuumLaserbeamFoam"
+
+if [ ! -f "$LOG" ]; then
+    echo "Smoke has not produced $LOG yet."
+    exit 0
+fi
+
+echo "Latest time:"
+grep '^[[:space:]]*Time = ' "$LOG" | tail -1
+
+echo "Latest laser position:"
+grep 'Laser mean position = ' "$LOG" | tail -1
+
+echo "Latest diagnostics:"
+grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"; then
+    echo "Run status: FAILED"
+elif grep -q '^End$' "$LOG"; then
+    echo "Run status: COMPLETED"
+else
+    echo "Run status: RUNNING/INCOMPLETE"
+fi
