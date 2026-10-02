@@ -1112,3 +1112,42 @@ the validated Wang evaporation/Fe-Fresnel framework successfully couples to
 48 ranks.
 
 Gate T10: **PASS**.
+
+## 2026-10-02 — T11 reproducible generated-powder gate
+
+Primary 48-core OpenFOAM-v2512 workstation.
+
+Generator regression:
+- seed = 304006;
+- particle count = 56;
+- actual geometrical solid fraction = 0.22309664;
+- D10 = 25.1539 um;
+- D50 = 31.6136 um;
+- D90 = 39.8318 um;
+- highest particle top = 259.777 um;
+- minimum reported gap = -1.02e-14 m, i.e. roundoff-level contact;
+- repeated generation produced identical outputs.
+
+Result: **PASS**
+
+Generated-powder 48-rank CFD smoke:
+- 0.6 Pa;
+- 8 um / 64,000 cells;
+- 56 generated particles;
+- moving 260 W laser, engineering 2 m/s path;
+- target 20 us reached normally.
+
+Final diagnostics:
+- Tmax = 4694.86 K;
+- Umax = 61.6433 m/s;
+- pVapMax = interfacePVapMax = 1.50772 MPa;
+- QvMax = 7.26574e9 W/m2;
+- depositedPower = 160.592 W;
+- evaporationPower = 2.10163 W;
+- radiationPower = 0.0190432 W;
+- interfaceArea = 2.30576e-7 m2;
+- recoilForceY = -3.77138e-4 N.
+
+No Fatal/NaN/Inf occurred and the solver reached End.
+
+Gate T11: **PASS**.
