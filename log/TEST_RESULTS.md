@@ -878,3 +878,42 @@ Conclusion:
 the prior 25% growth-rate discrepancy was primarily caused by the inherited
 optical closure. The Fe fixed-complex-index Fresnel path closes the keyhole
 growth discrepancy without fitting the Wang evaporation constitutive model.
+
+## 2026-10-02 — First explicit keyhole-surface recoil post-process
+
+The first alpha.metal=0.5 keyhole-surface recoil extraction completed on the
+matched 4 um reference without rerunning CFD.
+
+Reported whole-history extrema:
+- latest (140 us) sampled surface pRecoil max = 19.44 atm;
+- latest signed-sum |Fy| = 1.184e-3 N;
+- peak sampled surface pRecoil max = 43.16 atm at 122 us;
+- peak signed-sum |Fy| = 1.831e-3 N at 122 us.
+
+For direct comparison with Wang Fig. 10, time must be shifted to the paper's
+near-vacuum depression-stage origin: our t32 is 25.7344 us and the paper's
+current-model comparison snapshot is 75 us after that origin. Interpolating
+the first recoil CSV near absolute time 100.734 us gives approximately:
+- sampled surface pRecoil max = 33.7 atm;
+- signed-sum |Fy| = 1.57e-3 N.
+
+Wang reports approximately 5 atm maximum keyhole-surface recoil pressure at
+that stage and approximately 4e-3 N z-direction recoil force.
+
+This first recoil post-process is **not yet used to reject the evaporation
+closure**, because two numerical-definition issues remain:
+1. the reported pressure maximum may be a single interpolated VTK point rather
+   than a face-centre surface value;
+2. the signed vector sum can under-predict axial force if isoSurface triangle
+   orientation flips locally.
+
+The recoil post-process is therefore refined to report:
+- face-centre maximum recoil pressure;
+- area-weighted p99 recoil pressure;
+- sampled keyhole-surface maximum temperature;
+- signed axial force and orientation-independent sum p*|dA_y|;
+- projected axial area;
+- VTK pVap data kind.
+
+This refinement requires only re-post-processing the existing CFD result.
+
