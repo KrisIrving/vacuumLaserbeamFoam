@@ -475,3 +475,40 @@ Added a frozen generator regression and a second 48-rank 0.6 Pa
 moving-laser smoke using a generated 56-particle bed.
 
 Status: implementation complete; local T11a/T11b validation pending.
+
+## 2026-10-02 — Wang validation line closed for paper documentation
+
+Project decision:
+the Wang-type near-vacuum evaporation-model development and the 304L
+0.0002-atm stationary-laser validation are complete and frozen as
+`Wang 304L matched validation v1`.
+
+Scope of this closure:
+- constitutive Wang/Knudsen transition implementation;
+- Cr/Ni/Fe alloy extension and 304L anchor;
+- Ma=0 boiling-endpoint handling;
+- VOF recoil/evaporation coupling;
+- Fe fixed-complex-index Fresnel alignment;
+- grey-body radiation;
+- 4 um / 48-rank / 140 us benchmark;
+- connected-3D keyhole-depth validation;
+- reconstructed keyhole-surface recoil/load diagnostics.
+
+Primary final metrics:
+- 32-to-136 um connected-3D growth interval: 76.23 us;
+- Wang current-model reference: about 75 us;
+- x-ray reference: about 70 us;
+- full surface pressure-load integral at the equivalent comparison stage:
+  about 3.52 mN versus Wang about 4 mN;
+- time-history peak full pressure-load integral: 4.70 mN.
+
+The single hottest reconstructed recoil-pressure face remains an OPEN
+mesh/interpolation sensitivity metric and is not a reason to retune the model.
+
+This closure validates the project-relevant 304L near-vacuum case. It is not a
+claim that every Ti-6Al-4V/common-atmosphere/scanning case in Wang et al. has
+been independently reproduced.
+
+A paper-oriented summary/figure package is maintained separately from the
+production physics code.
+
