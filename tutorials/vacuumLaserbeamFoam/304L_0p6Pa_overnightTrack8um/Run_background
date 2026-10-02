@@ -1,0 +1,15 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+nohup ./Allrun > log.Allrun 2>&1 &
+echo $! > run.pid
+
+echo "Started 0.6 Pa overnight moving-track simulation."
+echo "PID: $(cat run.pid)"
+echo "Mesh: 8 um, 160000 cells"
+echo "MPI ranks: 48"
+echo "Track: 600 um at 2 m/s"
+echo "Target: 300 us"
+echo "Use ./Status to inspect progress."
