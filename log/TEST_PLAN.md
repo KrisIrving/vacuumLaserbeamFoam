@@ -451,3 +451,22 @@ Script:
 If this gate passes, the next step is to replace the synthetic powder fixture
 with a reproducible packing/PSD definition and then extend the moving track,
 without changing the already validated evaporation coefficients.
+
+### T10a — 304L at 0.6 Pa constitutive gate
+
+Script:
+`tests/wang304L0p6PaReference/Allrun`
+
+Checks before the CFD smoke:
+- below-liquidus state remains non-evaporating;
+- at 0.6 Pa the chamber-pressure boiling point lies below the 1727 K
+  liquidus, so the liquidus is the activation floor;
+- evaporation/recoil is active at 1727 K on the liquid side;
+- the 3000 K sonic state preserves the validated saturation pressure,
+  mass flux and evaporation heat flux;
+- chamber-relative recoil changes only by the absolute background-pressure
+  subtraction.
+
+This is a serial constitutive test; the full CFD integration gate remains
+48-rank.
+
