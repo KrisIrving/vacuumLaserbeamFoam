@@ -1,0 +1,20 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedReference"
+
+if [ ! -d "$RUN_CASE" ]; then
+    echo "Matched reference case has not been created yet." >&2
+    exit 1
+fi
+
+mkdir -p "$RUN_CASE/scripts"
+cp "$SOURCE_CASE/system/keyholeRecoilDict" "$RUN_CASE/system/"
+cp "$SOURCE_CASE/scripts/extractKeyholeRecoil.py" "$RUN_CASE/scripts/"
+cp "$SOURCE_CASE/extractKeyholeRecoil.sh" "$RUN_CASE/"
+
+cd "$RUN_CASE"
+chmod +x extractKeyholeRecoil.sh
+./extractKeyholeRecoil.sh
