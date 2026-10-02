@@ -1,0 +1,31 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LMatchedReference"
+
+if [ ! -d "$RUN_CASE/postProcessing/keyholeRecoilSurface" ]; then
+    echo "Existing keyhole recoil surface samples not found." >&2
+    echo "Run $SCRIPT_DIR/RecoilPostprocess first." >&2
+    exit 1
+fi
+
+cp "$SOURCE_CASE/scripts/extractKeyholeRecoil.py" "$RUN_CASE/scripts/"
+
+cd "$RUN_CASE"
+
+python3 scripts/extractKeyholeRecoil.py \
+    --post-processing postProcessing/keyholeRecoilSurface \
+    --surface-y 200e-6 \
+    --surface-band 8e-6 \
+    --output keyholeRecoilSurface.csv
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: recoil re-analysis failed." >&2
+    exit 1
+fi
+
+echo
+echo "Updated keyholeRecoilSurface.csv"
+tail -5 keyholeRecoilSurface.csv
