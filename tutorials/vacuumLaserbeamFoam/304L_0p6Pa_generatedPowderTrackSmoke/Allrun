@@ -1,0 +1,15 @@
+#!/bin/bash
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+"$SCRIPT_DIR/PreparePowderBed"
+
+echo "Copying 'initial' to 0"
+cp -r initial 0
+
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+runParallel vacuumLaserbeamFoam
