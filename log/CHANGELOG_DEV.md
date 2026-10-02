@@ -441,3 +441,20 @@ Added:
 No evaporation-model coefficients were changed.
 
 Status: **implementation ready for local integration test; not yet PASS.**
+
+## 2026-10-02 — 0.6 Pa moving-powder integration gate passed
+
+The first target-stage integration gate is complete:
+- 0.6 Pa constitutive regression PASS;
+- explicit 3-D powder geometry PASS;
+- moving laser PASS;
+- 48-rank CFD PASS through 20 us;
+- recoil/evaporation/radiation diagnostics active.
+
+Next stage:
+replace the hand-authored 13-sphere fixture with a deterministic,
+configuration-driven powder-bed generator that records seed, particle-size
+statistics, packing fraction and generated setFields geometry. Then extend the
+domain/path into a reproducible moving single-track case.
+
+No validated Wang evaporation coefficients are changed.
