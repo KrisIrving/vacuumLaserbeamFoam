@@ -412,3 +412,42 @@ Smoke acceptance:
 Only after this gate passes should the 4 um / 140 us Wang reference be rerun
 from t=0. The formal comparison metric remains the connected 3-D
 alpha.metal=0.5 keyhole depth.
+
+## T10 — 0.6 Pa moving-laser powder integration smoke
+
+Branch:
+`feat/0p6Pa-powder-movingLaser`
+
+Case:
+`tutorials/vacuumLaserbeamFoam/304L_0p6Pa_movingPowderSmoke`
+
+Execution:
+- OpenFOAM v2512;
+- primary 48-core workstation;
+- 8 um mesh, 40^3 = 64,000 cells;
+- 48 MPI ranks;
+- end time 20 us.
+
+Engineering smoke fixture:
+- chamber pressure = 0.6 Pa;
+- 304L material/evaporation/optics inherited from frozen Wang v1;
+- deterministic 20 um-radius powder spheres;
+- laser moves +x at 2 m/s from x=-40 um to x=0 over the 20 us run.
+
+The sphere radius and scan speed are **not physical validation inputs**.
+
+Acceptance:
+1. blockMesh/setFields/decomposePar succeed;
+2. v2512 accepts all sphereToCell powder regions;
+3. solver reaches 20 us on 48 ranks without Fatal/NaN/Inf;
+4. first and last logged laser positions differ;
+5. deposited power remains finite/non-zero;
+6. interface recoil and evaporation heat loss become non-zero at 0.6 Pa;
+7. the solver reaches `End`.
+
+Script:
+`tests/304L0p6PaMovingPowderSmoke/Allrun`
+
+If this gate passes, the next step is to replace the synthetic powder fixture
+with a reproducible packing/PSD definition and then extend the moving track,
+without changing the already validated evaporation coefficients.
