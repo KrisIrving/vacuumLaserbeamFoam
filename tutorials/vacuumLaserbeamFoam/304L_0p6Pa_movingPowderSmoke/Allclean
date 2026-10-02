@@ -1,0 +1,4 @@
+#!/bin/bash
+
+rm -rf 0 [1-9]* processor* postProcessing VTKs
+rm -f log.* case.foam run.pid
