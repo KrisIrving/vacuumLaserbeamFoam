@@ -28,7 +28,7 @@ functions
             }
         }
 
-        fields (pVap);
+        fields (pVap T);
 
         surfaces
         {
