@@ -1,0 +1,19 @@
+{
+  "seed": 304006,
+  "footprint": {
+    "xMin": -0.00038,
+    "xMax": 0.00038,
+    "zMin": -0.00014,
+    "zMax": 0.00014
+  },
+  "substrateSurfaceY": 0.0002,
+  "layerThickness": 0.00006,
+  "targetSolidFraction": 0.22,
+  "clearance": 0.0,
+  "maxAttempts": 500000,
+  "diameterDistribution": {
+    "type": "uniform",
+    "min": 0.000024,
+    "max": 0.000044
+  }
+}
