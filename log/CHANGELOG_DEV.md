@@ -458,3 +458,20 @@ statistics, packing fraction and generated setFields geometry. Then extend the
 domain/path into a reproducible moving single-track case.
 
 No validated Wang evaporation coefficients are changed.
+
+## 2026-10-02 — Add reproducible powder-bed infrastructure
+
+Added `tools/powderBed/generatePowderBed.py` with:
+- seeded deterministic generation;
+- uniform or truncated-lognormal diameter sampling;
+- vertical contact settling;
+- overlap validation;
+- layer-thickness rejection;
+- exact particle CSV;
+- powder manifest with PSD/packing statistics;
+- generated OpenFOAM setFields geometry.
+
+Added a frozen generator regression and a second 48-rank 0.6 Pa
+moving-laser smoke using a generated 56-particle bed.
+
+Status: implementation complete; local T11a/T11b validation pending.
