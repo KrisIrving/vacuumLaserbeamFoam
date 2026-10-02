@@ -470,3 +470,52 @@ Checks before the CFD smoke:
 This is a serial constitutive test; the full CFD integration gate remains
 48-rank.
 
+## T11 — Reproducible generated-powder gate
+
+### T11a — generator regression
+
+Command:
+`./tests/powderBedGenerator/Allrun`
+
+Frozen engineering fixture:
+- seed 304006;
+- footprint 280 x 280 um;
+- layer-thickness limit 60 um;
+- uniform diameter support 24-44 um;
+- target geometrical solid fraction 0.22.
+
+Expected deterministic result:
+- 56 particles;
+- actual solid fraction about 0.2231;
+- D10 about 25.15 um;
+- D50 about 31.61 um;
+- D90 about 39.83 um;
+- no overlap;
+- highest particle top below 260 um.
+
+The test generates the bed twice and requires byte-identical setFields, CSV
+and manifest outputs.
+
+### T11b — generated-powder CFD smoke
+
+Command:
+`./tests/304L0p6PaGeneratedPowderSmoke/Allrun`
+
+Uses the generated 56-particle bed with the already passed:
+- 0.6 Pa Wang closure;
+- Fe Fresnel optics;
+- 260 W / 100 um laser;
+- 2 m/s engineering moving path;
+- 8 um mesh;
+- 48 MPI ranks;
+- 20 us end time.
+
+Acceptance:
+- powder generation/manifest checks pass;
+- setFields accepts all generated spheres;
+- solver reaches End on 48 ranks without Fatal/NaN/Inf;
+- moving laser is confirmed;
+- deposition, recoil and evaporation remain active.
+
+Passing T11 establishes the reusable powder-bed infrastructure. It does not
+validate the engineering PSD or 2 m/s scan speed.
