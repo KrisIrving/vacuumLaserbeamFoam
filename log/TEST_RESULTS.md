@@ -960,3 +960,39 @@ keyhole-surface area. The post-process is therefore extended to report both:
 
 No CFD rerun is required for this comparison.
 
+## 2026-10-02 — Full connected-surface recoil re-analysis
+
+Using the same sampled alpha=0.5 VTK surfaces, the recoil force was recomputed
+for:
+- the below-substrate cavity only;
+- the complete atmosphere-connected main interface;
+- the above-substrate/rim contribution.
+
+At 140 us:
+- cavity-only sum p|dAy| = 1.512e-3 N;
+- full connected-surface sum p|dAy| = 1.606e-3 N;
+- above-surface contribution = 9.34e-5 N.
+
+Whole-history peak:
+- cavity-only sum p|dAy| = 2.0265e-3 N at 122 us;
+- full connected-surface sum p|dAy| = 2.0965e-3 N at 122 us.
+
+Therefore excluding the overflow/rim was not the dominant explanation for the
+difference from Wang's reported near-vacuum z-direction recoil force of about
+4e-3 N. Local isoSurface orientation cancellation is also small because the
+signed full-surface force and sum of absolute projected contributions differ
+by only several percent near the comparison stage.
+
+A further definition check is required before changing the evaporation model.
+Wang Eq. (35) defines Fz as the keyhole-surface integral of Pz and states that
+the recoil pressure is along the z direction. This wording may correspond to
+integrating the recoil-pressure magnitude over dS rather than projecting a
+surface-normal traction by |nz|. The postprocessor is therefore extended to
+also report the scalar pressure-load integral integral(p dS) for the cavity,
+full connected interface, and above-surface portion.
+
+This diagnostic distinction is important because the matched case already
+reproduces the 32-to-136 um growth interval (76.23 us versus Wang ~75 us), so
+the constitutive recoil law must not be rescaled solely to match a potentially
+different force definition.
+
