@@ -1,0 +1,6 @@
+#!/bin/bash
+
+rm -rf 0 [1-9]* processor* postProcessing VTKs
+rm -f log.* case.foam run.pid
+rm -f system/setFieldsDict
+rm -f constant/powderParticles.csv constant/powderManifest.json
