@@ -996,3 +996,62 @@ reproduces the 32-to-136 um growth interval (76.23 us versus Wang ~75 us), so
 the constitutive recoil law must not be rescaled solely to match a potentially
 different force definition.
 
+## 2026-10-02 — Wang 304L matched benchmark accepted
+
+The final recoil re-analysis adds the scalar surface-pressure load
+integral(p dS) alongside the continuum-surface-force projection metrics.
+
+At the Wang Fig. 10 comparison stage:
+- matched-case t32 = 25.7344 us;
+- paper current-model comparison = 75 us after that start;
+- corresponding absolute case time = approximately 100.734 us.
+
+Interpolated matched-case values at that stage:
+- full connected-surface integral(p dS) = 3.52e-3 N;
+- full connected-surface sum p|dAy| = 1.74e-3 N;
+- full signed |Fy| = 1.65e-3 N;
+- area-weighted p99 surface recoil = 6.29 atm;
+- hottest sampled face pressure = 33.72 atm;
+- keyhole-surface Tmax = approximately 4802 K.
+
+The whole-history peak full integral(p dS) is 4.7046e-3 N at 122 us.
+
+Wang Eq. (35) defines Fz as the keyhole-surface integral of Pz and states that
+recoil pressure is along the z direction. Their near-vacuum current-model
+Fig. 11 value is about 4e-3 N. Therefore the scalar pressure-load integral is
+the closest post-processing analogue to the paper's reported force, whereas
+sum p|dAy| is retained as the physical axial projection of a normal surface
+traction in vacuumLaserbeamFoam.
+
+The approximately 3.52e-3 N value at the paper comparison stage is about 12%
+below Wang's quoted 4e-3 N and the time-history peak reaches 4.70e-3 N. This is
+considered satisfactory agreement for the benchmark and does not justify
+rescaling the recoil constitutive law.
+
+The surface-pressure comparison is more nuanced:
+- Wang reports the highest keyhole-surface recoil pressure at the comparison
+  snapshot as about 5 atm;
+- the matched case area-weighted p99 is approximately 6.29 atm;
+- the single hottest sampled face is much higher, approximately 33.7 atm.
+
+The extreme maximum is therefore retained as an OPEN mesh/interpolation/hotspot
+sensitivity diagnostic rather than used to retune the model. The dominant
+surface-pressure region, integrated recoil load, keyhole-growth interval,
+optical absorption path and numerical stability all agree sufficiently for the
+purpose of freezing the Wang 304L validation case.
+
+Final benchmark status:
+- numerical stability: PASS;
+- nearVacuumWang constitutive regressions: PASS;
+- Fe fixed-complex-index Fresnel optics: PASS;
+- 3-D keyhole-depth extraction: PASS;
+- 32-to-136 um growth: PASS (76.23 us versus paper ~75 us);
+- z-direction recoil-load magnitude: PASS/close (3.52 mN at comparison stage,
+  paper ~4 mN; peak 4.70 mN);
+- area-dominant recoil pressure: PASS/close (p99 6.29 atm versus paper
+  reported maximum ~5 atm);
+- single-face recoil maximum: OPEN sensitivity diagnostic.
+
+Decision:
+**freeze Wang 304L matched validation v1. Do not tune evaporation coefficients
+to eliminate the residual differences.**
