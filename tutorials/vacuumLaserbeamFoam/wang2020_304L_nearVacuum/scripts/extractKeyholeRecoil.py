@@ -255,6 +255,17 @@ def main():
         axial_abs_sum = 0.0
         projected_area_y = 0.0
         keyhole_area = 0.0
+
+        full_signed_force = [0.0, 0.0, 0.0]
+        full_axial_abs_sum = 0.0
+        full_projected_area_y = 0.0
+        full_surface_area = 0.0
+
+        above_signed_force = [0.0, 0.0, 0.0]
+        above_axial_abs_sum = 0.0
+        above_projected_area_y = 0.0
+        above_surface_area = 0.0
+
         face_pressures = []
         pressure_area = []
         face_temperatures = []
@@ -265,11 +276,6 @@ def main():
             for tri in triangle_fan(face):
                 xyz = [points[i] for i in tri]
                 centroid_y = sum(p[1] for p in xyz)/3.0
-
-                # Match the paper's keyhole surface: integrate only the cavity
-                # wall below the original substrate surface.
-                if centroid_y >= args.surface_y:
-                    continue
 
                 ab = tuple(xyz[1][j] - xyz[0][j] for j in range(3))
                 ac = tuple(xyz[2][j] - xyz[0][j] for j in range(3))
@@ -289,13 +295,27 @@ def main():
                     "T", fields, field_kind, fi, tri
                 )
 
+                # Whole atmosphere-connected main interface. Flat cold regions
+                # naturally contribute essentially zero recoil, while overflow
+                # and the keyhole rim remain included as in Wang's discussion.
+                for j in range(3):
+                    full_signed_force[j] += p*area_vec[j]
+                full_axial_abs_sum += p*abs(area_vec[1])
+                full_projected_area_y += abs(area_vec[1])
+                full_surface_area += area
+
+                if centroid_y >= args.surface_y:
+                    for j in range(3):
+                        above_signed_force[j] += p*area_vec[j]
+                    above_axial_abs_sum += p*abs(area_vec[1])
+                    above_projected_area_y += abs(area_vec[1])
+                    above_surface_area += area
+                    continue
+
+                # Below-substrate cavity-only metric retained for continuity.
                 for j in range(3):
                     signed_force[j] += p*area_vec[j]
 
-                # VTK isoSurface orientation may flip between triangles. Wang's
-                # axial recoil force uses the physical downward component on
-                # the keyhole surface, so retain an orientation-independent
-                # axial projection as a separate diagnostic.
                 axial_abs_sum += p*abs(area_vec[1])
                 projected_area_y += abs(area_vec[1])
 
@@ -331,6 +351,18 @@ def main():
                 axial_abs_sum,
                 projected_area_y,
                 keyhole_area,
+                full_signed_force[0],
+                full_signed_force[1],
+                full_signed_force[2],
+                abs(full_signed_force[1]),
+                full_axial_abs_sum,
+                full_projected_area_y,
+                full_surface_area,
+                above_signed_force[1],
+                abs(above_signed_force[1]),
+                above_axial_abs_sum,
+                above_projected_area_y,
+                above_surface_area,
                 ntri,
                 len(comps),
                 connected,
@@ -358,6 +390,18 @@ def main():
         "recoil_force_y_abs_sum_N",
         "projected_area_y_m2",
         "keyhole_surface_area_m2",
+        "full_recoil_force_x_signed_N",
+        "full_recoil_force_y_signed_N",
+        "full_recoil_force_z_signed_N",
+        "full_recoil_force_y_signed_abs_N",
+        "full_recoil_force_y_abs_sum_N",
+        "full_projected_area_y_m2",
+        "full_surface_area_m2",
+        "above_recoil_force_y_signed_N",
+        "above_recoil_force_y_signed_abs_N",
+        "above_recoil_force_y_abs_sum_N",
+        "above_projected_area_y_m2",
+        "above_surface_area_m2",
         "keyhole_triangles",
         "interface_components",
         "surface_connected",
@@ -386,11 +430,23 @@ def main():
                     f"{row[12]:.12g}",
                     f"{row[13]:.12g}",
                     f"{row[14]:.12g}",
-                    row[15],
-                    row[16],
-                    "yes" if row[17] else "fallback",
-                    row[18],
-                    row[19],
+                    f"{row[15]:.12g}",
+                    f"{row[16]:.12g}",
+                    f"{row[17]:.12g}",
+                    f"{row[18]:.12g}",
+                    f"{row[19]:.12g}",
+                    f"{row[20]:.12g}",
+                    f"{row[21]:.12g}",
+                    f"{row[22]:.12g}",
+                    f"{row[23]:.12g}",
+                    f"{row[24]:.12g}",
+                    f"{row[25]:.12g}",
+                    f"{row[26]:.12g}",
+                    row[27],
+                    row[28],
+                    "yes" if row[29] else "fallback",
+                    row[30],
+                    row[31],
                 ]
             )
 
@@ -398,6 +454,7 @@ def main():
     peak_face_p = max(rows, key=lambda r: r[3])
     peak_p99 = max(rows, key=lambda r: r[5])
     peak_abs_sum = max(rows, key=lambda r: r[12])
+    peak_full_abs_sum = max(rows, key=lambda r: r[19])
 
     print(
         "Latest keyhole-surface recoil: "
@@ -408,7 +465,7 @@ def main():
     )
     print(
         f"Latest keyhole-surface Tmax: {latest[7]:.6g} K; "
-        f"pVap VTK data={latest[18]}"
+        f"pVap VTK data={latest[30]}"
     )
     print(
         f"Peak face-centre pRecoil: {peak_face_p[4]:.6g} atm "
@@ -419,9 +476,20 @@ def main():
         f"at {peak_p99[0]*1e6:.6g} us"
     )
     print(
-        f"Peak orientation-independent axial recoil: "
+        f"Peak cavity-only orientation-independent axial recoil: "
         f"{peak_abs_sum[12]:.6g} N "
         f"at {peak_abs_sum[0]*1e6:.6g} us"
+    )
+    print(
+        f"Latest full connected-surface axial recoil: "
+        f"signed |Fy|={latest[18]:.6g} N, "
+        f"sum |dFy|={latest[19]:.6g} N; "
+        f"above-surface contribution={latest[24]:.6g} N"
+    )
+    print(
+        f"Peak full connected-surface orientation-independent axial recoil: "
+        f"{peak_full_abs_sum[19]:.6g} N "
+        f"at {peak_full_abs_sum[0]*1e6:.6g} us"
     )
 
 
