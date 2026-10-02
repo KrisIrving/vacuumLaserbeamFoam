@@ -10,7 +10,6 @@ from collections import defaultdict
 from pathlib import Path
 
 
-
 def infer_time(path: Path) -> float:
     for parent in path.parents:
         try:
@@ -33,7 +32,7 @@ def read_legacy_vtk(path: Path):
     npoints = int(tokens[ip + 1])
     p0 = ip + 3
     raw_points = [float(x) for x in tokens[p0:p0 + 3*npoints]]
-    coords = [
+    points = [
         (raw_points[i], raw_points[i + 1], raw_points[i + 2])
         for i in range(0, len(raw_points), 3)
     ]
@@ -56,8 +55,8 @@ def read_legacy_vtk(path: Path):
         if len(face) >= 3:
             faces.append(face)
 
-    data_kind = None
-    pvap = None
+    fields = {}
+    field_kind = {}
     pos = 0
     current_kind = None
     current_count = None
@@ -74,22 +73,19 @@ def read_legacy_vtk(path: Path):
         if tok == "FIELD" and pos + 2 < len(tokens):
             nfields = int(tokens[pos + 2])
             pos += 3
-
             for _ in range(nfields):
                 name = tokens[pos]
                 ncomp = int(tokens[pos + 1])
                 ntuple = int(tokens[pos + 2])
-                pos += 4  # skip datatype
+                pos += 4
                 count = ncomp*ntuple
                 vals = [float(x) for x in tokens[pos:pos+count]]
                 pos += count
-
-                if name == "pVap":
-                    pvap = [
-                        vals[i]
-                        for i in range(0, len(vals), ncomp)
-                    ]
-                    data_kind = current_kind
+                fields[name] = [
+                    vals[i:i+ncomp]
+                    for i in range(0, len(vals), ncomp)
+                ]
+                field_kind[name] = current_kind
             continue
 
         if tok == "SCALARS" and pos + 2 < len(tokens):
@@ -115,27 +111,27 @@ def read_legacy_vtk(path: Path):
             count = current_count*ncomp
             vals = [float(x) for x in tokens[pos:pos+count]]
             pos += count
-
-            if name == "pVap":
-                pvap = [
-                    vals[i]
-                    for i in range(0, len(vals), ncomp)
-                ]
-                data_kind = current_kind
+            fields[name] = [
+                vals[i:i+ncomp]
+                for i in range(0, len(vals), ncomp)
+            ]
+            field_kind[name] = current_kind
             continue
 
         pos += 1
 
-    if pvap is None or data_kind is None:
-        raise RuntimeError(f"pVap field not present in {path}")
+    for required in ("pVap", "T"):
+        if required not in fields:
+            raise RuntimeError(f"{required} field not present in {path}")
 
-    expected = npoints if data_kind == "POINT_DATA" else len(faces)
-    if len(pvap) != expected:
-        raise RuntimeError(
-            f"pVap count {len(pvap)} != expected {expected} in {path}"
-        )
+        expected = npoints if field_kind[required] == "POINT_DATA" else len(faces)
+        if len(fields[required]) != expected:
+            raise RuntimeError(
+                f"{required} count {len(fields[required])} "
+                f"!= expected {expected} in {path}"
+            )
 
-    return coords, faces, data_kind, pvap
+    return points, faces, fields, field_kind
 
 
 class UnionFind:
@@ -162,9 +158,7 @@ class UnionFind:
 
 def components(points, faces):
     uf = UnionFind(len(points))
-    used = set()
     for face in faces:
-        used.update(face)
         for b in face[1:]:
             uf.union(face[0], b)
 
@@ -205,6 +199,29 @@ def triangle_fan(face):
         yield (a, face[j], face[j+1])
 
 
+def scalar_on_triangle(name, fields, field_kind, fi, tri):
+    vals = fields[name]
+    if field_kind[name] == "POINT_DATA":
+        return sum(vals[i][0] for i in tri)/3.0
+    return vals[fi][0]
+
+
+def area_weighted_percentile(values_and_areas, fraction):
+    ordered = sorted(values_and_areas, key=lambda x: x[0])
+    total = sum(area for _, area in ordered)
+    if total <= 0:
+        return float("nan")
+
+    target = fraction*total
+    cumulative = 0.0
+    for value, area in ordered:
+        cumulative += area
+        if cumulative >= target:
+            return value
+
+    return ordered[-1][0]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--post-processing", type=Path, required=True)
@@ -225,28 +242,32 @@ def main():
     rows = []
 
     for path in files:
-        pts, faces, data_kind, pvap = read_legacy_vtk(path)
-        comps = components(pts, faces)
-        verts, face_ids, connected = choose_main_component(
-            pts,
+        points, faces, fields, field_kind = read_legacy_vtk(path)
+        comps = components(points, faces)
+        _, face_ids, connected = choose_main_component(
+            points,
             comps,
             args.surface_y,
             args.surface_band,
         )
 
-        force = [0.0, 0.0, 0.0]
+        signed_force = [0.0, 0.0, 0.0]
+        axial_abs_sum = 0.0
+        projected_area_y = 0.0
         keyhole_area = 0.0
-        pressures = []
+        face_pressures = []
+        pressure_area = []
+        face_temperatures = []
         ntri = 0
 
         for fi in face_ids:
             face = faces[fi]
             for tri in triangle_fan(face):
-                xyz = [pts[i] for i in tri]
+                xyz = [points[i] for i in tri]
                 centroid_y = sum(p[1] for p in xyz)/3.0
 
-                # Match the paper's "keyhole surface": only the cavity wall
-                # below the original substrate surface is integrated.
+                # Match the paper's keyhole surface: integrate only the cavity
+                # wall below the original substrate surface.
                 if centroid_y >= args.surface_y:
                     continue
 
@@ -261,38 +282,59 @@ def main():
                 if area <= 0:
                     continue
 
-                if data_kind == "POINT_DATA":
-                    p = sum(pvap[i] for i in tri)/3.0
-                    pressures.extend(float(pvap[i]) for i in tri)
-                else:
-                    p = float(pvap[fi])
-                    pressures.append(p)
+                p = scalar_on_triangle(
+                    "pVap", fields, field_kind, fi, tri
+                )
+                temperature = scalar_on_triangle(
+                    "T", fields, field_kind, fi, tri
+                )
 
                 for j in range(3):
-                    force[j] += p*area_vec[j]
+                    signed_force[j] += p*area_vec[j]
+
+                # VTK isoSurface orientation may flip between triangles. Wang's
+                # axial recoil force uses the physical downward component on
+                # the keyhole surface, so retain an orientation-independent
+                # axial projection as a separate diagnostic.
+                axial_abs_sum += p*abs(area_vec[1])
+                projected_area_y += abs(area_vec[1])
+
                 keyhole_area += area
+                face_pressures.append(p)
+                pressure_area.append((p, area))
+                face_temperatures.append(temperature)
                 ntri += 1
 
-        if not pressures or keyhole_area <= 0:
+        if not face_pressures or keyhole_area <= 0:
             continue
 
-        # Iso-surface face orientation can be globally opposite depending on
-        # alpha convention. The paper compares the absolute axial recoil force.
-        force_y_abs = abs(float(force[1]))
+        raw_pvap = [row[0] for row in fields["pVap"]]
+        raw_surface_max = max(raw_pvap)
+        face_pmax = max(face_pressures)
+        face_p99 = area_weighted_percentile(pressure_area, 0.99)
+        face_tmax = max(face_temperatures)
 
         rows.append(
             (
                 infer_time(path),
-                max(pressures),
-                max(pressures)/101325.0,
-                float(force[0]),
-                float(force[1]),
-                float(force[2]),
-                force_y_abs,
+                raw_surface_max,
+                raw_surface_max/101325.0,
+                face_pmax,
+                face_pmax/101325.0,
+                face_p99,
+                face_p99/101325.0,
+                face_tmax,
+                signed_force[0],
+                signed_force[1],
+                signed_force[2],
+                abs(signed_force[1]),
+                axial_abs_sum,
+                projected_area_y,
                 keyhole_area,
                 ntri,
                 len(comps),
                 connected,
+                field_kind["pVap"],
                 path,
             )
         )
@@ -300,24 +342,32 @@ def main():
     if not rows:
         raise SystemExit("No usable keyhole-surface recoil rows were produced")
 
+    header = [
+        "time_s",
+        "sampled_p_recoil_max_pa",
+        "sampled_p_recoil_max_atm",
+        "face_p_recoil_max_pa",
+        "face_p_recoil_max_atm",
+        "face_p_recoil_area_p99_pa",
+        "face_p_recoil_area_p99_atm",
+        "face_T_max_K",
+        "recoil_force_x_signed_N",
+        "recoil_force_y_signed_N",
+        "recoil_force_z_signed_N",
+        "recoil_force_y_signed_abs_N",
+        "recoil_force_y_abs_sum_N",
+        "projected_area_y_m2",
+        "keyhole_surface_area_m2",
+        "keyhole_triangles",
+        "interface_components",
+        "surface_connected",
+        "pVap_data_kind",
+        "source",
+    ]
+
     with args.output.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(
-            [
-                "time_s",
-                "surface_p_recoil_max_pa",
-                "surface_p_recoil_max_atm",
-                "recoil_force_x_N",
-                "recoil_force_y_N",
-                "recoil_force_z_N",
-                "recoil_force_y_abs_N",
-                "keyhole_surface_area_m2",
-                "keyhole_triangles",
-                "interface_components",
-                "surface_connected",
-                "source",
-            ]
-        )
+        w.writerow(header)
         for row in rows:
             w.writerow(
                 [
@@ -325,33 +375,53 @@ def main():
                     f"{row[1]:.12g}",
                     f"{row[2]:.8g}",
                     f"{row[3]:.12g}",
-                    f"{row[4]:.12g}",
+                    f"{row[4]:.8g}",
                     f"{row[5]:.12g}",
-                    f"{row[6]:.12g}",
+                    f"{row[6]:.8g}",
                     f"{row[7]:.12g}",
-                    row[8],
-                    row[9],
-                    "yes" if row[10] else "fallback",
-                    row[11],
+                    f"{row[8]:.12g}",
+                    f"{row[9]:.12g}",
+                    f"{row[10]:.12g}",
+                    f"{row[11]:.12g}",
+                    f"{row[12]:.12g}",
+                    f"{row[13]:.12g}",
+                    f"{row[14]:.12g}",
+                    row[15],
+                    row[16],
+                    "yes" if row[17] else "fallback",
+                    row[18],
+                    row[19],
                 ]
             )
 
     latest = rows[-1]
-    peak_p = max(rows, key=lambda r: r[1])
-    peak_f = max(rows, key=lambda r: r[6])
+    peak_face_p = max(rows, key=lambda r: r[3])
+    peak_p99 = max(rows, key=lambda r: r[5])
+    peak_abs_sum = max(rows, key=lambda r: r[12])
 
     print(
-        f"Latest keyhole-surface recoil: "
-        f"pMax={latest[1]/101325.0:.6g} atm, "
-        f"|Fy|={latest[6]:.6g} N"
+        "Latest keyhole-surface recoil: "
+        f"facePmax={latest[4]:.6g} atm, "
+        f"areaP99={latest[6]:.6g} atm, "
+        f"|sum Fy signed|={latest[11]:.6g} N, "
+        f"sum |dFy|={latest[12]:.6g} N"
     )
     print(
-        f"Peak surface pRecoil: {peak_p[1]/101325.0:.6g} atm "
-        f"at {peak_p[0]*1e6:.6g} us"
+        f"Latest keyhole-surface Tmax: {latest[7]:.6g} K; "
+        f"pVap VTK data={latest[18]}"
     )
     print(
-        f"Peak |keyhole recoil Fy|: {peak_f[6]:.6g} N "
-        f"at {peak_f[0]*1e6:.6g} us"
+        f"Peak face-centre pRecoil: {peak_face_p[4]:.6g} atm "
+        f"at {peak_face_p[0]*1e6:.6g} us"
+    )
+    print(
+        f"Peak area-weighted p99 recoil: {peak_p99[6]:.6g} atm "
+        f"at {peak_p99[0]*1e6:.6g} us"
+    )
+    print(
+        f"Peak orientation-independent axial recoil: "
+        f"{peak_abs_sum[12]:.6g} N "
+        f"at {peak_abs_sum[0]*1e6:.6g} us"
     )
 
 
