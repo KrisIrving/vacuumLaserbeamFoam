@@ -296,3 +296,40 @@ kept as a mesh/interpolation sensitivity metric for future refinement.
 
 The next development stage may build on this frozen benchmark toward the actual
 target configuration: lower chamber pressure, powder bed, and moving laser.
+
+## ADR-021 — Start target-stage development from frozen Wang v1
+
+**Status:** accepted
+
+The 20.265 Pa Wang-304L benchmark is frozen. Target-stage development proceeds
+on branch `feat/0p6Pa-powder-movingLaser` so benchmark physics and records
+remain unchanged.
+
+The first integration gate changes three ingredients together:
+- chamber pressure from 20.265 Pa to 0.6 Pa;
+- stationary to tabulated moving laser position;
+- flat free surface to an explicit 3-D alpha.metal powder geometry.
+
+The validated 304L material, nearVacuumWang closure, 260 W / 100 um laser,
+Fe fixed-complex-index Fresnel optics and epsilon=0.4 radiation model are kept
+unchanged to isolate the new-stage coupling.
+
+The first powder geometry and scan speed are engineering smoke fixtures, not
+experimental target inputs.
+
+## ADR-022 — Do not rely on the legacy PowderSim flag
+
+**Status:** accepted
+
+Source inspection of the current laserHeatSource shows that `PowderSim` is
+read into `powderSim_` but the member is not consumed later in
+`laserHeatSource.C`.
+
+Therefore the new vacuum powder workflow does not assign physical meaning to
+that legacy switch. Powder/laser interaction is represented by the actual
+`alpha.metal` geometry initialized in the CFD mesh and seen by the existing
+ray tracer.
+
+The first 3-D integration fixture uses OpenFOAM-v2512 `sphereToCell`
+initialization. A calibrated powder-size distribution/packing workflow will be
+introduced separately after this coupling gate passes.
