@@ -9,7 +9,6 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
 
 
 def infer_time(path: Path) -> float:
@@ -33,10 +32,11 @@ def read_legacy_vtk(path: Path):
     ip = locate("POINTS")
     npoints = int(tokens[ip + 1])
     p0 = ip + 3
-    coords = np.asarray(
-        [float(x) for x in tokens[p0:p0 + 3*npoints]],
-        dtype=float,
-    ).reshape((-1, 3))
+    raw_points = [float(x) for x in tokens[p0:p0 + 3*npoints]]
+    coords = [
+        (raw_points[i], raw_points[i + 1], raw_points[i + 2])
+        for i in range(0, len(raw_points), 3)
+    ]
 
     if "POLYGONS" in tokens:
         ic = locate("POLYGONS")
@@ -85,17 +85,17 @@ def read_legacy_vtk(path: Path):
         ntuple = int(tokens[pos + 2])
         pos += 4  # skip datatype
         count = ncomp*ntuple
-        vals = np.asarray(
-            [float(x) for x in tokens[pos:pos+count]],
-            dtype=float,
-        )
+        vals = [float(x) for x in tokens[pos:pos+count]]
         pos += count
-        fields[name] = vals.reshape((ntuple, ncomp))
+        fields[name] = [
+            vals[i:i+ncomp]
+            for i in range(0, len(vals), ncomp)
+        ]
 
     if "pVap" not in fields:
         raise RuntimeError(f"pVap field not present in {path}")
 
-    pvap = fields["pVap"][:, 0]
+    pvap = [row[0] for row in fields["pVap"]]
 
     expected = npoints if data_kind == "POINT_DATA" else len(faces)
     if len(pvap) != expected:
@@ -154,7 +154,7 @@ def choose_main_component(points, comps, surface_y, band):
     for verts, face_ids in comps:
         near = sum(
             1 for i in verts
-            if abs(points[i, 1] - surface_y) <= band
+            if abs(points[i][1] - surface_y) <= band
         )
         if near:
             candidates.append((near, len(face_ids), verts, face_ids))
@@ -202,37 +202,42 @@ def main():
             args.surface_band,
         )
 
-        force = np.zeros(3)
+        force = [0.0, 0.0, 0.0]
         keyhole_area = 0.0
         pressures = []
         ntri = 0
 
-        main_set = set(face_ids)
-
         for fi in face_ids:
             face = faces[fi]
             for tri in triangle_fan(face):
-                xyz = pts[list(tri)]
-                centroid = xyz.mean(axis=0)
+                xyz = [pts[i] for i in tri]
+                centroid_y = sum(p[1] for p in xyz)/3.0
 
                 # Match the paper's "keyhole surface": only the cavity wall
                 # below the original substrate surface is integrated.
-                if centroid[1] >= args.surface_y:
+                if centroid_y >= args.surface_y:
                     continue
 
-                area_vec = 0.5*np.cross(xyz[1] - xyz[0], xyz[2] - xyz[0])
-                area = float(np.linalg.norm(area_vec))
+                ab = tuple(xyz[1][j] - xyz[0][j] for j in range(3))
+                ac = tuple(xyz[2][j] - xyz[0][j] for j in range(3))
+                area_vec = (
+                    0.5*(ab[1]*ac[2] - ab[2]*ac[1]),
+                    0.5*(ab[2]*ac[0] - ab[0]*ac[2]),
+                    0.5*(ab[0]*ac[1] - ab[1]*ac[0]),
+                )
+                area = math.sqrt(sum(v*v for v in area_vec))
                 if area <= 0:
                     continue
 
                 if data_kind == "POINT_DATA":
-                    p = float(np.mean(pvap[list(tri)]))
+                    p = sum(pvap[i] for i in tri)/3.0
                     pressures.extend(float(pvap[i]) for i in tri)
                 else:
                     p = float(pvap[fi])
                     pressures.append(p)
 
-                force += p*area_vec
+                for j in range(3):
+                    force[j] += p*area_vec[j]
                 keyhole_area += area
                 ntri += 1
 
