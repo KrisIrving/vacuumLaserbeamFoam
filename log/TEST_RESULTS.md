@@ -820,3 +820,61 @@ the mechanism that closes the faster-keyhole discrepancy.
 
 Gate T9c is accepted. Proceed to an independent 4 um / 140 us matched-physics
 reference from t=0 and compare the same connected-3D 32-to-136 um metric.
+
+## 2026-10-02 — 4 um Wang matched-physics reference completed
+
+Result: **keyhole-growth validation aligned with Wang current model**
+
+The independent 4 um / 48-rank / 140 us matched-physics reference completed
+normally with no reported Fatal/NaN/Inf.
+
+Formal connected-3D alpha.metal=0.5 metric:
+- t32 = 25.7344 us;
+- t136 = 101.966 us;
+- 32-to-136 um growth interval = 76.2318 us;
+- depth at 140 us = 183.433 um.
+
+Centreline cross-check:
+- t32 = 26.1044 us;
+- t136 = 102.121 us;
+- interval = 76.0169 us;
+- depth at 140 us = 183.545 um.
+
+The two independent depth metrics differ by only 0.2149 us in growth time.
+Across the time series the median 3-D-minus-centreline depth difference is
+0.775 um. After t32 the selected 3-D main surface remains surface-connected,
+the bottom-support count stays 11-24 vertices, and the maximum bottom lateral
+offset is 11.31 um.
+
+Compared with the first Drude-optics baseline:
+- baseline 3-D interval = 93.8816 us;
+- matched 3-D interval = 76.2318 us;
+- reduction = 17.6498 us = 18.8%.
+
+Wang et al. report about 75 us for the current evaporation model and 70 us for
+the x-ray experiment over the same nominal 32-to-136 um interval. The matched
+case is therefore about 1.64% slower than Wang's simulation and 8.90% slower
+than the experiment.
+
+During the formal t32-to-t136 window:
+- mean deposited power = 212.96 W (81.9% of 260 W);
+- deposited-power range = 183.42-237.77 W;
+- mean evaporation loss = 7.76 W;
+- mean radiation loss = 0.0737 W;
+- maximum Tmax = 5866.9 K;
+- maximum Umax = 73.77 m/s.
+
+At the nearest saved state to t136 (102 us):
+- interfacePVapMax (cell-based diagnostic) = 4.294 MPa;
+- recoilForceY (whole-interface volume-CSF diagnostic) = -1.326e-3 N.
+
+These recoil quantities are **not yet accepted as direct Fig. 10/11
+comparisons**. The paper reports recoil on the reconstructed keyhole surface,
+whereas the current maximum is a mixed-cell value and the current force
+integrates the complete free surface. A dedicated alpha=0.5 keyhole-surface
+pressure/force post-process is required before changing evaporation physics.
+
+Conclusion:
+the prior 25% growth-rate discrepancy was primarily caused by the inherited
+optical closure. The Fe fixed-complex-index Fresnel path closes the keyhole
+growth discrepancy without fitting the Wang evaporation constitutive model.
