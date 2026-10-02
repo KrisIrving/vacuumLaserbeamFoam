@@ -1,0 +1,88 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/wang304L0p6PaReference"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+sed -i '0,/Tliquidus[[:space:]]*1723;/s//Tliquidus           1727;/' \
+    "$RUN_CASE/constant/transportProperties"
+
+(
+    cd "$RUN_CASE"
+    blockMesh > log.blockMesh 2>&1
+)
+
+run_model()
+{
+    local temperature="$1"
+    local label="$2"
+
+    sed -i -E \
+        "s/^testTemperature[[:space:]]+[^;]+;/testTemperature $temperature;/" \
+        "$RUN_CASE/constant/vacuumProperties"
+
+    (
+        cd "$RUN_CASE"
+        vacuumEvaporationModelTest > "log.model.$label" 2>&1
+    )
+
+    grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.model.$label" | tail -1
+}
+
+# Below liquidus: no liquid evaporation even though the saturation-pressure
+# helper remains defined.
+line="$(run_model 1697 solidus)"
+read -r tag T pSat mDot recoil qEvap <<< "$line"
+awk -v pSat="$pSat" -v mDot="$mDot" -v recoil="$recoil" -v q="$qEvap" '
+BEGIN {
+    if (!(pSat > 0)) exit 11;
+    if (mDot != 0) exit 12;
+    if (recoil != 0) exit 13;
+    if (q != 0) exit 14;
+}'
+
+# At 0.6 Pa the alloy boiling point lies below the 1727 K liquidus, so the
+# liquidus becomes the activation floor. Verify the state activates immediately
+# on the liquid side.
+line="$(run_model 1727 liquidusActivation)"
+read -r tag T pSat mDot recoil qEvap <<< "$line"
+awk -v pSat="$pSat" -v mDot="$mDot" -v recoil="$recoil" -v q="$qEvap" '
+BEGIN {
+    if (!(pSat > 0.6)) exit 21;
+    if (!(mDot > 0)) exit 22;
+    if (!(recoil > 0)) exit 23;
+    if (!(q > 0)) exit 24;
+}'
+
+# Strong-evaporation sonic state: mass/heat flux is chamber-pressure
+# independent; net recoil differs from the 20.265 Pa regression only by the
+# background-pressure subtraction.
+line="$(run_model 3000 sonic)"
+read -r tag T pSat mDot recoil qEvap <<< "$line"
+awk \
+    -v pSat="$pSat" -v mDot="$mDot" -v recoil="$recoil" -v q="$qEvap" '
+BEGIN {
+    tol=8e-8;
+    ePsat=19211.032674783848;
+    eMdot=9.252648301740672;
+    eRecoil=10562.129063561532;
+    eQ=58846843.19907068;
+
+    if (sqrt((pSat-ePsat)^2) > tol*ePsat) exit 31;
+    if (sqrt((mDot-eMdot)^2) > tol*eMdot) exit 32;
+    if (sqrt((recoil-eRecoil)^2) > tol*eRecoil) exit 33;
+    if (sqrt((q-eQ)^2) > tol*eQ) exit 34;
+}'
+
+grep -q "component mode       = Wang Eqs. (18)-(20)" \
+    "$RUN_CASE/log.model.liquidusActivation"
+grep -q "active regime        = common-to-sonic (Wang step 4)" \
+    "$RUN_CASE/log.model.liquidusActivation"
+
+echo "PASS: Wang 304L 0.6 Pa constitutive pressure/activation regression"
