@@ -1,13 +1,13 @@
 #!/bin/bash
 
 echo "Reconstructing pVap time directories"
-reconstructPar -fields '(pVap)' -time '2e-6:' > log.reconstructPar.pVap 2>&1
+reconstructPar -fields '(pVap T)' -time '2e-6:' > log.reconstructPar.pVap 2>&1
 
 echo "Sampling pVap on the complete alpha.metal=0.5 interface"
 rm -rf postProcessing/keyholeRecoilSurface
 postProcess \
     -dict system/keyholeRecoilDict \
-    -fields '(alpha.metal pVap)' \
+    -fields '(alpha.metal pVap T)' \
     -time '2e-6:' \
     > log.postProcess.keyholeRecoil 2>&1
 
