@@ -255,16 +255,19 @@ def main():
         axial_abs_sum = 0.0
         projected_area_y = 0.0
         keyhole_area = 0.0
+        scalar_pressure_load = 0.0
 
         full_signed_force = [0.0, 0.0, 0.0]
         full_axial_abs_sum = 0.0
         full_projected_area_y = 0.0
         full_surface_area = 0.0
+        full_scalar_pressure_load = 0.0
 
         above_signed_force = [0.0, 0.0, 0.0]
         above_axial_abs_sum = 0.0
         above_projected_area_y = 0.0
         above_surface_area = 0.0
+        above_scalar_pressure_load = 0.0
 
         face_pressures = []
         pressure_area = []
@@ -303,6 +306,7 @@ def main():
                 full_axial_abs_sum += p*abs(area_vec[1])
                 full_projected_area_y += abs(area_vec[1])
                 full_surface_area += area
+                full_scalar_pressure_load += p*area
 
                 if centroid_y >= args.surface_y:
                     for j in range(3):
@@ -310,6 +314,7 @@ def main():
                     above_axial_abs_sum += p*abs(area_vec[1])
                     above_projected_area_y += abs(area_vec[1])
                     above_surface_area += area
+                    above_scalar_pressure_load += p*area
                     continue
 
                 # Below-substrate cavity-only metric retained for continuity.
@@ -320,6 +325,7 @@ def main():
                 projected_area_y += abs(area_vec[1])
 
                 keyhole_area += area
+                scalar_pressure_load += p*area
                 face_pressures.append(p)
                 pressure_area.append((p, area))
                 face_temperatures.append(temperature)
@@ -351,6 +357,7 @@ def main():
                 axial_abs_sum,
                 projected_area_y,
                 keyhole_area,
+                scalar_pressure_load,
                 full_signed_force[0],
                 full_signed_force[1],
                 full_signed_force[2],
@@ -358,11 +365,13 @@ def main():
                 full_axial_abs_sum,
                 full_projected_area_y,
                 full_surface_area,
+                full_scalar_pressure_load,
                 above_signed_force[1],
                 abs(above_signed_force[1]),
                 above_axial_abs_sum,
                 above_projected_area_y,
                 above_surface_area,
+                above_scalar_pressure_load,
                 ntri,
                 len(comps),
                 connected,
@@ -390,6 +399,7 @@ def main():
         "recoil_force_y_abs_sum_N",
         "projected_area_y_m2",
         "keyhole_surface_area_m2",
+        "cavity_scalar_pressure_load_N",
         "full_recoil_force_x_signed_N",
         "full_recoil_force_y_signed_N",
         "full_recoil_force_z_signed_N",
@@ -397,11 +407,13 @@ def main():
         "full_recoil_force_y_abs_sum_N",
         "full_projected_area_y_m2",
         "full_surface_area_m2",
+        "full_scalar_pressure_load_N",
         "above_recoil_force_y_signed_N",
         "above_recoil_force_y_signed_abs_N",
         "above_recoil_force_y_abs_sum_N",
         "above_projected_area_y_m2",
         "above_surface_area_m2",
+        "above_scalar_pressure_load_N",
         "keyhole_triangles",
         "interface_components",
         "surface_connected",
@@ -442,11 +454,14 @@ def main():
                     f"{row[24]:.12g}",
                     f"{row[25]:.12g}",
                     f"{row[26]:.12g}",
-                    row[27],
-                    row[28],
-                    "yes" if row[29] else "fallback",
+                    f"{row[27]:.12g}",
+                    f"{row[28]:.12g}",
+                    f"{row[29]:.12g}",
                     row[30],
                     row[31],
+                    "yes" if row[32] else "fallback",
+                    row[33],
+                    row[34],
                 ]
             )
 
@@ -454,7 +469,8 @@ def main():
     peak_face_p = max(rows, key=lambda r: r[3])
     peak_p99 = max(rows, key=lambda r: r[5])
     peak_abs_sum = max(rows, key=lambda r: r[12])
-    peak_full_abs_sum = max(rows, key=lambda r: r[19])
+    peak_full_abs_sum = max(rows, key=lambda r: r[20])
+    peak_full_scalar_load = max(rows, key=lambda r: r[23])
 
     print(
         "Latest keyhole-surface recoil: "
@@ -465,7 +481,7 @@ def main():
     )
     print(
         f"Latest keyhole-surface Tmax: {latest[7]:.6g} K; "
-        f"pVap VTK data={latest[30]}"
+        f"pVap VTK data={latest[33]}"
     )
     print(
         f"Peak face-centre pRecoil: {peak_face_p[4]:.6g} atm "
@@ -482,14 +498,20 @@ def main():
     )
     print(
         f"Latest full connected-surface axial recoil: "
-        f"signed |Fy|={latest[18]:.6g} N, "
-        f"sum |dFy|={latest[19]:.6g} N; "
-        f"above-surface contribution={latest[24]:.6g} N"
+        f"signed |Fy|={latest[19]:.6g} N, "
+        f"sum |dFy|={latest[20]:.6g} N; "
+        f"scalar integral p*dS={latest[23]:.6g} N; "
+        f"above-surface contribution={latest[26]:.6g} N"
     )
     print(
         f"Peak full connected-surface orientation-independent axial recoil: "
-        f"{peak_full_abs_sum[19]:.6g} N "
+        f"{peak_full_abs_sum[20]:.6g} N "
         f"at {peak_full_abs_sum[0]*1e6:.6g} us"
+    )
+    print(
+        f"Peak full connected-surface scalar pressure load integral p*dS: "
+        f"{peak_full_scalar_load[23]:.6g} N "
+        f"at {peak_full_scalar_load[0]*1e6:.6g} us"
     )
 
 
