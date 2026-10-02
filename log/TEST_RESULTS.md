@@ -1055,3 +1055,60 @@ Final benchmark status:
 Decision:
 **freeze Wang 304L matched validation v1. Do not tune evaporation coefficients
 to eliminate the residual differences.**
+
+## 2026-10-02 — 0.6 Pa moving-laser powder integration smoke
+
+Primary 48-core OpenFOAM-v2512 workstation.
+
+### 304L / 0.6 Pa constitutive gate
+
+Command:
+`./tests/wang304L0p6PaReference/Allrun`
+
+Result: **PASS**
+
+The pressure-aware Wang alloy closure remains well posed at 0.6 Pa. The
+liquidus becomes the practical evaporation-activation floor because the
+chamber-pressure boiling point is below 1727 K.
+
+### 3-D moving-laser powder smoke
+
+Command:
+`./tests/304L0p6PaMovingPowderSmoke/Allrun`
+
+Result: **PASS**
+
+Configuration:
+- chamber pressure 0.6 Pa;
+- 8 um mesh, 40^3 = 64,000 cells;
+- 48 MPI ranks;
+- deterministic 13-sphere powder fixture;
+- 260 W / 100 um Fe-Fresnel laser;
+- 2 m/s +x moving source;
+- 20 us end time.
+
+Laser motion was confirmed directly from the solver log:
+- first logged position x = -39.9976 um;
+- final logged position x approximately 0 um.
+
+Final 20-us diagnostics:
+- Tmax = 5025.29 K;
+- Umax = 24.8115 m/s;
+- pVapMax = interfacePVapMax = 2.65762 MPa;
+- QvMax = 1.26411e10 W/m2;
+- depositedPower = 197.950 W;
+- evaporationPower = 3.73567 W;
+- radiationPower = 0.029432 W;
+- interfaceArea = 1.35463e-7 m2;
+- recoilForceX = 2.57896e-4 N;
+- recoilForceY = -5.03496e-4 N;
+- recoilForceZ = 8.18768e-7 N.
+
+No Fatal/NaN/Inf occurred and the solver reached End.
+
+Conclusion:
+the validated Wang evaporation/Fe-Fresnel framework successfully couples to
+0.6 Pa chamber pressure, explicit 3-D powder geometry and a moving laser on
+48 ranks.
+
+Gate T10: **PASS**.
