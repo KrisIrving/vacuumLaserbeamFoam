@@ -1,0 +1,46 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "system";
+    object keyholeRecoilDict;
+}
+
+functions
+{
+    keyholeRecoilSurface
+    {
+        type surfaces;
+        libs (sampling);
+
+        surfaceFormat vtk;
+        sampleScheme cell;
+        interpolationScheme cellPoint;
+
+        formatOptions
+        {
+            vtk
+            {
+                legacy true;
+                format ascii;
+                precision 12;
+            }
+        }
+
+        fields (pVap);
+
+        surfaces
+        {
+            metalGasInterface
+            {
+                type isoSurface;
+                isoField alpha.metal;
+                isoValue 0.5;
+                isoMethod topo;
+                triangulate true;
+                interpolate true;
+            }
+        }
+    }
+}
