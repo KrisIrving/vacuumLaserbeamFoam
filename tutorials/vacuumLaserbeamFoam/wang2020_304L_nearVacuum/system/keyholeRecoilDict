@@ -15,7 +15,7 @@ functions
         libs (sampling);
 
         surfaceFormat vtk;
-        sampleScheme cell;
+        sampleScheme cellPoint;
         interpolationScheme cellPoint;
 
         formatOptions
@@ -39,7 +39,6 @@ functions
                 isoValue 0.5;
                 isoMethod topo;
                 triangulate true;
-                interpolate true;
             }
         }
     }
