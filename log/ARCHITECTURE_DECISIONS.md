@@ -380,3 +380,63 @@ histories were pointwise identical, making 120 um the smallest converged choice.
 The moving-keyhole metric is distinct from the stationary Wang validation
 metric and must not be replaced by a global deepest-interface search, because
 a moving track can retain older depressions behind the active beam.
+
+## ADR-025 — Add a pressure-trend transfer check without reopening Wang calibration
+
+**Status:** accepted
+
+The Wang 304L matched benchmark remains frozen. Before porting the framework to
+M247, the project will additionally verify the implemented pressure dependence
+across 0.6 Pa, 20.265 Pa and 1 atm.
+
+This check is motivated by Wang et al.'s model behaviour:
+lower ambient pressure reduces the boiling/transition temperatures and makes
+strong evaporation accessible at lower surface temperature, while the influence
+of ambient pressure becomes relatively small once recoil pressure greatly
+exceeds the ambient level.
+
+The pressure-trend check is a model-transfer/robustness verification, not an
+opportunity to retune evaporation coefficients.
+
+## ADR-026 — M247 is a material port, not a new evaporation-model architecture
+
+**Status:** accepted
+
+The existing multi-component nearVacuumWang API is considered structurally
+sufficient for an M247 first-pass powder-bed model.
+
+M247 requires new material-specific inputs:
+- exact alloy chemistry;
+- component vapor-pressure data;
+- thermophysical properties;
+- optical constants/reflectivity;
+- powder PSD/layer/packing data.
+
+304L Fe optical constants and Cr/Ni/Fe evaporation parameters must not be reused
+as M247 constants.
+
+Preferential composition depletion remains a conditional extension. The first
+M247 morphology/keyhole study may use fixed bulk composition, but composition
+loss cannot be claimed without a composition-transport model.
+
+## ADR-027 — Publication graphics use one restrained Acta-like house style
+
+**Status:** accepted
+
+Development plots and manuscript plots are now separated.
+
+Manuscript figures use:
+- final-width sizing at 90/140/190 mm;
+- Arial/Helvetica-like typography;
+- approximately 7-8 pt final labels;
+- inward ticks, thin axes and no decorative grid;
+- restrained graphite/navy/brick/teal/ochre/purple palette;
+- vector output for line plots;
+- consistent panel labels and caption terminology;
+- perceptually uniform colormaps rather than rainbow/jet.
+
+The exact style is maintained in:
+`paper/styles/acta_materialia.mplstyle`.
+
+Earlier colorful summary bar charts are retained as development artifacts only
+and are not the target manuscript style.
