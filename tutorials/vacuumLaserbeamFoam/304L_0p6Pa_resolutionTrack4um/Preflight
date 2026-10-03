@@ -1,0 +1,41 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+./PreparePowderBed
+
+python3 - constant/powderManifest.json <<'PY'
+import json, pathlib, sys
+m=json.loads(pathlib.Path(sys.argv[1]).read_text())
+if m['particleCount'] != 56:
+    raise SystemExit(f"Unexpected particle count {m['particleCount']} != 56")
+if not (0.22 <= m['actualSolidFraction'] < 0.23):
+    raise SystemExit(f"Unexpected solid fraction {m['actualSolidFraction']}")
+if m['minimumInterparticleGap_m'] < -1e-12:
+    raise SystemExit("Powder overlap exceeds tolerance")
+print(
+    f"Powder PASS: particles={m['particleCount']} "
+    f"solidFraction={m['actualSolidFraction']:.8g} "
+    f"D10={1e6*m['diameterD10_m']:.4g}um "
+    f"D50={1e6*m['diameterD50_m']:.4g}um "
+    f"D90={1e6*m['diameterD90_m']:.4g}um"
+)
+PY
+
+rm -rf 0 processor* constant/polyMesh
+rm -f log.blockMesh log.setFields log.decomposePar
+
+cp -r initial 0
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+runApplication blockMesh
+runApplication setFields
+runApplication decomposePar
+
+if [ ! -d processor0 ]; then
+    echo "Preflight failed: processor0 not created" >&2
+    exit 1
+fi
+
+echo "PASS: 4-um / 512k-cell / 56-particle / 48-rank resolution preflight"
