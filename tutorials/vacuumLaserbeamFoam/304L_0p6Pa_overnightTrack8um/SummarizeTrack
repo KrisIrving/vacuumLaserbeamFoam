@@ -3,6 +3,13 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+DEPTH=movingKeyholeDepth.csv
+if [ -f movingKeyholeDepth.trailing120um.csv ]; then
+    DEPTH=movingKeyholeDepth.trailing120um.csv
+fi
+
+echo "Using depth metric: $DEPTH"
+
 python3 scripts/summarizeMovingTrack.py \
-    --depth movingKeyholeDepth.csv \
+    --depth "$DEPTH" \
     --log log.vacuumLaserbeamFoam
