@@ -640,3 +640,61 @@ post-50-us mean and maximum absolute differences in laser-following keyhole
 depth.
 
 This is a numerical-resolution probe, not a physical calibration.
+
+## T14 — Pressure-trend verification of the frozen Wang closure
+
+Purpose:
+verify that the implemented 304L Wang closure reproduces the pressure trends
+described by Wang et al. before transferring the framework to M247.
+
+### T14a — constitutive pressure sweep
+
+Script:
+`./tests/wang304LPressureTrend/Allrun`
+
+Pressures:
+- 0.6 Pa;
+- 20.265 Pa;
+- 101325 Pa.
+
+Temperatures:
+1727-5500 K sampling the inactive, transition and strong-evaporation regimes.
+
+Required checks:
+- saturation pressure at fixed T is independent of chamber pressure;
+- boiling temperature increases with chamber pressure;
+- activation temperature increases with chamber pressure;
+- Tk0 and Tk1 increase with chamber pressure;
+- lower chamber pressure activates evaporation at lower surface temperature;
+- in the strong-evaporation/high-recoil regime, pressure sensitivity becomes
+  smaller relative to the absolute recoil level.
+
+Outputs:
+- `tests/run/wang304LPressureTrend/pressureTrend.csv`;
+- `tests/run/wang304LPressureTrend/thresholds.txt`.
+
+This is a trend/transfer verification. It does not reopen the already frozen
+Wang 304L benchmark.
+
+### T14b — same-material bare-plate CFD pressure sweep
+
+After the current 8/4 um resolution pair completes, run the same 304L
+stationary/bare-plate geometry and laser settings at:
+- 0.6 Pa;
+- 20.265 Pa;
+- 1 atm.
+
+Compare:
+- evaporation/keyhole activation time;
+- connected-3D depression/keyhole depth;
+- deposited power;
+- evaporation heat loss;
+- recoil load;
+- interface area;
+- Tmax/Umax.
+
+Interpretation boundary:
+the current outer VOF phase remains a numerical incompressible pseudo-gas.
+Therefore this sweep validates the evaporation/recoil pressure trend in the
+current solver architecture; it is not a complete atmospheric gas-flow
+validation at 1 atm.
