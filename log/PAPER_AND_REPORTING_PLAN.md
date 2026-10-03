@@ -238,3 +238,26 @@ recorded in the metadata.
 8. Start the 0.6 Pa experiment-input provenance table before production runs.
 
 Documentation is considered part of completion, not optional cleanup.
+
+## Figure-style revision
+
+The earlier compact colored bar charts are now classified as development
+figures only.
+
+The manuscript target is an Acta-like materials-science figure system:
+- muted navy/brick/teal/graphite palette;
+- black/gray experimental/reference symbols where appropriate;
+- 90/140/190 mm final widths;
+- Arial/Helvetica-like typography;
+- approximately 7-8 pt final labels;
+- no decorative grid;
+- thin axes and restrained line weights;
+- vector PDF/SVG output for plots;
+- cividis/viridis/inferno/magma rather than jet for scalar fields.
+
+Style files:
+- `paper/FIGURE_STYLE_GUIDE.md`;
+- `paper/styles/acta_materialia.mplstyle`.
+
+All Wang validation plots will be regenerated in this style before they are
+considered manuscript-ready.
