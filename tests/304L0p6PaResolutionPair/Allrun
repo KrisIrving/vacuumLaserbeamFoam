@@ -1,0 +1,29 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CASE8="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack8um"
+CASE4="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack4um"
+
+run_case()
+{
+    case_dir="$1"
+    label="$2"
+    echo
+    echo "===== ${label} preflight ====="
+    cd "$case_dir"
+    ./Allclean
+    ./Preflight
+    echo "===== ${label} CFD ====="
+    ./Allrun
+    if ! grep -q '^End$' log.vacuumLaserbeamFoam; then
+        echo "${label} did not reach End" >&2
+        exit 1
+    fi
+}
+
+run_case "$CASE8" "8 um companion"
+run_case "$CASE4" "4 um probe"
+
+echo
+echo "PASS: 8 um + 4 um moving-powder resolution pair completed"
