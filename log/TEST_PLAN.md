@@ -562,7 +562,7 @@ Post-process:
 `./PostprocessTrack`
 
 The moving-keyhole metric follows the beam in a local window extending
-100 um behind, 60 um ahead and +/-75 um transversely. It reports depth below
+120 um behind, 60 um ahead and +/-75 um transversely. It reports depth below
 the original y=200 um substrate surface and bottom offset relative to the
 instantaneous laser position.
 
