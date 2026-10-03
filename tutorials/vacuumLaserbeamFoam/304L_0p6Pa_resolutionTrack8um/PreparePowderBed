@@ -1,0 +1,10 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+python3 "$REPO_ROOT/tools/powderBed/generatePowderBed.py" \
+    --config "$SCRIPT_DIR/powderBedConfig.json" \
+    --set-fields "$SCRIPT_DIR/system/setFieldsDict" \
+    --particles "$SCRIPT_DIR/constant/powderParticles.csv" \
+    --manifest "$SCRIPT_DIR/constant/powderManifest.json"

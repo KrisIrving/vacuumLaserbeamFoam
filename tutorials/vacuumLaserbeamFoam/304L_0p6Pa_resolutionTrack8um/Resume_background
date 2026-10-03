@@ -1,0 +1,13 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ ! -d processor0 ]; then
+    echo "No decomposed case found; use ./Preflight first." >&2
+    exit 1
+fi
+
+nohup ./Allrun >> log.Allrun 2>&1 &
+echo $! > run.pid
+echo "Resumed 4-um resolution probe from latestTime."
