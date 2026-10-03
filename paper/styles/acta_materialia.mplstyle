@@ -1,0 +1,54 @@
+# Acta-like manuscript plotting style for vacuumLaserbeamFoam
+# Designed for final-size Elsevier materials-science figures.
+
+font.family: sans-serif
+font.sans-serif: Arial, Helvetica, DejaVu Sans
+font.size: 7.5
+
+axes.labelsize: 7.5
+axes.titlesize: 8
+axes.linewidth: 0.7
+axes.edgecolor: 0.15
+axes.labelcolor: 0.1
+axes.facecolor: white
+axes.grid: False
+axes.spines.top: True
+axes.spines.right: True
+
+xtick.labelsize: 7
+ytick.labelsize: 7
+xtick.direction: in
+ytick.direction: in
+xtick.top: True
+ytick.right: True
+xtick.major.size: 3.0
+ytick.major.size: 3.0
+xtick.minor.size: 1.8
+ytick.minor.size: 1.8
+xtick.major.width: 0.7
+ytick.major.width: 0.7
+xtick.minor.width: 0.55
+ytick.minor.width: 0.55
+
+lines.linewidth: 1.15
+lines.markersize: 3.5
+lines.markeredgewidth: 0.7
+
+legend.fontsize: 7
+legend.frameon: False
+legend.handlelength: 2.2
+legend.handletextpad: 0.5
+legend.borderaxespad: 0.4
+legend.columnspacing: 1.0
+
+figure.facecolor: white
+savefig.facecolor: white
+savefig.transparent: False
+savefig.bbox: tight
+savefig.pad_inches: 0.03
+pdf.fonttype: 42
+ps.fonttype: 42
+
+mathtext.fontset: dejavusans
+
+axes.prop_cycle: cycler('color', ['#1F4E79', '#B55243', '#3F7F6F', '#C7952D', '#6B5B95', '#303030', '#7A7A7A'])
