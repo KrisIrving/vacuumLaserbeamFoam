@@ -623,4 +623,20 @@ determine whether the 40-50 um moving-keyhole depths observed on the 8 um
 engineering run change materially when powder and VOF geometry are resolved at
 4 um.
 
+A strict companion 8 um case is also provided with the identical domain,
+powder seed/configuration, laser path, physical time and output cadence.
+
+Sequential overnight pair:
+`./tests/304L0p6PaResolutionPair/Run_background`
+
+Pair status:
+`./tests/304L0p6PaResolutionPair/Status`
+
+After both cases complete:
+`./tests/304L0p6PaResolutionPair/Postprocess`
+
+The pair postprocessor writes `resolutionComparison.csv` and reports the
+post-50-us mean and maximum absolute differences in laser-following keyhole
+depth.
+
 This is a numerical-resolution probe, not a physical calibration.
