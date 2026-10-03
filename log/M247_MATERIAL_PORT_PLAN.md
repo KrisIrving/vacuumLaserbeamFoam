@@ -220,3 +220,31 @@ evaporation, optics and thermophysical inputs have not yet been frozen and
 validated.
 
 This distinction should be maintained in code documentation and in any paper.
+
+
+---
+
+## 9. 2026-10-03 production-design update
+
+Experimentally specified target:
+- chamber pressure 0.6 Pa;
+- laser power 350 W;
+- scan speed 1000 mm/s;
+- melt-track length approximately 2 mm;
+- approximately one powder layer with strong active-track coverage.
+
+`KrisIrving/M247-github` is used only as a numerical-design reference. Its
+material properties, optics, preheat, evaporation treatment and saved particle
+coordinates are not inherited.
+
+Useful numerical reference:
+- intended powder PSD D10 about 36.5 um, D50 about 52.6 um, D90 about 74.4 um;
+- discrete support approximately 32.5-77.5 um;
+- fine near-surface region plus graded/coarser deep-substrate concept.
+
+T13b freezes the mesh strategy:
+- full 2-mm production track: 8 um active corridor;
+- short/key verification: 4 um;
+- outer substrate/gas/side regions graded coarser.
+
+See `M247_NUMERICAL_DESIGN.md` and `M247_INPUT_PROVENANCE.md`.

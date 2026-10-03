@@ -1271,3 +1271,48 @@ evolving geometry/optical-coupling effect. This is an interpretation, not yet a
 causal proof.
 
 T13a: **PASS**.
+
+
+## 2026-10-03 — T13b strict 8 um versus 4 um moving-powder resolution pair
+
+Primary OpenFOAM-v2512 / 48-rank workstation. Both matched cases reached 100 us
+and completed normally; only spatial resolution was intentionally changed.
+
+Formal 50-100 us laser-following keyhole-depth comparison:
+- common output times = 20;
+- mean depth, 8 um = 47.6964 um;
+- mean depth, 4 um = 49.5809 um;
+- mean signed 4-minus-8 difference = +1.8845 um;
+- mean absolute difference = 2.22255 um;
+- maximum absolute difference = 6.01837 um.
+
+The global geometric response is less mesh-sensitive than local interfacial
+extrema: deposited power differs by about 1.8%, while the 4 um case resolves
+higher Tmax/interface area and substantially higher peak vapor-pressure,
+evaporation-power and recoil metrics. Keyhole-bottom lag is also more
+mesh-sensitive than mean depth.
+
+Runtime to 100 us on 48 ranks:
+- 8 um: about 1.52 h;
+- 4 um: about 4.43 h.
+
+Decision: **T13b PASS for production-mesh policy.** Use 8 um for long-track
+engineering morphology/broad screening and 4 um for short representative
+verification and local evaporation/recoil/interface results. This is not a
+claim of 8 um grid independence.
+
+## 2026-10-03 — T14a Wang 304L pressure-trend constitutive sweep
+
+Thresholds:
+- 0.6 Pa: boiling 1717.6 K, activation 1727 K, Tk0 1738.51 K, Tk1 2067.39 K;
+- 20.265 Pa: boiling 2009.5 K, activation 2009.5 K, Tk0 2039.74 K, Tk1 2530.55 K;
+- 1 atm: boiling 3406.36 K, activation 3406.36 K, Tk0 3512.56 K, Tk1 5744.79 K.
+
+Lower chamber pressure strongly lowers boiling/transition thresholds. At
+sufficiently high temperature, where vapor/recoil pressure dominates ambient
+pressure, the pressure cases converge as expected.
+
+Automated result:
+`PASS: Wang 304L pressure-trend constitutive sweep`.
+
+Decision: **T14a PASS / CLOSED.** No Wang coefficient is changed.

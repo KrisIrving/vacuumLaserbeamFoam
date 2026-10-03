@@ -87,20 +87,21 @@ The window is based on explicit convergence against 160/200 um alternatives.
 
 ## Milestone 8 — Moving-powder numerical resolution
 
-**Status: RUNNING**
+**Status: COMPLETE / FROZEN**
 
-Strict paired cases:
-- 8 um / 64k cells;
-- 4 um / 512k cells.
+Matched 8/4 um cases completed. Post-50-us mean absolute depth difference is
+2.22 um; maximum is 6.02 um.
 
-Everything except spatial resolution is matched.
+Mesh policy:
+- 8 um for long-track engineering/screening runs;
+- 4 um for short representative verification and local interface/recoil/
+  evaporation quantities.
 
-Decision output:
-- production mesh policy for screening versus publication cases.
+A short M247 8/4 um transfer check remains required.
 
 ## Milestone 9 — Numerical robustness for production
 
-**Status: PLANNED**
+**Status: ACTIVE**
 
 Priority:
 1. conclude spatial-resolution policy;
@@ -110,9 +111,9 @@ Priority:
 
 The purpose is to bound numerical artefacts before experimental calibration.
 
-## Milestone 10 — Experiment-input freeze
+## Milestone 10 — M247 experiment-input and material freeze
 
-**Status: PLANNED**
+**Status: ACTIVE**
 
 Create a versioned input/provenance table for:
 - pressure;

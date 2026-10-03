@@ -440,3 +440,61 @@ The exact style is maintained in:
 
 Earlier colorful summary bar charts are retained as development artifacts only
 and are not the target manuscript style.
+
+
+## ADR-028 — M247 full-track mesh uses 8 um active resolution with 4 um verification
+
+**Status:** accepted
+
+T13b showed a post-50-us mean absolute moving-keyhole-depth difference of
+2.22 um between matched 8 um and 4 um cases, while local interfacial
+evaporation/recoil extrema remained substantially more mesh-sensitive.
+
+Therefore:
+- 8 um is the production resolution for the full approximately 2 mm track and
+  broad screening;
+- 4 um is retained for short representative verification and publication-
+  critical local interfacial quantities;
+- 8 um results must not be described as grid-independent.
+
+A short M247 8/4 um transfer check is required before final M247 publication
+claims.
+
+## ADR-029 — Legacy M247 repository is numerical-design reference only
+
+**Status:** accepted
+
+`KrisIrving/M247-github` may inform geometry layout, PSD intent, scan timing,
+mesh-block concepts and computational workflow. It is not an authoritative
+source for M247 thermophysical properties, optical constants, preheat,
+evaporation parameters or exact powder coordinates.
+
+## ADR-030 — Powder-bed acceptance is based on realized PSD and coverage
+
+**Status:** accepted
+
+The production M247 powder bed will be regenerated. The manifest must report
+realized D10/D50/D90, particle count, packing fraction, projected track-corridor
+coverage/gap statistics, highest particle top, overlap/contact diagnostics and
+random seed.
+
+If layer-height rejection biases the realized PSD, the generator must be
+changed before M247 CFD rather than silently accepting the biased bed.
+
+## ADR-031 — M247 vapor-pressure data may change; Wang gas-dynamic equations do not
+
+**Status:** accepted
+
+The Wang/Knudsen-layer architecture remains frozen.
+
+For M247, pure-component vapor-pressure relations are material data. No
+artificial alloy saturation-pressure anchor will be introduced without a
+validated source.
+
+A literature-supported temperature-dependent pSat(T) correlation may be added
+for M247 components without changing Wang jump/transition equations; it must
+preserve the 304L path and have an independent regression.
+
+Initial pressure screening includes Al, Ni, Cr and Co; Ti may be retained for
+completeness. W, Ta, Mo and Hf may be omitted from the production evaporation
+sum only after their pressure contribution is shown to be negligible.

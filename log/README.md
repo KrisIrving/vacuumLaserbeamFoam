@@ -9,7 +9,10 @@ management, and later paper/thesis writing.
 Start here:
 - `PROJECT_STATUS.md` — **current project state, completed work, running work and next priorities**;
 - `DEVELOPMENT_PLAN.md` — milestone roadmap;
-- `PAPER_AND_REPORTING_PLAN.md` — writing, figures, tables and reproducibility workstream;\n- `M247_MATERIAL_PORT_PLAN.md` — material-data and 2 mm-track transfer plan for the final M247 target.
+- `PAPER_AND_REPORTING_PLAN.md` — writing, figures, tables and reproducibility workstream;
+- `M247_MATERIAL_PORT_PLAN.md` — material-data and 2 mm-track transfer plan for the final M247 target;
+- `M247_NUMERICAL_DESIGN.md` — production-domain, mesh, powder and run design;
+- `M247_INPUT_PROVENANCE.md` — frozen/candidate/TBD material and experiment inputs.
 
 Detailed records:
 - `BASELINE.md` — immutable upstream baseline and environment assumptions;

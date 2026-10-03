@@ -698,3 +698,33 @@ the current outer VOF phase remains a numerical incompressible pseudo-gas.
 Therefore this sweep validates the evaporation/recoil pressure trend in the
 current solver architecture; it is not a complete atmospheric gas-flow
 validation at 1 atm.
+
+
+## T15 — M247 material-port gates
+
+### T15a — input/provenance audit
+Freeze/document chemistry, pressure, power, scan speed, track length, laser
+spot/wavelength, initial/preheat temperature, powder PSD/layer, thermophysical
+properties and optics.
+
+### T15b — M247 evaporation-mixture regression
+Report pSat, component pressure fractions, vapor molar mass,
+boiling/activation/Tk0/Tk1, mass flux, recoil and qEvap versus temperature.
+
+### T15c — powder-generator acceptance
+Verify requested versus realized PSD, packing, projected coverage/gaps,
+layer-top limit, no overlaps and fixed-seed reproducibility.
+
+### T15d — M247 bare-plate smoke
+350 W / 1000 mm/s short path; verify ray deposition, thermal stability and
+evaporation/recoil activation.
+
+### T15e — M247 short powder-track smoke
+Use production powder input and 8 um active mesh.
+
+### T15f — M247 matched 8/4 um transfer check
+Confirm that the 304L mesh policy transfers after the material port.
+
+### T15g — full approximately 2 mm production track
+Use 8 um active resolution and a measured preflight runtime estimate before
+full launch.

@@ -545,3 +545,28 @@ Immediate decision after that pair:
 Physics extensions such as explicit evaporation mass removal, preferential
 composition evolution and rarefied plume coupling remain conditional. They are
 not introduced simply because the base solver can support more complexity.
+
+
+## 2026-10-03 — T13b/T14a closure and M247 production design
+
+- T13b matched 8/4 um moving-powder pair completed;
+- 8 um accepted for long/full-track engineering morphology;
+- 4 um retained for short/key quantitative interface verification;
+- T14a 0.6 Pa / 20.265 Pa / 1 atm Wang pressure trend PASS;
+- Wang equations remain frozen.
+
+M247 target:
+- 0.6 Pa;
+- 350 W;
+- 1000 mm/s;
+- approximately 2 mm track;
+- approximately one well-covered powder layer.
+
+The older M247 LaserbeamFoam-v2 repository was audited for numerical-design
+ideas only. New material, optical and evaporation inputs will be sourced
+independently.
+
+Added:
+- `M247_NUMERICAL_DESIGN.md`;
+- `M247_INPUT_PROVENANCE.md`;
+- ADR-028 through ADR-031.

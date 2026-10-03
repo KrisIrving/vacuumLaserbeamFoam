@@ -179,62 +179,31 @@ Frozen moving-keyhole window:
 
 ---
 
-## B. Work currently running
+## B. Current numerical baseline
 
-### B1. T13b strict 8 um versus 4 um resolution pair — RUNNING
+### B1. T13b strict 8 um versus 4 um resolution pair — COMPLETE / FROZEN
 
-Both cases use:
-- identical 320 x 320 x 320 um domain;
-- identical seed-304006 56-particle bed;
-- identical particle geometry;
-- 0.6 Pa;
-- frozen Wang evaporation model;
-- 260 W / 100 um Fe-Fresnel laser;
-- 2 m/s engineering scan speed;
-- x=-100 to +100 um;
-- 100 us;
-- 48 MPI ranks;
-- 5 us output cadence;
-- frozen 120-um moving-keyhole metric.
+Post-50-us mean depth: 47.6964 um (8 um) versus 49.5809 um (4 um).
+Mean absolute difference = 2.22255 um; maximum = 6.01837 um.
 
-Only the spatial resolution is intentionally changed:
-- 8 um: 40^3 = 64,000 cells;
-- 4 um: 80^3 = 512,000 cells.
+Production mesh policy:
+- **8 um**: full-track engineering morphology, broad screening and seed studies;
+- **4 um**: short representative verification, publication-critical cases and
+  quantitative local interface/recoil/evaporation metrics.
 
-Primary outputs:
-- moving-keyhole depth difference;
-- bottom-lag difference;
-- deposited-power difference;
-- Tmax/Umax;
-- interfacePVapMax;
-- evaporation power;
-- recoil force;
-- time-step/Courant behaviour.
+### B2. T14a pressure-trend constitutive check — COMPLETE
 
-Decision to be made after T13b:
-1. whether 8 um is acceptable for broad parameter studies;
-2. whether 4 um is required for publication-quality key cases;
-3. whether another intermediate/finer grid is justified.
+The frozen Wang model passes the 0.6 Pa / 20.265 Pa / 1 atm constitutive trend
+gate. No Wang coefficient was retuned.
 
 ---
 
 ## C. Next technical work, in priority order
 
-### C1. Close the mesh-policy decision
+### C1. Transfer the frozen mesh policy to M247
 
-After T13b:
-- quantify mean and maximum 4-um minus 8-um keyhole-depth differences;
-- compare time histories, not only final values;
-- compare optical/evaporation/recoil diagnostics;
-- record a formal production-mesh policy.
-
-Tentative interpretation bands:
-- mean absolute depth difference <4 um: 8 um likely suitable for broad sweeps;
-- 4-8 um: use 8 um for screening and 4 um for key results;
-- >8 um: moving powder/keyhole results are strongly mesh-sensitive and require
-  a revised production resolution strategy.
-
-These are engineering decision bands, not universal convergence criteria.
+Use 8 um for the full approximately 2 mm M247 track and retain one short
+matched 8/4 um M247 transfer check before publication claims.
 
 ### C2. Freeze the engineering numerical baseline
 
@@ -419,15 +388,13 @@ These remain separate future questions.
 
 ## Immediate checkpoint
 
-Current action:
-**wait for the strict 8 um / 4 um pair to complete.**
+Current action: **build the M247 material/input database and production-case
+geometry while keeping Wang equations frozen.**
 
-When complete:
-1. run pair post-processing;
-2. record T13b;
-3. freeze production mesh policy;
-4. update this status file;
-5. continue the paper/figure package in parallel with the next CFD stage.
+Parallel non-blocking numerical work:
+1. same-material bare-plate pressure CFD sweep;
+2. pseudo-gas sensitivity;
+3. domain/boundary sensitivity on the M247 preflight case.
 
 ## 2026-10-03 clarification — final material and validation direction
 
@@ -442,8 +409,8 @@ now planned before material transfer:
 The purpose is to confirm the expected pressure trend of the frozen Wang
 implementation, not to recalibrate it.
 
-A serial constitutive sweep has been added as T14a. A same-material bare-plate
-CFD sweep is planned after the currently running 8/4 um resolution pair.
+The serial constitutive sweep T14a is complete and PASS. A same-material
+bare-plate pressure CFD sweep remains a useful non-blocking transfer check.
 
 ### Final target material
 
@@ -456,9 +423,8 @@ parameterization is not yet complete.
 See:
 `M247_MATERIAL_PORT_PLAN.md`.
 
-The production 2-mm computational strategy will be chosen after T13b determines
-whether 8 um can be used for full-track studies and 4 um reserved for key
-verification cases.
+T13b has fixed the production strategy: use 8 um for the full approximately
+2 mm track and 4 um for short/key verification cases.
 
 ### Publication-figure direction
 
