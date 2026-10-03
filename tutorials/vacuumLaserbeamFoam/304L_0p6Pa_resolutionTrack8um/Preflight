@@ -38,4 +38,4 @@ if [ ! -d processor0 ]; then
     exit 1
 fi
 
-echo "PASS: 4-um / 512k-cell / 56-particle / 48-rank resolution preflight"
+echo "PASS: 8-um / 64k-cell / 56-particle / 48-rank resolution preflight"
