@@ -1,0 +1,19 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+for spec in \
+    "8um:$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack8um" \
+    "4um:$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack4um"
+do
+    label="${spec%%:*}"
+    case_dir="${spec#*:}"
+    echo "===== ${label} ====="
+    if [ -f "$case_dir/log.vacuumLaserbeamFoam" ]; then
+        (cd "$case_dir" && ./Status)
+    else
+        echo "not started"
+    fi
+    echo
+done
