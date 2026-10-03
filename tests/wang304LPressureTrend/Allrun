@@ -1,0 +1,47 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/wang304LPressureTrend"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+sed -i '0,/Tliquidus[[:space:]]*1723;/s//Tliquidus           1727;/' "$RUN_CASE/constant/transportProperties"
+(cd "$RUN_CASE" && blockMesh > log.blockMesh 2>&1)
+
+echo "pressure_Pa,label,temperature_K,pSat_Pa,massFlux_kg_m2_s,recoil_Pa,qEvap_W_m2" > "$RUN_CASE/pressureTrend.csv"
+: > "$RUN_CASE/thresholds.txt"
+
+for spec in "0.6,0p6Pa" "20.265,20p265Pa" "101325,1atm"
+do
+    pressure="${spec%%,*}"
+    label="${spec#*,}"
+    sed -i -E "s/^chamberPressure[[:space:]]+[^;]+;/chamberPressure $pressure;/" "$RUN_CASE/constant/vacuumProperties"
+    echo "===== $label ($pressure Pa) =====" >> "$RUN_CASE/thresholds.txt"
+
+    first=1
+    for temperature in 1727 1800 2000 2200 2500 3000 3500 4000 4500 5000 5500
+    do
+        sed -i -E "s/^testTemperature[[:space:]]+[^;]+;/testTemperature $temperature;/" "$RUN_CASE/constant/vacuumProperties"
+        (cd "$RUN_CASE" && vacuumEvaporationModelTest > "log.${label}.${temperature}" 2>&1)
+        if [ "$first" -eq 1 ]; then
+            grep -A8 'nearVacuumWang thresholds' "$RUN_CASE/log.${label}.${temperature}" >> "$RUN_CASE/thresholds.txt"
+            first=0
+        fi
+        line="$(grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.${label}.${temperature}" | tail -1)"
+        read -r tag T pSat mDot recoil qEvap <<< "$line"
+        echo "$pressure,$label,$T,$pSat,$mDot,$recoil,$qEvap" >> "$RUN_CASE/pressureTrend.csv"
+    done
+done
+
+python3 "$SCRIPT_DIR/checkTrend.py" \
+    --csv "$RUN_CASE/pressureTrend.csv" \
+    --thresholds "$RUN_CASE/thresholds.txt"
+
+echo
+cat "$RUN_CASE/thresholds.txt"
+echo
+echo "Wrote $RUN_CASE/pressureTrend.csv"
