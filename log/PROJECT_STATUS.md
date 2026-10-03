@@ -428,3 +428,44 @@ When complete:
 3. freeze production mesh policy;
 4. update this status file;
 5. continue the paper/figure package in parallel with the next CFD stage.
+
+## 2026-10-03 clarification — final material and validation direction
+
+### Pressure trend before M247 transfer
+
+Although the Wang 304L benchmark is complete, one additional robustness test is
+now planned before material transfer:
+- 0.6 Pa;
+- 20.265 Pa;
+- 1 atm.
+
+The purpose is to confirm the expected pressure trend of the frozen Wang
+implementation, not to recalibrate it.
+
+A serial constitutive sweep has been added as T14a. A same-material bare-plate
+CFD sweep is planned after the currently running 8/4 um resolution pair.
+
+### Final target material
+
+The intended production target is now explicitly recorded as **M247 powder
+bed with an approximately 2 mm melt track**.
+
+The solver architecture is ready for powder-bed M247, but the M247 material
+parameterization is not yet complete.
+
+See:
+`M247_MATERIAL_PORT_PLAN.md`.
+
+The production 2-mm computational strategy will be chosen after T13b determines
+whether 8 um can be used for full-track studies and 4 um reserved for key
+verification cases.
+
+### Publication-figure direction
+
+The previous development-oriented plotting style is not accepted as the final
+manuscript style.
+
+All publication figures will be regenerated using the restrained Acta-like
+materials-science style defined in:
+- `paper/FIGURE_STYLE_GUIDE.md`;
+- `paper/styles/acta_materialia.mplstyle`.
