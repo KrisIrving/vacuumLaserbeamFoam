@@ -1,0 +1,17 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CASE8="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack8um"
+CASE4="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack4um"
+
+echo "Post-processing 8 um companion"
+(cd "$CASE8" && ./PostprocessTrack)
+
+echo "Post-processing 4 um probe"
+(cd "$CASE4" && ./PostprocessTrack)
+
+python3 "$SCRIPT_DIR/compareResolution.py" \
+    --coarse "$CASE8/movingKeyholeDepth.csv" \
+    --fine "$CASE4/movingKeyholeDepth.csv" \
+    --output "$SCRIPT_DIR/resolutionComparison.csv"
