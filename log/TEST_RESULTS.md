@@ -1221,3 +1221,53 @@ late-track depth reduction as physical.
 
 Gate T12 numerical integration: **PASS**.
 Moving-keyhole quantitative metric: **pending window-sensitivity check**.
+
+## 2026-10-03 — T13a moving-keyhole trailing-window sensitivity
+
+The completed 300-us moving-track case was re-analysed without rerunning CFD
+using trailing search windows of 80, 100, 120, 160 and 200 um.
+
+Post-75-us results:
+- 80 um: mean depth 46.1696 um, max depth 50.9416 um, min dx -78 um;
+- 100 um: mean depth 46.4084 um, max depth 50.9416 um, min dx -98 um;
+- 120 um: mean depth 46.5531 um, max depth 50.9416 um, min dx -114 um;
+- 160 um: mean depth 46.5531 um, max depth 50.9416 um, min dx -114 um;
+- 200 um: mean depth 46.5531 um, max depth 50.9416 um, min dx -114 um.
+
+Relative to the 160-um reference:
+- 80 um mean absolute depth difference = 0.3835 um, maximum = 5.0749 um;
+- 100 um mean absolute depth difference = 0.1447 um, maximum = 2.2606 um;
+- 120 um difference = exactly 0 at every common output time;
+- 200 um difference = exactly 0 at every common output time.
+
+The worst 80-to-converged spread occurred at 230 us.
+
+Conclusion:
+**120 um is the smallest converged trailing window and is frozen as the formal
+moving-keyhole metric.** It is preferred over the equally converged 160/200 um
+windows because the smaller local support reduces the chance of capturing
+obsolete depressions far behind the moving beam.
+
+The late-track reduction in reported depth is therefore not caused by the
+original 100-um window clipping.
+
+With the original 100-um time-series summary (whose average error relative to
+the converged metric is only 0.145 um after 75 us):
+- 75-210 us mean depth = 48.775 um, RMS fluctuation = 1.217 um;
+- 220-300 us mean depth = 42.592 um, RMS fluctuation = 1.293 um.
+
+Across the same two stages:
+- deposited power decreases from 211.995 to 202.445 W (-4.5%);
+- interface area decreases from 5.483e-7 to 4.822e-7 m2 (-12.1%);
+- evaporation power is essentially unchanged, 3.226 to 3.234 W;
+- mean |recoilForceY| increases slightly, 0.455 to 0.474 mN;
+- mean interfacePVapMax increases from 1.706 to 1.856 MPa;
+- mean Tmax increases slightly, 4688 to 4736 K.
+
+Thus the shallower late-track state is not explained by a collapse of the
+evaporation/recoil closure. The strongest stage-level changes are reduced
+deposited laser power and reduced connected interface area, consistent with an
+evolving geometry/optical-coupling effect. This is an interpretation, not yet a
+causal proof.
+
+T13a: **PASS**.
