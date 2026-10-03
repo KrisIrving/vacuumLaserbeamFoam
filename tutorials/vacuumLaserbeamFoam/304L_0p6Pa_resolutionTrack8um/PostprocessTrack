@@ -15,7 +15,7 @@ python3 scripts/extractMovingKeyholeDepth.py \
     --post-processing postProcessing/movingKeyholeInterface \
     --laser-path constant/timeVsLaserPosition \
     --surface-y 200e-6 \
-    --surface-band 4e-6 \
+    --surface-band 8e-6 \
     --trailing-window 160e-6 \
     --forward-window 60e-6 \
     --half-width-z 75e-6 \
