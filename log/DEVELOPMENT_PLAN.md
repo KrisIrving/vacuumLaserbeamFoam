@@ -1,123 +1,183 @@
-# Development plan
+# Development plan — current roadmap
 
 ## Goal
 
-Develop `vacuumLaserbeamFoam` from LaserbeamFoam V3.0 for LPBF melt-pool and
-keyhole simulation in a nominal 0.6 Pa vacuum environment.
+Develop and validate `vacuumLaserbeamFoam` for near-vacuum LPBF with the
+current target of 304L at 0.6 Pa, including evaporation/recoil, powder-bed
+geometry and a moving laser.
 
-## Phase 0 — Baseline and reproducibility
+For current measured status, see `PROJECT_STATUS.md`.
+For writing/figure deliverables, see `PAPER_AND_REPORTING_PLAN.md`.
 
-- Preserve exact V3.0 baseline.
-- Confirm repository build in the supported OpenFOAM environment.
-- Run at least one original laserbeamFoam tutorial and retain logs/metrics.
-- Define numerical comparison quantities for later regression.
+---
 
-Acceptance:
-- `./Allwmake` succeeds.
-- Original solver tutorial completes.
-- Baseline metrics are archived.
+## Milestone 1 — Baseline and solver bootstrap
 
-## Phase 1 — Solver bootstrap (completed)
+**Status: COMPLETE**
 
-- Add `applications/solvers/vacuumLaserbeamFoam`.
-- Keep equations and physics identical to V3.0 `laserbeamFoam`.
-- Rename only application/build identity and diagnostic references.
-- Build both solvers from the same repository.
+- preserve LaserbeamFoam V3.0 baseline;
+- add `vacuumLaserbeamFoam`;
+- establish build/test workflow;
+- maintain legacy regression.
 
-Acceptance:
-- Both executables compile.
-- Running the same case with either executable gives equivalent fields within
-  numerical/restart tolerance.
+## Milestone 2 — Evaporation-model API and reference models
 
-## Phase 2 — Vacuum evaporation model API (completed)
+**Status: COMPLETE**
 
-Create a runtime-selectable library, planned name
-`vacuumEvaporationModels`, so `UEqn.H` and `TEqn.H` no longer contain
-hard-coded evaporation/recoil correlations.
+- runtime-selectable evaporation library;
+- legacy Anisimov path;
+- pressure-aware Hertz-Knudsen reference;
+- sonic Knudsen-layer branch;
+- transition-state relations.
 
-Phase-2 API outputs:
-- recoil pressure from temperature;
-- evaporative heat flux from temperature.
+## Milestone 3 — Wang near-vacuum production closure
 
-First model: `legacyAnisimov`, reproducing V3.0 exactly.
+**Status: COMPLETE / FROZEN**
 
-The API will be extended with saturation pressure, mass flux, and explicit
-chamber-pressure inputs when the pressure-aware models are introduced in the
-next phases.
+- common-atmosphere transition;
+- exact Ma=0 endpoint;
+- automatic Tk0/Tk1;
+- chamber-pressure activation;
+- multi-component alloy path;
+- 304L Cr/Ni/Fe implementation.
 
-Acceptance:
-- legacy model reproduces the Phase-1 reference result. **PASS** using the
-  automated byte-level field regression at output time 1e-05.
+## Milestone 4 — Wang optical/radiative alignment
 
-## Phase 3 — Pressure-aware reference model (completed)
+**Status: COMPLETE / FROZEN**
 
-- Add `constant/vacuumProperties`.
-- Introduce explicit `chamberPressure` and `chamberTemperature`.
-- Add a Hertz-Knudsen-type reference model for controlled unit/curve tests.
-- Keep `pRef`, `pChamber`, and CFD pressure conceptually and numerically separate.
+- fixed-complex-index Fe Fresnel mode;
+- multiple specular reflection;
+- grey-body radiation;
+- energy/recoil diagnostics.
 
-Completed implementation includes the configuration split, a pressure-aware
-Hertz-Knudsen reference model, a dedicated diagnostic utility, solver smoke
-coverage, and analytical curve regression.
+## Milestone 5 — Wang 304L validation
 
-## Phase 4 — Near-vacuum evaporation/recoil (in progress; Phase 4a completed)
+**Status: COMPLETE / FROZEN**
 
-- Implement literature-grounded near-vacuum/Knudsen-layer closure.
-- Derive evaporation cooling and recoil pressure from one consistent mass/momentum
-  transfer model.
-- Validate model curves before coupling to full melt-pool simulations.
+Primary result:
+- 32-to-136 um connected-3D growth = 76.23 us versus Wang approximately 75 us.
 
-## Phase 5 — Vacuum radiation
+Recoil-load comparison is close without empirical coefficient tuning.
 
-- Add free-surface radiation to chamber walls.
-- No conventional gas convective heat-transfer coefficient at 0.6 Pa.
-- Verify radiation independently using prescribed-temperature tests.
+This milestone is closed except for optional publication-oriented
+mesh/interpolation sensitivity of the isolated hottest recoil-pressure face.
 
-## Phase 6 — Numerical void phase study
+## Milestone 6 — 0.6 Pa moving-powder integration
 
-- Treat VOF outer phase as a numerical void/pseudo-gas rather than a physical
-  continuum representation of 0.6 Pa argon.
-- Perform sensitivity studies against pseudo-gas density/viscosity and density ratio.
-- Identify a numerically stable range with negligible influence on melt-pool metrics.
+**Status: COMPLETE**
 
-## Phase 7 — Bare-plate pressure sweep
+Passed:
+- 0.6 Pa constitutive gate;
+- moving-laser CFD;
+- explicit powder geometry;
+- deterministic powder generator;
+- 20-us generated-bed smoke;
+- 300-us / 600-um long-track integration.
 
-Planned pressures include atmospheric/low-pressure anchors and the experiment,
-with emphasis on monotonic/physically interpretable trends down to 0.6 Pa.
+## Milestone 7 — Moving-keyhole metric
 
-Metrics:
-- peak temperature;
-- melt-pool length/width/depth;
-- depression/keyhole depth;
-- recoil pressure;
-- evaporation mass/energy flux;
-- absorbed laser power.
+**Status: COMPLETE / FROZEN**
 
-## Phase 8 — 0.6 Pa experimental validation
+Formal laser-following window:
+- 120 um trailing;
+- 60 um forward;
+- +/-75 um transverse.
 
-Calibrate only parameters with defensible experimental/optical uncertainty.
-Avoid using arbitrary recoil multipliers as a catch-all fit parameter.
+The window is based on explicit convergence against 160/200 um alternatives.
 
-## Phase 9 — Powder-bed LPBF
+## Milestone 8 — Moving-powder numerical resolution
 
-- Start from static powder-bed geometry/DEM initialization.
-- Validate single-track morphology before multi-track cases.
+**Status: RUNNING**
 
-## Phase 10 — Evaporation-induced mass removal
+Strict paired cases:
+- 8 um / 64k cells;
+- 4 um / 512k cells.
 
-Use the existing phase-fraction source interfaces to add surface recession.
-Mass and energy conservation must be explicitly tested.
+Everything except spatial resolution is matched.
 
-## Phase 11 — Multi-component evaporation
+Decision output:
+- production mesh policy for screening versus publication cases.
 
-Only if required by experiment, add preferential Ti/Al/V evaporation and
-composition evolution, with particular attention to Al loss.
+## Milestone 9 — Numerical robustness for production
 
-## Phase 12 — Multi-track LPBF
+**Status: PLANNED**
 
-Study hatch spacing, remelting, thermal accumulation, and track interaction.
+Priority:
+1. conclude spatial-resolution policy;
+2. pseudo-gas density/viscosity sensitivity;
+3. timestep/Courant sensitivity only if needed;
+4. boundary/domain sensitivity only if indicated by results.
 
-## Phase 13 — Optional rarefied plume / DSMC coupling
+The purpose is to bound numerical artefacts before experimental calibration.
 
-This is outside the initial melt-pool solver scope and should only be developed
-if plume/denudation physics becomes a primary experimental observable.
+## Milestone 10 — Experiment-input freeze
+
+**Status: PLANNED**
+
+Create a versioned input/provenance table for:
+- pressure;
+- power;
+- scan speed;
+- spot size/profile;
+- wavelength;
+- PSD;
+- layer thickness;
+- packing fraction;
+- material properties;
+- preheat/initial conditions.
+
+Engineering fixture values must not silently become final experimental inputs.
+
+## Milestone 11 — Experiment-matched single-track study
+
+**Status: PLANNED**
+
+- use 8 um for broad screening only if Milestone 8 permits;
+- rerun key cases at 4 um;
+- use a small deterministic seed ensemble;
+- compare moving-keyhole, melt-pool and track morphology to experiment.
+
+No arbitrary recoil multiplier is permitted as a catch-all calibration.
+
+## Milestone 12 — Model extensions driven by discrepancies
+
+**Status: CONDITIONAL**
+
+Potential:
+- evaporation mass removal/interface recession;
+- preferential multi-component evaporation and composition evolution;
+- temperature-dependent optical properties;
+- rarefied plume/DSMC coupling.
+
+Implement only when a specific observable or discrepancy justifies the added
+physics.
+
+## Milestone 13 — Multi-track / process studies
+
+**Status: FUTURE**
+
+After single-track validation:
+- hatch spacing;
+- remelting;
+- thermal accumulation;
+- track interaction.
+
+---
+
+## Parallel workstream — paper and reproducibility
+
+**Status: ACTIVE**
+
+This workstream runs in parallel with Milestones 8-13.
+
+Deliverables:
+- Wang model Methods/Validation summary;
+- publication tables;
+- versioned plotting scripts;
+- small derived data products;
+- figure captions and provenance;
+- numerical-resolution subsection;
+- 0.6 Pa moving-powder figure set;
+- final reproduction index.
+
+See `PAPER_AND_REPORTING_PLAN.md`.
