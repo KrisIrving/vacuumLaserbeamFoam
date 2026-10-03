@@ -25,6 +25,6 @@ After completion:
 
     ./PostprocessTrack
 
-The moving-depth post-process uses a 160 um trailing window to avoid the clipping observed in the first 8 um long-track metric.
+The moving-depth post-process uses the frozen 120 um trailing window to avoid the clipping observed in the first 8 um long-track metric.
 
 The purpose is to determine whether the approximately 40-50 um moving-keyhole depth observed at 8 um changes materially for a strict companion comparison against the 4 um case.
