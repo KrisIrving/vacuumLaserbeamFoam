@@ -512,3 +512,36 @@ been independently reproduced.
 A paper-oriented summary/figure package is maintained separately from the
 production physics code.
 
+## 2026-10-03 — Project review, moving-metric freeze and roadmap reset
+
+The project was reviewed while the strict 8 um / 4 um moving-powder resolution
+pair was running.
+
+Completed since the previous roadmap snapshot:
+- Wang 304L matched validation v1 frozen;
+- 0.6 Pa constitutive gate passed;
+- explicit moving-powder integration passed;
+- deterministic powder generator passed;
+- 300-us / 600-um / 48-rank engineering long-track completed;
+- moving-keyhole trailing-window sensitivity completed;
+- 120-um trailing window frozen as the formal moving-keyhole metric.
+
+The original DEVELOPMENT_PLAN had become stale because it still described the
+Wang near-vacuum and radiation phases as incomplete. It was replaced with a
+milestone-based roadmap aligned with the actual project state.
+
+Added:
+- PROJECT_STATUS.md for a concise current-state snapshot;
+- PAPER_AND_REPORTING_PLAN.md to treat manuscript/figure/reproducibility work as
+  a formal parallel workstream;
+- updated log/README.md navigation.
+
+Current running milestone:
+- strict matched 8 um versus 4 um moving-powder resolution pair.
+
+Immediate decision after that pair:
+- define production mesh policy before further experimental-parameter runs.
+
+Physics extensions such as explicit evaporation mass removal, preferential
+composition evolution and rarefied plume coupling remain conditional. They are
+not introduced simply because the base solver can support more complexity.
