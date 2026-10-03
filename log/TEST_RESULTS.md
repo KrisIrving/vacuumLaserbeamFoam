@@ -1151,3 +1151,73 @@ Final diagnostics:
 No Fatal/NaN/Inf occurred and the solver reached End.
 
 Gate T11: **PASS**.
+
+## 2026-10-03 — T12 0.6 Pa overnight long-track run completed
+
+Case:
+`tutorials/vacuumLaserbeamFoam/304L_0p6Pa_overnightTrack8um`
+
+Primary 48-core OpenFOAM-v2512 workstation.
+
+Configuration:
+- 8 um mesh;
+- 160,000 cells;
+- 48 MPI ranks;
+- 0.6 Pa;
+- 260 W / 100 um laser;
+- engineering scan speed 2 m/s;
+- 600 um track, x=-300 to +300 um;
+- 300 us physical time;
+- deterministic generated powder.
+
+Powder manifest:
+- particles = 144;
+- actual geometrical solid fraction = 0.22074647;
+- D10 = 25.354 um;
+- D50 = 32.208 um;
+- D90 = 40.728 um;
+- highest particle top = 259.764 um;
+- minimum gap is roundoff-level contact.
+
+Result: **PASS for long-duration numerical integration**
+
+The run reached 300 us and End in 24030.1 s = 6.68 h wall time.
+
+Final diagnostics at 300 us:
+- Tmax = 4265.07 K;
+- Umax = 89.4008 m/s;
+- interfacePVapMax = 0.64361 MPa;
+- QvMax = 3.09838e9 W/m2;
+- depositedPower = 201.551 W;
+- evaporationPower = 1.96052 W;
+- radiationPower = 0.055239 W;
+- interfaceArea = 4.62072e-7 m2;
+- recoilForceY = -2.40141e-4 N.
+
+Numerical history:
+- approximately 26,953 reported timesteps;
+- final deltaT = 1.116e-8 s;
+- maximum reported Courant number approximately 0.120;
+- maximum reported interface Courant number approximately 0.111;
+- alpha bounding excursions remained at numerical-roundoff level;
+- no Fatal/NaN/Inf and normal End.
+
+Initial moving-keyhole analysis using the +/- laser-following window produced:
+- first depth >10 um by 25 us;
+- first depth >20 um by 35 us;
+- first depth >30 um by 45 us;
+- first depth >40 um by 70 us;
+- maximum reported depth = 50.94 um at 140 us;
+- 75-210 us mean depth = 48.78 um, std = 1.22 um;
+- 220-300 us mean depth = 42.59 um, std = 1.29 um.
+
+However, this moving-depth result is **provisional** because the current
+trailing search window is 100 um and about 15% of the post-75-us bottom
+locations lie at dx <= -92 um, including several -98 um states. The metric may
+therefore be clipped by the post-processing window.
+
+A no-CFD-rerun window-sensitivity analysis is required before treating the
+late-track depth reduction as physical.
+
+Gate T12 numerical integration: **PASS**.
+Moving-keyhole quantitative metric: **pending window-sensitivity check**.
