@@ -1,10 +1,10 @@
-# 304L / 0.6 Pa / 4 um moving-powder resolution probe
+# 304L / 0.6 Pa / 8 um moving-powder resolution companion
 
 This case is a numerical-resolution probe, not a new physical calibration.
 
 Configuration:
 - domain 320 x 320 x 320 um;
-- mesh 4 um, 80^3 = 512,000 cells;
+- mesh 8 um, 40^3 = 64,000 cells;
 - 48 MPI ranks;
 - 0.6 Pa;
 - frozen Wang evaporation closure;
@@ -27,4 +27,4 @@ After completion:
 
 The moving-depth post-process uses a 160 um trailing window to avoid the clipping observed in the first 8 um long-track metric.
 
-The purpose is to determine whether the approximately 40-50 um moving-keyhole depth observed at 8 um changes materially when the VOF/powder geometry is resolved at 4 um.
+The purpose is to determine whether the approximately 40-50 um moving-keyhole depth observed at 8 um changes materially for a strict companion comparison against the 4 um case.
