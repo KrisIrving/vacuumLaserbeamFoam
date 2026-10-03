@@ -6,9 +6,9 @@ cd "$SCRIPT_DIR"
 nohup ./Allrun > log.Allrun 2>&1 &
 echo $! > run.pid
 
-echo "Started 4-um moving-powder resolution probe."
+echo "Started 8-um moving-powder resolution probe."
 echo "PID: $(cat run.pid)"
-echo "Mesh: 4 um, 512000 cells"
+echo "Mesh: 8 um, 64000 cells"
 echo "MPI ranks: 48"
 echo "Track: 200 um at 2 m/s"
 echo "Target: 100 us"
