@@ -10,4 +10,4 @@ fi
 
 nohup ./Allrun >> log.Allrun 2>&1 &
 echo $! > run.pid
-echo "Resumed 4-um resolution probe from latestTime."
+echo "Resumed 8-um resolution probe from latestTime."
