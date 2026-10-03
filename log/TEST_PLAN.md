@@ -568,3 +568,59 @@ instantaneous laser position.
 
 This is an engineering long-duration integration run, not an experiment-matched
 production result.
+
+## T13 — Moving-keyhole metric sensitivity and 4 um resolution probe
+
+### T13a — trailing-window sensitivity, no CFD rerun
+
+Case:
+`tutorials/vacuumLaserbeamFoam/304L_0p6Pa_overnightTrack8um`
+
+Command:
+`./AnalyzeTrackWindows`
+
+The existing sampled alpha=0.5 OBJ surfaces are re-analysed with trailing
+windows of 80, 100, 120, 160 and 200 um while keeping the forward and transverse
+windows fixed.
+
+Reason:
+the initial 100-um metric places approximately 15% of post-75-us keyhole
+bottoms at dx <= -92 um, indicating possible clipping at the trailing search
+boundary.
+
+Outputs:
+- one moving-depth CSV per trailing-window width;
+- `movingKeyholeWindowSensitivity.csv`;
+- max/mean depth differences versus the 160-um reference.
+
+No CFD rerun is required.
+
+### T13b — 4 um moving-powder resolution probe
+
+Case:
+`tutorials/vacuumLaserbeamFoam/304L_0p6Pa_resolutionTrack4um`
+
+Configuration:
+- 4 um mesh, 80^3 = 512,000 cells;
+- 48 MPI ranks;
+- 0.6 Pa;
+- frozen Wang evaporation closure;
+- 260 W / 100 um Fe-Fresnel laser;
+- engineering 2 m/s moving path;
+- x=-100 to +100 um;
+- 100 us target;
+- deterministic seed-304006, 56-particle powder bed;
+- 5 us binary writes.
+
+Commands:
+`./Preflight`
+`./Run_background`
+`./Status`
+`./PostprocessTrack`
+
+Purpose:
+determine whether the 40-50 um moving-keyhole depths observed on the 8 um
+engineering run change materially when powder and VOF geometry are resolved at
+4 um.
+
+This is a numerical-resolution probe, not a physical calibration.
