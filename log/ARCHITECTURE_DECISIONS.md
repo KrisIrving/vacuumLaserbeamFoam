@@ -358,3 +358,25 @@ The generator emits:
 This is a transparent geometric initial-condition model, not DEM. When the
 experimental PSD/layer parameters are available, they will replace only the
 configuration; the generator/manifest workflow remains unchanged.
+
+## ADR-024 — Moving-keyhole depth uses a 120 um trailing window
+
+**Status:** accepted
+
+For moving-laser powder-bed cases, the formal keyhole depth is measured on the
+atmosphere-connected alpha.metal=0.5 main interface within a laser-following
+local window.
+
+Frozen window:
+- trailing: 120 um;
+- forward: 60 um;
+- transverse half-width: 75 um;
+- depth reference: original substrate y=200 um.
+
+The trailing distance is based on an explicit 80/100/120/160/200 um sensitivity
+test on the completed 300-us engineering track. The 120, 160 and 200 um depth
+histories were pointwise identical, making 120 um the smallest converged choice.
+
+The moving-keyhole metric is distinct from the stationary Wang validation
+metric and must not be replaced by a global deepest-interface search, because
+a moving track can retain older depressions behind the active beam.
