@@ -46,9 +46,12 @@ After completion:
     ./PostprocessTrack
 
 The moving-keyhole extractor follows the laser using a local window:
-- trailing distance: 100 um;
+- trailing distance: 120 um;
 - forward distance: 60 um;
 - transverse half-width: 75 um;
 - reference surface: original substrate y=200 um.
 
-This prevents the deepest point in an old scanned region from being reported as the current moving keyhole.
+A trailing-window sensitivity test at 80/100/120/160/200 um showed that
+120, 160 and 200 um give pointwise-identical depth histories. The 120 um
+window is therefore frozen as the smallest converged window, reducing the
+chance of capturing obsolete depressions far behind the moving beam.
