@@ -47,6 +47,13 @@ class nearVacuumWang
     scalarList componentReferencePressures_;
     scalarList componentReferenceTemperatures_;
     scalarList componentLatentHeats_;
+    wordList componentVaporPressureModels_;
+    scalarList componentMondalA_;
+    scalarList componentMondalB_;
+    scalarList componentMondalC_;
+    scalarList componentMondalD_;
+    scalarList componentCorrelationTmin_;
+    scalarList componentCorrelationTmax_;
     scalar componentPressureScale_;
 
     scalar boilingTemperature_;
