@@ -8,24 +8,59 @@ FoamFile
 
 convertToMeters 1;
 
+// Transverse-domain revision after the bare-plate preflight visibly reached
+// the former z=+/-160 um slip boundaries.
+//
+// Central active corridor: z=-160..+160 um at 8 um.
+// Outer shoulders: 160 um on each side, graded from about 8 um adjacent to
+// the active corridor toward coarser cells at the remote side boundaries.
+//
+// x remains -200..+200 um for the 100-us / 100-um short scan.
+// y=600 um is the original substrate surface.
+
 vertices
 (
-    (-200e-6 0       -160e-6)
-    ( 200e-6 0       -160e-6)
-    ( 200e-6 960e-6  -160e-6)
-    (-200e-6 960e-6  -160e-6)
-    (-200e-6 0        160e-6)
-    ( 200e-6 0        160e-6)
-    ( 200e-6 960e-6   160e-6)
-    (-200e-6 960e-6   160e-6)
+    // z = -320 um
+    (-200e-6 0       -320e-6)  // 0
+    ( 200e-6 0       -320e-6)  // 1
+    ( 200e-6 960e-6  -320e-6)  // 2
+    (-200e-6 960e-6  -320e-6)  // 3
+
+    // z = -160 um
+    (-200e-6 0       -160e-6)  // 4
+    ( 200e-6 0       -160e-6)  // 5
+    ( 200e-6 960e-6  -160e-6)  // 6
+    (-200e-6 960e-6  -160e-6)  // 7
+
+    // z = +160 um
+    (-200e-6 0        160e-6)  // 8
+    ( 200e-6 0        160e-6)  // 9
+    ( 200e-6 960e-6   160e-6)  // 10
+    (-200e-6 960e-6   160e-6)  // 11
+
+    // z = +320 um
+    (-200e-6 0        320e-6)  // 12
+    ( 200e-6 0        320e-6)  // 13
+    ( 200e-6 960e-6   320e-6)  // 14
+    (-200e-6 960e-6   320e-6)  // 15
 );
 
 blocks
 (
-    // 8 um uniform powder preflight mesh:
-    // 50 x 120 x 40 = 240,000 cells.
-    // Original substrate surface is y=600 um.
-    hex (0 1 2 3 4 5 6 7) (50 120 40) simpleGrading (1 1 1)
+    // Negative-z shoulder: coarse at side wall -> fine at active corridor.
+    hex (0 1 2 3 4 5 6 7)
+        (50 120 10)
+        simpleGrading (1 1 0.3333333333)
+
+    // Central 8-um corridor.
+    hex (4 5 6 7 8 9 10 11)
+        (50 120 40)
+        simpleGrading (1 1 1)
+
+    // Positive-z shoulder: fine at active corridor -> coarse at side wall.
+    hex (8 9 10 11 12 13 14 15)
+        (50 120 10)
+        simpleGrading (1 1 3)
 );
 
 edges ();
@@ -35,13 +70,23 @@ boundary
     bottomWall
     {
         type wall;
-        faces ((0 4 5 1));
+        faces
+        (
+            (0 4 5 1)
+            (4 8 9 5)
+            (8 12 13 9)
+        );
     }
 
     atmosphere
     {
         type patch;
-        faces ((3 2 6 7));
+        faces
+        (
+            (3 2 6 7)
+            (7 6 10 11)
+            (11 10 14 15)
+        );
     }
 
     sideWalls
@@ -49,10 +94,21 @@ boundary
         type patch;
         faces
         (
+            // x-min
             (0 3 7 4)
+            (4 7 11 8)
+            (8 11 15 12)
+
+            // x-max
             (1 5 6 2)
+            (5 9 10 6)
+            (9 13 14 10)
+
+            // z-min
             (0 1 2 3)
-            (4 7 6 5)
+
+            // z-max
+            (12 15 14 13)
         );
     }
 );
