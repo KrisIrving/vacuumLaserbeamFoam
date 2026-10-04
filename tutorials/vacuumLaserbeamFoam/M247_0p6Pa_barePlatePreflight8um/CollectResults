@@ -17,6 +17,7 @@ mkdir M247_preflight_results
 
 cp preflight_status.txt M247_preflight_results/
 [ -f preflight_postprocess.log ] && cp preflight_postprocess.log M247_preflight_results/ || true
+[ -f log.reconstructPar.alphaT ] && cp log.reconstructPar.alphaT M247_preflight_results/ || true
 [ -f movingKeyholeDepth.csv ] && cp movingKeyholeDepth.csv M247_preflight_results/ || true
 
 grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam     > M247_preflight_results/diagnostics.txt || true
