@@ -1,0 +1,59 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    object blockMeshDict;
+}
+
+convertToMeters 1;
+
+vertices
+(
+    (-200e-6 0       -160e-6)
+    ( 200e-6 0       -160e-6)
+    ( 200e-6 640e-6  -160e-6)
+    (-200e-6 640e-6  -160e-6)
+    (-200e-6 0        160e-6)
+    ( 200e-6 0        160e-6)
+    ( 200e-6 640e-6   160e-6)
+    (-200e-6 640e-6   160e-6)
+);
+
+blocks
+(
+    // 8 um uniform preflight mesh: 50 x 80 x 40 = 160,000 cells.
+    // Original substrate surface is y=400 um.
+    hex (0 1 2 3 4 5 6 7) (50 80 40) simpleGrading (1 1 1)
+);
+
+edges ();
+
+boundary
+(
+    bottomWall
+    {
+        type wall;
+        faces ((0 4 5 1));
+    }
+
+    atmosphere
+    {
+        type patch;
+        faces ((3 2 6 7));
+    }
+
+    sideWalls
+    {
+        type patch;
+        faces
+        (
+            (0 3 7 4)
+            (1 5 6 2)
+            (0 1 2 3)
+            (4 7 6 5)
+        );
+    }
+);
+
+mergePatchPairs ();
