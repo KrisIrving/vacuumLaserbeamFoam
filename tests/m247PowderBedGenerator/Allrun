@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RUN_DIR="$REPO_ROOT/tests/run/m247PowderBedGenerator"
+
+rm -rf "$RUN_DIR"
+mkdir -p "$RUN_DIR"
+
+python3 "$REPO_ROOT/tools/powderBed/generatePowderBed.py"     --config "$SCRIPT_DIR/powderBedConfig.json"     --set-fields "$RUN_DIR/setFieldsDict"     --particles "$RUN_DIR/powderParticles.csv"     --manifest "$RUN_DIR/powderManifest.json"
+
+python3 "$SCRIPT_DIR/checkManifest.py" "$RUN_DIR/powderManifest.json"
