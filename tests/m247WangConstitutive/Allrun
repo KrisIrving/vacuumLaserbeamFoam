@@ -1,0 +1,51 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_CASE="$REPO_ROOT/tutorials/vacuumLaserbeamFoam/bootstrapPlate2D"
+RUN_CASE="$REPO_ROOT/tests/run/m247WangConstitutive"
+
+rm -rf "$RUN_CASE"
+mkdir -p "$(dirname "$RUN_CASE")"
+cp -a "$SOURCE_CASE" "$RUN_CASE"
+cp "$SCRIPT_DIR/vacuumProperties" "$RUN_CASE/constant/vacuumProperties"
+
+sed -i -E 's/^([[:space:]]*Tsolidus[[:space:]]+)[^;]+;/\11537;/'     "$RUN_CASE/constant/transportProperties"
+sed -i -E 's/^([[:space:]]*Tliquidus[[:space:]]+)[^;]+;/\11631;/'     "$RUN_CASE/constant/transportProperties"
+
+(cd "$RUN_CASE" && blockMesh > log.blockMesh 2>&1)
+
+echo "label,chamberTemperature_K,temperature_K,pSat_Pa,massFlux_kg_m2_s,recoil_Pa,qEvap_W_m2"     > "$RUN_CASE/m247WangConstitutive.csv"
+: > "$RUN_CASE/thresholds.txt"
+
+for spec in "298,298K" "1343.15,hotGas"
+do
+    chamberT="${spec%%,*}"
+    label="${spec#*,}"
+    foamDictionary "$RUN_CASE/constant/vacuumProperties"         -entry chamberTemperature -set "$chamberT" > /dev/null
+
+    first=1
+    for temperature in 1343.15 1537 1631 1700 1800 2000 2200 2500 3000
+    do
+        foamDictionary "$RUN_CASE/constant/vacuumProperties"             -entry testTemperature -set "$temperature" > /dev/null
+        (cd "$RUN_CASE" && vacuumEvaporationModelTest > "log.${label}.${temperature}" 2>&1)
+
+        if [ "$first" -eq 1 ]; then
+            echo "===== $label ($chamberT K) =====" >> "$RUN_CASE/thresholds.txt"
+            grep -A9 'nearVacuumWang thresholds'                 "$RUN_CASE/log.${label}.${temperature}" >> "$RUN_CASE/thresholds.txt"
+            first=0
+        fi
+
+        line="$(grep '^EVAP_MODEL_TEST ' "$RUN_CASE/log.${label}.${temperature}" | tail -1)"
+        read -r tag T pSat mDot recoil qEvap <<< "$line"
+        echo "$label,$chamberT,$T,$pSat,$mDot,$recoil,$qEvap"             >> "$RUN_CASE/m247WangConstitutive.csv"
+    done
+done
+
+python3 "$SCRIPT_DIR/checkConstitutive.py"     --csv "$RUN_CASE/m247WangConstitutive.csv"     --thresholds "$RUN_CASE/thresholds.txt"
+
+echo
+cat "$RUN_CASE/thresholds.txt"
+echo
+echo "Wrote $RUN_CASE/m247WangConstitutive.csv"
