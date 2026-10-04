@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+nohup ./Allrun > log.Allrun 2>&1 &
+echo $! > run.pid
+echo "Started M247 bare-plate preflight."
+echo "PID: $(cat run.pid)"
+echo "Use ./Status to inspect progress."
