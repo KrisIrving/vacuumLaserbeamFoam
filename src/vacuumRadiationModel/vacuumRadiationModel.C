@@ -43,6 +43,19 @@ Foam::vacuumRadiationModel::vacuumRadiationModel
         enabled_ =
             radiationDict.lookupOrDefault<bool>("enabled", false);
 
+        if (radiationDict.found("environmentTemperature"))
+        {
+            chamberTemperature_.value() =
+                readScalar(radiationDict.lookup("environmentTemperature"));
+
+            if (chamberTemperature_.value() <= 0.0)
+            {
+                FatalIOErrorInFunction(radiationDict)
+                    << "radiation.environmentTemperature must be positive"
+                    << exit(FatalIOError);
+            }
+        }
+
         if (enabled_)
         {
             emissivitySolid_ =
@@ -67,7 +80,7 @@ Foam::vacuumRadiationModel::vacuumRadiationModel
 
     Info<< "Vacuum radiation model" << nl
         << "    enabled             = " << enabled_ << nl
-        << "    chamberTemperature  = " << chamberTemperature_ << nl
+        << "    environmentTemperature = " << chamberTemperature_ << nl
         << "    emissivitySolid     = " << emissivitySolid_ << nl
         << "    emissivityLiquid    = " << emissivityLiquid_
         << endl;
