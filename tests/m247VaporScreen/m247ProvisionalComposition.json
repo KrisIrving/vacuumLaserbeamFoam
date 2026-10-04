@@ -1,0 +1,26 @@
+{
+  "model": "Wang ideal-mixture screening; fixed bulk composition",
+  "chamberPressure_Pa": 0.6,
+  "initialMetalTemperature_K": 1343.15,
+  "solidusTemperature_K": 1537.0,
+  "liquidusTemperature_K": 1631.0,
+  "referencePressure_Pa": 101325.0,
+  "gasConstant_J_mol_K": 8.314,
+  "temperatures_K": [1343.15, 1537, 1631, 1700, 1800, 2000, 2200, 2500, 3000, 3500, 4000, 4500, 5000],
+  "notes": [
+    "Provisional literature chemistry; replace with actual powder certificate before production CFD.",
+    "No alloy-level vapor-pressure anchor is applied.",
+    "No activity coefficients or preferential-depletion transport are included."
+  ],
+  "components": {
+    "Ni": {"massFraction": 0.6180, "molarMass_kg_mol": 0.0586934, "referenceTemperature_K": 3156.584, "latentHeatVap_J_kg": 6432819.434153015},
+    "Cr": {"massFraction": 0.0809, "molarMass_kg_mol": 0.0519961, "referenceTemperature_K": 2952.078, "latentHeatVap_J_kg": 6528895.261154893},
+    "Co": {"massFraction": 0.0931, "molarMass_kg_mol": 0.058933195, "referenceTemperature_K": 3184.943, "latentHeatVap_J_kg": 6934631.662172737},
+    "W":  {"massFraction": 0.0940, "molarMass_kg_mol": 0.18384, "referenceTemperature_K": 5828.0, "latentHeatVap_J_kg": 4374075.282854656},
+    "Ta": {"massFraction": 0.0321, "molarMass_kg_mol": 0.18094788, "referenceTemperature_K": 5778.07, "latentHeatVap_J_kg": 4151416.418915767},
+    "Al": {"massFraction": 0.0549, "molarMass_kg_mol": 0.0269815386, "referenceTemperature_K": 2793.0, "latentHeatVap_J_kg": 11828087.520553775},
+    "Hf": {"massFraction": 0.0150, "molarMass_kg_mol": 0.17849, "referenceTemperature_K": 4963.793, "latentHeatVap_J_kg": 3205725.8109698016},
+    "Ti": {"massFraction": 0.0069, "molarMass_kg_mol": 0.047867, "referenceTemperature_K": 3630.956, "latentHeatVap_J_kg": 9609543.109031275},
+    "Mo": {"massFraction": 0.0051, "molarMass_kg_mol": 0.09595, "referenceTemperature_K": 4951.969, "latentHeatVap_J_kg": 6434705.57582074}
+  }
+}
