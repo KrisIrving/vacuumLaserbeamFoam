@@ -1,0 +1,65 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+./PreparePowderBed
+
+python3 - constant/powderManifest.json <<'PY'
+import json
+import pathlib
+import sys
+
+m = json.loads(pathlib.Path(sys.argv[1]).read_text())
+
+checks = [
+    (m["preserveSampledPSD"] is True, "fixed-PSD mode is not active"),
+    (27 <= m["particleCount"] <= 31, "unexpected particle count"),
+    (0.55 <= m["actualPackingFractionNominalLayer"] <= 0.60,
+     "nominal-layer packing outside target"),
+    (abs(1e6*m["diameterD10_m"] - 36.5) <= 2.0, "D10 drift"),
+    (abs(1e6*m["diameterD50_m"] - 52.6) <= 2.0, "D50 drift"),
+    (abs(1e6*m["diameterD90_m"] - 74.4) <= 2.0, "D90 drift"),
+    (m["projectedCoverageFractionCorridor"] >= 0.80,
+     "active-corridor coverage below 80%"),
+    (1e6*m["maximumUncoveredCenterlineGap_m"] <= 30.0,
+     "centerline uncovered gap exceeds 30 um"),
+    (m["minimumInterparticleGap_m"] >= -1e-12, "powder overlap"),
+]
+
+for ok, message in checks:
+    if not ok:
+        raise SystemExit(message)
+
+print(
+    f"Powder PASS: particles={m['particleCount']} "
+    f"packing50={m['actualPackingFractionNominalLayer']:.6f} "
+    f"D10={1e6*m['diameterD10_m']:.3f}um "
+    f"D50={1e6*m['diameterD50_m']:.3f}um "
+    f"D90={1e6*m['diameterD90_m']:.3f}um "
+    f"coverage={m['projectedCoverageFractionCorridor']:.4f} "
+    f"maxGap={1e6*m['maximumUncoveredCenterlineGap_m']:.3f}um"
+)
+PY
+
+rm -rf 0 processor* constant/polyMesh postProcessing
+rm -f log.blockMesh log.setFields log.checkMesh log.decomposePar
+
+cp -r initial 0
+
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+runApplication blockMesh
+runApplication setFields
+checkMesh > log.checkMesh 2>&1
+runApplication decomposePar
+
+grep -q 'Mesh OK' log.checkMesh
+
+if [ ! -d processor0 ]; then
+    echo "Preflight failed: processor0 not created" >&2
+    exit 1
+fi
+
+echo "PASS: M247 powder preflight prepared (8 um, 240k cells, 48 ranks)"
