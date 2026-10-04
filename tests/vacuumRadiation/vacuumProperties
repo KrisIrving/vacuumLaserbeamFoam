@@ -23,6 +23,7 @@ testLiquidFraction     0.0;
 radiation
 {
     enabled             true;
+    environmentTemperature 1000;
     emissivitySolid     0.4;
     emissivityLiquid    0.1;
 }
