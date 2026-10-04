@@ -20,13 +20,14 @@ the effect of adding one M247 powder layer can be compared directly.
 
 - x = -200 to +200 um;
 - y = 0 to 960 um;
-- z = -160 to +160 um;
+- z = -320 to +320 um;
 - original substrate surface y = 600 um;
 - substrate depth = 600 um;
 - powder geometric envelope = 80 um;
 - gas headroom above powder envelope = 280 um;
-- uniform 8 um;
-- 240,000 cells;
+- central |z|<=160 um corridor at 8 um;
+- 160-320 um transverse shoulders graded to coarser cells;
+- approximately 360,000 cells;
 - 48 MPI ranks.
 
 The deeper substrate is a direct response to the bare-plate result:
@@ -50,12 +51,16 @@ Target nominal-layer packing is 0.58. The generator freezes the complete
 diameter set before placement and therefore never replaces an unplaceable large
 particle with a smaller draw.
 
-Seed 247001 was selected deterministically because it gives high coverage in
-the active corridor while preserving the same PSD:
-- expected particle count approximately 29;
-- expected nominal-layer packing approximately 0.577;
-- expected active-corridor projected coverage approximately 0.836;
-- expected maximum uncovered centerline gap approximately 26 um.
+After the bare-plate melt pool visibly reached the former z=+/-160 um slip
+boundaries, the powder footprint was widened to z=+/-280 um and the CFD side
+boundaries to z=+/-320 um.
+
+Seed 247081 was selected deterministically for the widened bed because it gives
+high coverage in the active corridor while preserving the same PSD:
+- expected particle count approximately 58;
+- expected nominal-layer packing approximately 0.578;
+- expected active-corridor projected coverage approximately 0.84;
+- expected maximum uncovered centerline gap below 10 um.
 
 This is still a geometric initial-condition generator, not DEM.
 
