@@ -15,10 +15,10 @@ checks = [
     (abs(1e6*m["diameterD10_m"] - 36.5) <= 2.0, "D10 drift"),
     (abs(1e6*m["diameterD50_m"] - 52.6) <= 2.0, "D50 drift"),
     (abs(1e6*m["diameterD90_m"] - 74.4) <= 2.0, "D90 drift"),
-    (m["projectedCoverageFractionCorridor"] >= 0.70,
-     "active-corridor projected coverage below 70%"),
-    (1e6*m["maximumUncoveredCenterlineGap_m"] <= 60.0,
-     "centerline uncovered gap exceeds 60 um"),
+    (m["projectedCoverageFractionCorridor"] >= 0.80,
+     "active-corridor projected coverage below 80%"),
+    (1e6*m["maximumUncoveredCenterlineGap_m"] <= 30.0,
+     "centerline uncovered gap exceeds 30 um"),
     (m["minimumInterparticleGap_m"] >= -1e-12, "particle overlap"),
 ]
 
