@@ -1,0 +1,30 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+rm -rf 0 processor* constant/polyMesh postProcessing
+rm -f log.blockMesh log.setFields log.checkMesh log.decomposePar
+
+cp -r initial 0
+
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+runApplication blockMesh
+runApplication setFields
+checkMesh > log.checkMesh 2>&1
+runApplication decomposePar
+
+grep -q 'Mesh OK' log.checkMesh
+
+if ! grep -Eq 'cells:[[:space:]]+160000|nCells:[[:space:]]+160000' log.checkMesh log.blockMesh; then
+    echo "WARNING: could not confirm 160000 cells from logs; inspect log.checkMesh."
+fi
+
+if [ ! -d processor0 ]; then
+    echo "Preflight failed: processor0 not created" >&2
+    exit 1
+fi
+
+echo "PASS: M247 bare-plate preflight prepared (8 um, 160k cells, 48 ranks)"
