@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eo pipefail
+
+echo "Reconstructing alpha.metal and T time directories"
+reconstructPar -fields '(alpha.metal T)' -time '5e-6:'     > log.reconstructPar.alphaT 2>&1
+
+echo "Sampling complete alpha.metal=0.5 interface"
+rm -rf postProcessing/movingKeyholeInterface
+postProcess     -dict system/movingKeyholeInterfaceDict     -fields '(alpha.metal)'     -time '5e-6:'     > log.postProcess.movingKeyhole 2>&1
+
+python3 scripts/extractMovingKeyholeDepth.py     --post-processing postProcessing/movingKeyholeInterface     --laser-path constant/timeVsLaserPosition     --surface-y 600e-6     --surface-band 8e-6     --trailing-window 120e-6     --forward-window 60e-6     --half-width-z 75e-6     --output movingKeyholeDepth.csv
+
+echo
+echo "Wrote movingKeyholeDepth.csv"
+tail -5 movingKeyholeDepth.csv
