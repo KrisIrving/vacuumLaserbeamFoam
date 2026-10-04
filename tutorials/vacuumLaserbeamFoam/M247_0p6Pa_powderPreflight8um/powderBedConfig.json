@@ -1,0 +1,32 @@
+{
+  "seed": 247001,
+  "footprint": {
+    "xMin": -0.00018,
+    "xMax": 0.00018,
+    "zMin": -0.00014,
+    "zMax": 0.00014
+  },
+  "substrateSurfaceY": 0.0006,
+  "layerThickness": 0.00008,
+  "nominalLayerThickness": 0.00005,
+  "targetPackingFraction": 0.58,
+  "preserveSampledPSD": true,
+  "placementOrder": "largestFirst",
+  "placementAttemptsPerParticle": 100000,
+  "clearance": 0.0,
+  "diameterDistribution": {
+    "type": "piecewiseQuantile",
+    "quantiles": [0.0, 0.1, 0.5, 0.9, 1.0],
+    "diameters": [0.00003, 0.0000365, 0.0000526, 0.0000744, 0.00008]
+  },
+  "coverage": {
+    "gridSpacing": 0.000002,
+    "centerlineZ": 0.0,
+    "corridor": {
+      "xMin": -0.0001,
+      "xMax": 0.0001,
+      "zMin": -0.000075,
+      "zMax": 0.000075
+    }
+  }
+}
