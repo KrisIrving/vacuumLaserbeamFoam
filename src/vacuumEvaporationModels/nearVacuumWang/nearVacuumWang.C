@@ -113,6 +113,13 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
     componentReferencePressures_(),
     componentReferenceTemperatures_(),
     componentLatentHeats_(),
+    componentVaporPressureModels_(),
+    componentMondalA_(),
+    componentMondalB_(),
+    componentMondalC_(),
+    componentMondalD_(),
+    componentCorrelationTmin_(),
+    componentCorrelationTmax_(),
     componentPressureScale_(1.0),
     boilingTemperature_(0.0),
     activationTemperature_(0.0),
@@ -161,6 +168,17 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
         componentReferencePressures_.setSize(nComponents, 0.0);
         componentReferenceTemperatures_.setSize(nComponents, 0.0);
         componentLatentHeats_.setSize(nComponents, 0.0);
+        componentVaporPressureModels_.setSize
+        (
+            nComponents,
+            "clausiusClapeyron"
+        );
+        componentMondalA_.setSize(nComponents, 0.0);
+        componentMondalB_.setSize(nComponents, 0.0);
+        componentMondalC_.setSize(nComponents, 0.0);
+        componentMondalD_.setSize(nComponents, 0.0);
+        componentCorrelationTmin_.setSize(nComponents, 0.0);
+        componentCorrelationTmax_.setSize(nComponents, GREAT);
 
         scalarList amountFractions(nComponents, 0.0);
         scalar amountSum = 0.0;
@@ -182,48 +200,111 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
                 dimensionSet(1, 0, 0, 0, -1, 0, 0),
                 component
             );
-            const dimensionedScalar componentReferencePressure
+            const word vaporPressureModel
             (
-                "referencePressure",
-                dimPressure,
-                component
-            );
-            const dimensionedScalar componentReferenceTemperature
-            (
-                "referenceTemperature",
-                dimTemperature,
-                component
-            );
-            const dimensionedScalar componentLatentHeat
-            (
-                "latentHeatVap",
-                dimensionSet(0, 2, -2, 0, 0, 0, 0),
-                component
+                component.lookupOrDefault<word>
+                (
+                    "vaporPressureModel",
+                    "clausiusClapeyron"
+                )
             );
 
             if
             (
                 massFraction.value() <= 0
              || componentMolarMass.value() <= 0
-             || componentReferencePressure.value() <= 0
-             || componentReferenceTemperature.value() <= 0
-             || componentLatentHeat.value() <= 0
             )
             {
                 FatalIOErrorInFunction(modelDict)
-                    << "All component properties must be positive for "
+                    << "Mass fraction and molar mass must be positive for "
                     << componentName
                     << exit(FatalIOError);
             }
 
             componentMolarMasses_[componenti] =
                 componentMolarMass.value();
-            componentReferencePressures_[componenti] =
-                componentReferencePressure.value();
-            componentReferenceTemperatures_[componenti] =
-                componentReferenceTemperature.value();
-            componentLatentHeats_[componenti] =
-                componentLatentHeat.value();
+            componentVaporPressureModels_[componenti] =
+                vaporPressureModel;
+
+            if (vaporPressureModel == "clausiusClapeyron")
+            {
+                const dimensionedScalar componentReferencePressure
+                (
+                    "referencePressure",
+                    dimPressure,
+                    component
+                );
+                const dimensionedScalar componentReferenceTemperature
+                (
+                    "referenceTemperature",
+                    dimTemperature,
+                    component
+                );
+                const dimensionedScalar componentLatentHeat
+                (
+                    "latentHeatVap",
+                    dimensionSet(0, 2, -2, 0, 0, 0, 0),
+                    component
+                );
+
+                if
+                (
+                    componentReferencePressure.value() <= 0
+                 || componentReferenceTemperature.value() <= 0
+                 || componentLatentHeat.value() <= 0
+                )
+                {
+                    FatalIOErrorInFunction(modelDict)
+                        << "Invalid Clausius-Clapeyron data for "
+                        << componentName
+                        << exit(FatalIOError);
+                }
+
+                componentReferencePressures_[componenti] =
+                    componentReferencePressure.value();
+                componentReferenceTemperatures_[componenti] =
+                    componentReferenceTemperature.value();
+                componentLatentHeats_[componenti] =
+                    componentLatentHeat.value();
+            }
+            else if (vaporPressureModel == "mondal2023")
+            {
+                const dictionary& fit = component.subDict("mondal2023Coeffs");
+
+                componentMondalA_[componenti] =
+                    fit.lookupOrDefault<scalar>("A", 0.0);
+                componentMondalB_[componenti] =
+                    fit.lookupOrDefault<scalar>("B", 0.0);
+                componentMondalC_[componenti] =
+                    fit.lookupOrDefault<scalar>("C", 0.0);
+                componentMondalD_[componenti] =
+                    fit.lookupOrDefault<scalar>("D", 0.0);
+                componentCorrelationTmin_[componenti] =
+                    fit.lookupOrDefault<scalar>("Tmin", 0.0);
+                componentCorrelationTmax_[componenti] =
+                    fit.lookupOrDefault<scalar>("Tmax", GREAT);
+
+                if
+                (
+                    componentCorrelationTmin_[componenti] <= 0
+                 || componentCorrelationTmax_[componenti]
+                    <= componentCorrelationTmin_[componenti]
+                )
+                {
+                    FatalIOErrorInFunction(modelDict)
+                        << "Invalid Mondal-2023 temperature range for "
+                        << componentName
+                        << exit(FatalIOError);
+                }
+            }
+            else
+            {
+                FatalIOErrorInFunction(modelDict)
+                    << "Unknown vaporPressureModel '" << vaporPressureModel
+                    << "' for component " << componentName
+                    << ". Valid options are clausiusClapeyron and mondal2023."
+                    << exit(FatalIOError);
+            }
 
             // Wang Eq. (18) uses molar fraction ki. The paper tabulates
             // alloy composition by mass fraction, so convert wi -> ki here.
@@ -413,7 +494,9 @@ Foam::vacuumEvaporationModels::nearVacuumWang::nearVacuumWang
         forAll(componentNames_, componenti)
         {
             Info<< " " << componentNames_[componenti]
-                << "(k=" << componentMoleFractions_[componenti] << ")";
+                << "(k=" << componentMoleFractions_[componenti]
+                << ",pSat=" << componentVaporPressureModels_[componenti]
+                << ")";
         }
         Info<< endl;
     }
@@ -438,15 +521,36 @@ Foam::vacuumEvaporationModels::nearVacuumWang::componentSaturationPressure
             << exit(FatalError);
     }
 
-    return
-        componentReferencePressures_[componenti]
-       *std::exp
-        (
-            componentLatentHeats_[componenti]
-           *componentMolarMasses_[componenti]/R_.value()
-           *(1.0/componentReferenceTemperatures_[componenti]
-           - 1.0/temperature)
-        );
+    if
+    (
+        componentVaporPressureModels_[componenti]
+     == "clausiusClapeyron"
+    )
+    {
+        return
+            componentReferencePressures_[componenti]
+           *std::exp
+            (
+                componentLatentHeats_[componenti]
+               *componentMolarMasses_[componenti]/R_.value()
+               *(1.0/componentReferenceTemperatures_[componenti]
+               - 1.0/temperature)
+            );
+    }
+
+    // Mondal et al., Materials 16 (2023) 50, Eq. (2):
+    // log10(P_atm) = -A/T + B + C*log10(T) + 1e-3*D*T.
+    // The published fit ranges are retained as provenance metadata. The
+    // smooth fit is evaluated outside the tabulated range when required by
+    // the solver threshold bracket; M247 regressions explicitly quantify
+    // the effect of this low-pressure extrapolation.
+    const scalar log10PressureAtm =
+        -componentMondalA_[componenti]/temperature
+      + componentMondalB_[componenti]
+      + componentMondalC_[componenti]*std::log10(temperature)
+      + 1.0e-3*componentMondalD_[componenti]*temperature;
+
+    return 101325.0*std::pow(10.0, log10PressureAtm);
 }
 
 
