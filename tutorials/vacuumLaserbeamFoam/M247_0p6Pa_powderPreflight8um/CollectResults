@@ -1,0 +1,40 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+./Status | tee preflight_status.txt
+
+if grep -q '^End$' log.vacuumLaserbeamFoam 2>/dev/null; then
+    ./PostprocessTrack 2>&1 | tee preflight_postprocess.log
+else
+    echo "Solver has not reached End; skipping interface post-processing."
+fi
+
+rm -rf M247_powder_preflight_results
+mkdir M247_powder_preflight_results
+
+cp preflight_status.txt M247_powder_preflight_results/
+[ -f preflight_postprocess.log ] && cp preflight_postprocess.log M247_powder_preflight_results/ || true
+[ -f log.reconstructPar.alphaT ] && cp log.reconstructPar.alphaT M247_powder_preflight_results/ || true
+[ -f movingKeyholeDepth.csv ] && cp movingKeyholeDepth.csv M247_powder_preflight_results/ || true
+[ -f constant/powderManifest.json ] && cp constant/powderManifest.json M247_powder_preflight_results/ || true
+[ -f constant/powderParticles.csv ] && cp constant/powderParticles.csv M247_powder_preflight_results/ || true
+
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam     > M247_powder_preflight_results/diagnostics.txt || true
+
+grep -E '^(Time = |deltaT = |Courant Number|Interface Courant Number|ExecutionTime = )'     log.vacuumLaserbeamFoam     > M247_powder_preflight_results/numerics.txt || true
+
+git rev-parse HEAD > M247_powder_preflight_results/git_commit.txt
+git status --short > M247_powder_preflight_results/git_status.txt
+
+tar -czf M247_powderPreflight8um_results.tar.gz M247_powder_preflight_results
+
+echo
+echo "===== KEY RESULT ====="
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -5 || true
+[ -f movingKeyholeDepth.csv ] && tail -5 movingKeyholeDepth.csv || true
+echo
+echo "Upload:"
+ls -lh M247_powderPreflight8um_results.tar.gz
