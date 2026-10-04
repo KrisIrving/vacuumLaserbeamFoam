@@ -216,8 +216,7 @@ def build_fixed_diameter_set(rng, cfg, target_volume):
     return diameters
 
 
-def place_fixed_diameters
-(
+def place_fixed_diameters(
     rng,
     diameters,
     bounds,
@@ -278,8 +277,7 @@ def place_fixed_diameters
     return particles, attempts, rejected_layer
 
 
-def legacy_generate
-(
+def legacy_generate(
     rng,
     cfg,
     bounds,
@@ -366,8 +364,7 @@ def projected_coverage(particles, region, spacing):
     return covered/total
 
 
-def maximum_centerline_gap
-(
+def maximum_centerline_gap(
     particles,
     x_min,
     x_max,
