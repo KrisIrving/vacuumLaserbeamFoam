@@ -43,7 +43,7 @@ EOF
     awk -v T="$T" -v f="$f" -v emiss="$emiss" -v q="$q" -v A="$A" -v B="$B" '
     BEGIN {
         sigma=5.670374419e-8;
-        Tw=300.0;
+        Tw=1000.0;
         eS=0.4;
         eL=0.1;
         e=eS+(eL-eS)*f;
@@ -69,4 +69,4 @@ check_flux 2000 0.0 solid
 check_flux 2000 1.0 liquid
 check_flux 1200 0.5 mushy
 
-echo "PASS: vacuum radiation analytical regression"
+echo "PASS: vacuum radiation analytical regression with independent environment temperature"
