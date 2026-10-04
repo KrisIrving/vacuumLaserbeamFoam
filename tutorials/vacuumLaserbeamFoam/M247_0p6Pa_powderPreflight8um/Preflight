@@ -15,7 +15,7 @@ m = json.loads(pathlib.Path(sys.argv[1]).read_text())
 
 checks = [
     (m["preserveSampledPSD"] is True, "fixed-PSD mode is not active"),
-    (27 <= m["particleCount"] <= 31, "unexpected particle count"),
+    (56 <= m["particleCount"] <= 60, "unexpected particle count"),
     (0.55 <= m["actualPackingFractionNominalLayer"] <= 0.60,
      "nominal-layer packing outside target"),
     (abs(1e6*m["diameterD10_m"] - 36.5) <= 2.0, "D10 drift"),
@@ -62,4 +62,4 @@ if [ ! -d processor0 ]; then
     exit 1
 fi
 
-echo "PASS: M247 powder preflight prepared (8 um, 240k cells, 48 ranks)"
+echo "PASS: M247 powder preflight prepared (8 um central corridor, ~360k cells, 48 ranks)"
