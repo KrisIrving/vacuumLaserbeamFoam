@@ -1,0 +1,42 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+LOG=log.vacuumLaserbeamFoam
+TARGET=0.0001
+
+if [ ! -f "$LOG" ]; then
+    echo "Solver log not present yet."
+    exit 0
+fi
+
+CURRENT="$(grep '^[[:space:]]*Time = ' "$LOG" | tail -1 | awk '{print $3}')"
+ELAPSED="$(grep '^ExecutionTime = ' "$LOG" | tail -1 | awk '{print $3}')"
+
+python3 - "$CURRENT" "$TARGET" "$ELAPSED" <<'PY'
+import sys
+t=float(sys.argv[1]) if sys.argv[1] else 0.0
+target=float(sys.argv[2])
+elapsed=float(sys.argv[3]) if sys.argv[3] else 0.0
+p=100*t/target if target else 0.0
+print(f"Target simulation time : {target:.9g} s ({target*1e6:.3f} us)")
+print(f"Current simulation time: {t:.9g} s ({t*1e6:.3f} us)")
+print(f"Progress               : {p:.2f} %")
+if t>0 and elapsed>0:
+    rem=max(target-t,0)*elapsed/t
+    print(f"Elapsed wall time      : {elapsed:.1f} s ({elapsed/3600:.2f} h)")
+    print(f"Estimated time left    : {rem:.1f} s ({rem/3600:.2f} h)")
+PY
+
+echo "Latest laser position  : $(grep 'Laser mean position = ' "$LOG" | tail -1 | sed 's/^[[:space:]]*//')"
+echo "Latest deltaT          : $(grep '^deltaT = ' "$LOG" | tail -1 | awk '{print $3}') s"
+echo "Latest diagnostics     : $(grep '^VACUUM_DIAGNOSTICS ' "$LOG" | tail -1)"
+
+if grep -Eq 'FOAM FATAL ERROR|MPI_ABORT was invoked' "$LOG"; then
+    echo "Run status             : FAILED"
+elif grep -q '^End$' "$LOG"; then
+    echo "Run status             : COMPLETED"
+else
+    echo "Run status             : RUNNING/INCOMPLETE"
+fi
