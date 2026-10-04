@@ -1,0 +1,95 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "constant";
+    object vacuumProperties;
+}
+
+evaporationModel nearVacuumWang;
+chamberPressure 0.6;
+chamberTemperature 298;
+testTemperature 1631;
+
+nearVacuumWangCoeffs
+{
+    referencePressure 101325;
+    referenceTemperature 3003;
+    molarMass 0.0586934;
+
+    // Provisional bulk alloy evaporation enthalpy used only for qEvap=mDot*Lv.
+    // This does not set the component vapor-pressure curves.
+    latentHeatVap 6.49027852624976e6;
+
+    thresholdTemperatureMin 1200;
+    thresholdTemperatureMax 6000;
+
+    componentNames (Ni Cr Co W Ta Al Hf Ti Mo);
+    components
+    {
+        Ni
+        {
+            massFraction 0.6180;
+            molarMass 0.0586934;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A -4552; B -165.9; C 51.135; D -4.476; Tmin 1500; Tmax 3525; }
+        }
+        Cr
+        {
+            massFraction 0.0809;
+            molarMass 0.0519961;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 21790; B 15.86; C -2.420; D -0.024; Tmin 1400; Tmax 3525; }
+        }
+        Co
+        {
+            massFraction 0.0931;
+            molarMass 0.058933195;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 25540; B 35.6; C -8.461; D 0.652; Tmin 1500; Tmax 3750; }
+        }
+        W
+        {
+            massFraction 0.0940;
+            molarMass 0.18384;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 83040; B 151.1; C -38.85; D 1.551; Tmin 3000; Tmax 7325; }
+        }
+        Ta
+        {
+            massFraction 0.0321;
+            molarMass 0.18094788;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 47320; B 34.75; C -7.534; D 0.326; Tmin 2800; Tmax 6650; }
+        }
+        Al
+        {
+            massFraction 0.0549;
+            molarMass 0.0269815386;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 12210; B -27.06; C 10.09; D -1.16; Tmin 1200; Tmax 3370; }
+        }
+        Hf
+        {
+            massFraction 0.0150;
+            molarMass 0.17849;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 45980; B 84.44; C -22.19; D 1.402; Tmin 2200; Tmax 5675; }
+        }
+        Ti
+        {
+            massFraction 0.0069;
+            molarMass 0.047867;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 26910; B 28.53; C -6.305; D 0.413; Tmin 1600; Tmax 4190; }
+        }
+        Mo
+        {
+            massFraction 0.0051;
+            molarMass 0.09595;
+            vaporPressureModel mondal2023;
+            mondal2023Coeffs { A 40260; B 43.96; C -10.43; D 0.565; Tmin 2200; Tmax 5760; }
+        }
+    }
+}
