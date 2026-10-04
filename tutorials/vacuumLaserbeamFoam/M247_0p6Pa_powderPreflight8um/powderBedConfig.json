@@ -1,10 +1,10 @@
 {
-  "seed": 247001,
+  "seed": 247081,
   "footprint": {
     "xMin": -0.00018,
     "xMax": 0.00018,
-    "zMin": -0.00014,
-    "zMax": 0.00014
+    "zMin": -0.00028,
+    "zMax": 0.00028
   },
   "substrateSurfaceY": 0.0006,
   "layerThickness": 0.00008,
