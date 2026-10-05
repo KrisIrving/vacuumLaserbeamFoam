@@ -1,0 +1,17 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ ! -f 0/T ] && [ ! -f 5e-06/T ]; then
+    echo "Reconstructing T first"
+    reconstructPar -fields '(T)' -time '5e-6:' > log.reconstructPar.T 2>&1
+fi
+
+echo "Sampling T=1631 K liquidus isosurface"
+rm -rf postProcessing/liquidusSurface
+postProcess     -dict system/meltPoolInterfaceDict     -fields '(T)'     -time '5e-6:'     > log.postProcess.liquidus 2>&1
+
+python3 "$REPO_ROOT/tools/postProcessing/extractMeltPoolEnvelope.py"     --post-processing postProcessing/liquidusSurface     --laser-path constant/timeVsLaserPosition     --z-min -320e-6     --z-max 320e-6     --surface-y 600e-6     --output meltPoolEnvelope.csv
