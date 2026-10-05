@@ -1,0 +1,70 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    object transportProperties;
+}
+
+interfaceTrackingScheme isoAdvector;
+phases (metal gas);
+
+metal
+{
+    transportModel Newtonian;
+
+    // First preflight values only; see README for provenance and sensitivities.
+    // Constant rho follows reported MAR-M247 solid density. The reported liquid
+    // density (~7430 kg/m3) will be used in a later sensitivity because the
+    // current incompressible material path uses one metal density.
+    rho 7950;
+
+    // mu = 8.5 mPa s / rho = 1.06918e-6 m2/s.
+    nu 1.069182389937107e-6;
+
+    // Recent MAR-M247 DSC bracket.
+    Tsolidus 1537;
+    Tliquidus 1631;
+    LatentHeat 1.50e5;
+
+    // Volumetric expansion estimate; buoyancy is secondary at this scale.
+    beta 5.46e-5;
+
+    // Fallback constants required by the solver.
+    poly_kappa (29 0 0 0 0 0 0 0);
+    poly_cp    (790 0 0 0 0 0 0 0);
+
+    // Provisional near-melt values. cp comes from the closely related CM247LC
+    // flow literature; k lies within MAR-M247 ProCAST literature ranges.
+    useClampedLinearThermalProperties true;
+    cpSolidus 790;
+    cpLiquidus 860;
+    kappaSolidus 29;
+    kappaLiquidus 35;
+
+    elec_resistivity 1.0e-6;
+}
+
+gas
+{
+    // Numerical pseudo-gas only; not a physical 0.6-Pa continuum closure.
+    transportModel Newtonian;
+    nu 1.48e-05;
+    rho 1.0;
+    Tsolidus 1.0;
+    Tliquidus 10.0;
+    LatentHeat 1;
+    beta 4.0e-5;
+    poly_kappa (0.04 0 0 0 0 0 0 0);
+    poly_cp    (520 0 0 0 0 0 0 0);
+}
+
+// MAR-M247 literature surface tension; dSigma/dT remains a sensitivity input.
+sigma 1.70;
+Marangoni_Constant -2.5e-4;
+
+// Legacy entries retained for backward-compatible readers only.
+p0 0.6;
+Tvap 1631;
+Mm 0.05;
+LatentHeatVap 6.49027852624976e6;

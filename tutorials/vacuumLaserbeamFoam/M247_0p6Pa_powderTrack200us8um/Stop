@@ -1,0 +1,32 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ ! -f run.pid ]; then
+    echo "run.pid not found."
+    exit 0
+fi
+
+pid="$(cat run.pid)"
+
+echo "Stopping M247 powder preflight started by PID $pid"
+
+# First terminate the immediate child (normally mpirun), then the wrapper shell.
+pkill -TERM -P "$pid" 2>/dev/null || true
+kill -TERM "$pid" 2>/dev/null || true
+
+sleep 2
+
+if kill -0 "$pid" 2>/dev/null; then
+    echo "Wrapper PID still alive; sending KILL."
+    pkill -KILL -P "$pid" 2>/dev/null || true
+    kill -KILL "$pid" 2>/dev/null || true
+fi
+
+echo
+echo "Remaining matching processes:"
+pgrep -af 'vacuumLaserbeamFoam|mpirun' || true
+echo
+echo "Stop request complete."

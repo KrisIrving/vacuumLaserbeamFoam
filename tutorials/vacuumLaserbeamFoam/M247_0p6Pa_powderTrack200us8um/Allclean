@@ -1,0 +1,8 @@
+#!/bin/bash
+rm -rf 0 [1-9]* processor* postProcessing VTKs
+rm -rf constant/polyMesh
+rm -f log.* case.foam run.pid movingKeyholeDepth.csv
+rm -f system/setFieldsDict
+rm -f constant/powderParticles.csv constant/powderManifest.json
+rm -rf M247_powder_preflight_results
+rm -f M247_powderPreflight8um_results.tar.gz
