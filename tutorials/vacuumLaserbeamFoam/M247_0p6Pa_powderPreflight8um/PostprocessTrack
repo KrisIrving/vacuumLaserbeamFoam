@@ -10,6 +10,15 @@ postProcess     -dict system/movingKeyholeInterfaceDict     -fields '(alpha.meta
 
 python3 scripts/extractMovingKeyholeDepth.py     --post-processing postProcessing/movingKeyholeInterface     --laser-path constant/timeVsLaserPosition     --surface-y 600e-6     --surface-band 8e-6     --trailing-window 120e-6     --forward-window 60e-6     --half-width-z 75e-6     --output movingKeyholeDepth.csv
 
+python3 scripts/extractMoltenExtent.py \
+    --post-processing postProcessing/moltenRegionSurface \
+    --xmin -200e-6 --xmax 200e-6 \
+    --ymin 0 --ymax 960e-6 \
+    --zmin -320e-6 --zmax 320e-6 \
+    --output moltenExtent.csv
+
 echo
-echo "Wrote movingKeyholeDepth.csv"
+echo "Wrote movingKeyholeDepth.csv and moltenExtent.csv"
 tail -5 movingKeyholeDepth.csv
+echo
+tail -5 moltenExtent.csv
