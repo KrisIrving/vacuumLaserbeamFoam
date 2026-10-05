@@ -1,0 +1,38 @@
+#!/bin/bash
+set -eo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+./Status | tee track_status.txt
+
+if grep -q '^End$' log.vacuumLaserbeamFoam 2>/dev/null; then
+    ./PostprocessTrack 2>&1 | tee track_postprocess.log
+else
+    echo "Solver has not reached End; skipping full post-processing."
+fi
+
+rm -rf M247_powder_200us_results
+mkdir M247_powder_200us_results
+
+for f in     track_status.txt track_postprocess.log     movingKeyholeDepth.csv moltenExtent.csv     log.reconstructPar.alphaT log.postProcess.moltenExtent     constant/powderManifest.json constant/powderParticles.csv
+do
+    [ -f "$f" ] && cp "$f" M247_powder_200us_results/ || true
+done
+
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam     > M247_powder_200us_results/diagnostics.txt || true
+
+grep -E '^(Time = |deltaT = |Courant Number|Interface Courant Number|ExecutionTime = )'     log.vacuumLaserbeamFoam     > M247_powder_200us_results/numerics.txt || true
+
+git rev-parse HEAD > M247_powder_200us_results/git_commit.txt
+git status --short > M247_powder_200us_results/git_status.txt
+
+tar -czf M247_powderTrack200us8um_results.tar.gz M247_powder_200us_results
+
+echo
+echo "===== KEY RESULT ====="
+grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -5 || true
+[ -f movingKeyholeDepth.csv ] && { echo; tail -5 movingKeyholeDepth.csv; } || true
+[ -f moltenExtent.csv ] && { echo; tail -5 moltenExtent.csv; } || true
+echo
+echo "Upload:"
+ls -lh M247_powderTrack200us8um_results.tar.gz
