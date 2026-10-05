@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+latestTime="$(foamListTimes -latestTime | tail -1)"
+if [ ! -f "$latestTime/T" ]; then
+    reconstructPar -fields '(T)' -time '10e-6:' > log.reconstructPar.T 2>&1
+fi
+
+rm -rf postProcessing/moltenRegionSurface
+postProcess -dict system/moltenRegionSurfaceDict -fields '(T)' -time '10e-6:'     > log.postProcess.moltenExtent 2>&1
+
+python3 scripts/extractMoltenExtent.py     --post-processing postProcessing/moltenRegionSurface     --xmin=-520e-6 --xmax=320e-6     --ymin=0 --ymax=960e-6     --zmin=-320e-6 --zmax=320e-6     --output moltenExtent.csv
