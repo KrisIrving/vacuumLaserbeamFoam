@@ -1,0 +1,23 @@
+#!/bin/bash
+set -eo pipefail
+
+echo "Reconstructing alpha.metal and T"
+reconstructPar -fields '(alpha.metal T)' -time '10e-6:' > log.reconstructPar.alphaT 2>&1
+
+echo "Sampling alpha.metal=0.5 interface"
+rm -rf postProcessing/movingKeyholeInterface
+postProcess -dict system/movingKeyholeInterfaceDict -fields '(alpha.metal)' -time '10e-6:'     > log.postProcess.movingKeyhole 2>&1
+
+echo "Sampling T=1631 K liquidus envelope"
+rm -rf postProcessing/moltenRegionSurface
+postProcess -dict system/moltenRegionSurfaceDict -fields '(T)' -time '10e-6:'     > log.postProcess.moltenExtent 2>&1
+
+python3 scripts/extractMovingKeyholeDepth.py     --post-processing postProcessing/movingKeyholeInterface     --laser-path constant/timeVsLaserPosition     --surface-y 600e-6 --surface-band 8e-6     --trailing-window 160e-6 --forward-window 80e-6     --half-width-z 100e-6     --output movingKeyholeDepth.csv
+
+python3 scripts/extractMoltenExtent.py     --post-processing postProcessing/moltenRegionSurface     --xmin=-520e-6 --xmax=320e-6     --ymin=0 --ymax=960e-6     --zmin=-320e-6 --zmax=320e-6     --output moltenExtent.csv
+
+echo
+echo "Wrote movingKeyholeDepth.csv and moltenExtent.csv"
+tail -5 movingKeyholeDepth.csv
+echo
+tail -5 moltenExtent.csv
