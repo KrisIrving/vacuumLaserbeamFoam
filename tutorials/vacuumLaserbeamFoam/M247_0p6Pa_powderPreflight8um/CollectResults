@@ -16,6 +16,8 @@ cp preflight_status.txt M247_powder_preflight_results/
 [ -f preflight_postprocess.log ] && cp preflight_postprocess.log M247_powder_preflight_results/ || true
 [ -f log.reconstructPar.alphaT ] && cp log.reconstructPar.alphaT M247_powder_preflight_results/ || true
 [ -f movingKeyholeDepth.csv ] && cp movingKeyholeDepth.csv M247_powder_preflight_results/ || true
+[ -f moltenExtent.csv ] && cp moltenExtent.csv M247_powder_preflight_results/ || true
+[ -f log.postProcess.moltenExtent ] && cp log.postProcess.moltenExtent M247_powder_preflight_results/ || true
 [ -f meltPoolEnvelope.csv ] && cp meltPoolEnvelope.csv M247_powder_preflight_results/ || true
 [ -f meltpool_postprocess.log ] && cp meltpool_postprocess.log M247_powder_preflight_results/ || true
 [ -f constant/powderManifest.json ] && cp constant/powderManifest.json M247_powder_preflight_results/ || true
@@ -34,6 +36,7 @@ echo
 echo "===== KEY RESULT ====="
 grep '^VACUUM_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -5 || true
 [ -f movingKeyholeDepth.csv ] && tail -5 movingKeyholeDepth.csv || true
+[ -f moltenExtent.csv ] && { echo; tail -5 moltenExtent.csv; } || true
 echo
 echo "Upload:"
 ls -lh M247_powderPreflight8um_results.tar.gz
