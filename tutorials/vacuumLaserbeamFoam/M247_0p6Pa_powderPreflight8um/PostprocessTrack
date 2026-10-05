@@ -12,9 +12,9 @@ python3 scripts/extractMovingKeyholeDepth.py     --post-processing postProcessin
 
 python3 scripts/extractMoltenExtent.py \
     --post-processing postProcessing/moltenRegionSurface \
-    --xmin -200e-6 --xmax 200e-6 \
-    --ymin 0 --ymax 960e-6 \
-    --zmin -320e-6 --zmax 320e-6 \
+    --xmin=-200e-6 --xmax=200e-6 \
+    --ymin=0 --ymax=960e-6 \
+    --zmin=-320e-6 --zmax=320e-6 \
     --output moltenExtent.csv
 
 echo
