@@ -8,6 +8,11 @@ echo "Sampling complete alpha.metal=0.5 interface"
 rm -rf postProcessing/movingKeyholeInterface
 postProcess     -dict system/movingKeyholeInterfaceDict     -fields '(alpha.metal)'     -time '5e-6:'     > log.postProcess.movingKeyhole 2>&1
 
+echo "Sampling T=1631 K liquidus-temperature envelope"
+rm -rf postProcessing/moltenRegionSurface
+postProcess -dict system/moltenRegionSurfaceDict -fields '(T)' -time '5e-6:' \
+    > log.postProcess.moltenExtent 2>&1
+
 python3 scripts/extractMovingKeyholeDepth.py     --post-processing postProcessing/movingKeyholeInterface     --laser-path constant/timeVsLaserPosition     --surface-y 600e-6     --surface-band 8e-6     --trailing-window 120e-6     --forward-window 60e-6     --half-width-z 75e-6     --output movingKeyholeDepth.csv
 
 python3 scripts/extractMoltenExtent.py \
