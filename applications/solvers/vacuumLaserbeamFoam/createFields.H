@@ -248,6 +248,15 @@ const Switch writeVacuumDiagnostics
     vacuumProperties.lookupOrDefault<Switch>("writeDiagnostics", false)
 );
 
+const Switch performanceDiagnostics
+(
+    vacuumProperties.lookupOrDefault<Switch>
+    (
+        "performanceDiagnostics",
+        false
+    )
+);
+
 // Runtime-selectable evaporation/recoil model.
 // Vacuum/environment configuration lives in vacuumProperties, while the
 // legacy material parameters remain in transportProperties for exact
