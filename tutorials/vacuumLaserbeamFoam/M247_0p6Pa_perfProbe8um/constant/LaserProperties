@@ -1,0 +1,51 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "constant";
+    object LaserProperties;
+}
+
+radialPolarHeatSource yes;
+PowderSim false;
+
+timeVsLaserPosition
+{
+    file "$FOAM_CASE/constant/timeVsLaserPosition";
+    outOfBounds clamp;
+}
+
+timeVsLaserPower
+{
+    file "$FOAM_CASE/constant/timeVsLaserPower";
+    outOfBounds clamp;
+}
+
+V_incident (0 -1 0);
+
+// Experiment: 86 um spot diameter.
+laserRadius 43e-6;
+
+// Provisional Gaussian/radial convention retained from the previous numerical
+// design; this is not a material property and will be audited separately.
+Radius_Flavour 2.0;
+
+nRadial 16;
+nAngular 96;
+N_sub_divisions 1;
+
+wavelength 1.064e-6;
+
+// No reliable MAR-M247 complex index at 1064 nm was found.
+// First preflight uses Johnson-Christy Ni as an explicit surrogate.
+opticalModel fixedComplexIndex;
+refractiveIndex 2.611;
+extinctionCoefficient 5.842;
+
+e_num_density 5.83e29;
+
+dep_cutoff 0.5;
+useLocalSearch true;
+maxLocalSearch 200;
+rayPowerRelTol 1e-6;
