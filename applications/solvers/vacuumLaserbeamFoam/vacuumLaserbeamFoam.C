@@ -190,7 +190,6 @@ int main(int argc, char *argv[])
 
             const perfClock::time_point perfPropsStart = perfClock::now();
             #include "updateProps.H"
-            mixture.correct();
             perfPropsStep += std::chrono::duration<scalar>
             (
                 perfClock::now() - perfPropsStart
@@ -205,6 +204,13 @@ int main(int argc, char *argv[])
             perfLaserStep += std::chrono::duration<scalar>
             (
                 perfClock::now() - perfLaserStart
+            ).count();
+
+            const perfClock::time_point perfMixtureStart = perfClock::now();
+            mixture.correct();
+            perfPropsStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfMixtureStart
             ).count();
 
             if (pimple.frozenFlow())
