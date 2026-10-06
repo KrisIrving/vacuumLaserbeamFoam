@@ -16,6 +16,7 @@ chamberPressure 0.6;
 chamberTemperature 298;
 
 writeDiagnostics true;
+performanceDiagnostics false;
 
 radiation
 {
