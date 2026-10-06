@@ -70,6 +70,8 @@ Authors
 #include "vacuumEvaporationModel.H"
 #include "vacuumRadiationModel.H"
 
+#include <chrono>
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
@@ -94,6 +96,18 @@ int main(int argc, char *argv[])
     #include "MULES/createAlphaFluxes.H"
     #include "initCorrectPhi.H"
     #include "createUfIfPresent.H"
+
+    typedef std::chrono::steady_clock perfClock;
+
+    scalar perfAlphaTotal = 0.0;
+    scalar perfPropsTotal = 0.0;
+    scalar perfLaserTotal = 0.0;
+    scalar perfMomentumTotal = 0.0;
+    scalar perfThermalTotal = 0.0;
+    scalar perfPressureTotal = 0.0;
+    scalar perfStepTotal = 0.0;
+    label perfStepCount = 0;
+    label perfThermalCorrectorsTotal = 0;
 
     if (interfaceTrackingScheme == "MULES")
     {
@@ -141,9 +155,20 @@ int main(int argc, char *argv[])
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
+        const perfClock::time_point perfStepStart = perfClock::now();
+        scalar perfAlphaStep = 0.0;
+        scalar perfPropsStep = 0.0;
+        scalar perfLaserStep = 0.0;
+        scalar perfMomentumStep = 0.0;
+        scalar perfThermalStep = 0.0;
+        scalar perfPressureStep = 0.0;
+        label perfThermalCorrectorsStep = 0;
+
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
+
+            const perfClock::time_point perfAlphaStart = perfClock::now();
 
             if (interfaceTrackingScheme == "MULES")
             {
@@ -158,34 +183,82 @@ int main(int argc, char *argv[])
                 #include "isoAdvector/alphaEqnSubCycle.H"
             }
 
+            perfAlphaStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfAlphaStart
+            ).count();
+
+            const perfClock::time_point perfPropsStart = perfClock::now();
             #include "updateProps.H"
+            mixture.correct();
+            perfPropsStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfPropsStart
+            ).count();
 
             // Update the laser deposition field
+            const perfClock::time_point perfLaserStart = perfClock::now();
             laser.updateDeposition
             (
                 alpha_filtered, n_filtered, electrical_resistivity
             );
-
-            mixture.correct();
+            perfLaserStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfLaserStart
+            ).count();
 
             if (pimple.frozenFlow())
             {
                 continue;
             }
 
+            const perfClock::time_point perfMomentumStart = perfClock::now();
             #include "UEqn.H"
+            perfMomentumStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfMomentumStart
+            ).count();
+
+            const perfClock::time_point perfThermalStart = perfClock::now();
             #include "TEqn.H"
+            perfThermalStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfThermalStart
+            ).count();
 
             // --- Pressure corrector loop
+            const perfClock::time_point perfPressureStart = perfClock::now();
             while (pimple.correct())
             {
                 #include "pEqn.H"
             }
+            perfPressureStep += std::chrono::duration<scalar>
+            (
+                perfClock::now() - perfPressureStart
+            ).count();
 
             if (pimple.turbCorr())
             {
                 turbulence->correct();
             }
+        }
+
+        const scalar perfThisStep = std::chrono::duration<scalar>
+        (
+            perfClock::now() - perfStepStart
+        ).count();
+
+        if (performanceDiagnostics)
+        {
+            perfAlphaTotal += perfAlphaStep;
+            perfPropsTotal += perfPropsStep;
+            perfLaserTotal += perfLaserStep;
+            perfMomentumTotal += perfMomentumStep;
+            perfThermalTotal += perfThermalStep;
+            perfPressureTotal += perfPressureStep;
+            perfStepTotal += perfThisStep;
+            perfThermalCorrectorsTotal += perfThermalCorrectorsStep;
+            ++perfStepCount;
         }
 
         // Update the melt history
@@ -195,6 +268,41 @@ int main(int argc, char *argv[])
         meltHistory += condition;
 
         runTime.write();
+
+        if (performanceDiagnostics && runTime.outputTime())
+        {
+            const scalar accounted =
+                perfAlphaTotal
+              + perfPropsTotal
+              + perfLaserTotal
+              + perfMomentumTotal
+              + perfThermalTotal
+              + perfPressureTotal;
+
+            Info<< "PERF_DIAGNOSTICS"
+                << " time=" << runTime.value()
+                << " steps=" << perfStepCount
+                << " thermalCorrectors=" << perfThermalCorrectorsTotal
+                << " stepWall_s=" << perfStepTotal
+                << " alpha_s=" << perfAlphaTotal
+                << " props_s=" << perfPropsTotal
+                << " laser_s=" << perfLaserTotal
+                << " momentum_s=" << perfMomentumTotal
+                << " thermal_s=" << perfThermalTotal
+                << " pressure_s=" << perfPressureTotal
+                << " other_s=" << max(perfStepTotal - accounted, scalar(0))
+                << endl;
+
+            perfAlphaTotal = 0.0;
+            perfPropsTotal = 0.0;
+            perfLaserTotal = 0.0;
+            perfMomentumTotal = 0.0;
+            perfThermalTotal = 0.0;
+            perfPressureTotal = 0.0;
+            perfStepTotal = 0.0;
+            perfStepCount = 0;
+            perfThermalCorrectorsTotal = 0;
+        }
 
         if (writeVacuumDiagnostics && runTime.outputTime())
         {
