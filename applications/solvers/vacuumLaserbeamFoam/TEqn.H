@@ -144,5 +144,6 @@
      && iter <= maxTCorr
     );
 
+    perfThermalCorrectorsStep += iter;
     gradT = fvc::grad(T);
 }
