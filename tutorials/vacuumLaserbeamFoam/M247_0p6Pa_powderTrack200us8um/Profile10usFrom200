@@ -1,0 +1,72 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+LOG=log.perfProbe.200to210us
+
+if ! grep -q '^End$' log.vacuumLaserbeamFoam 2>/dev/null; then
+    echo "The 200-us reference run is not complete; aborting profile." >&2
+    exit 1
+fi
+
+for f in system/controlDict constant/vacuumProperties          constant/timeVsLaserPosition constant/timeVsLaserPower
+do
+    cp "$f" "$f.perfBackup"
+done
+
+restore()
+{
+    for f in system/controlDict constant/vacuumProperties              constant/timeVsLaserPosition constant/timeVsLaserPower
+    do
+        if [ -f "$f.perfBackup" ]; then
+            mv "$f.perfBackup" "$f"
+        fi
+    done
+}
+trap restore EXIT
+
+foamDictionary system/controlDict -entry startFrom -set startTime >/dev/null
+foamDictionary system/controlDict -entry startTime -set 0.0002 >/dev/null
+foamDictionary system/controlDict -entry endTime -set 0.00021 >/dev/null
+foamDictionary system/controlDict -entry writeInterval -set 0.00001 >/dev/null
+foamDictionary constant/vacuumProperties     -entry performanceDiagnostics -set true >/dev/null
+
+cat > constant/timeVsLaserPosition <<'EOF'
+(
+    (0        (-100e-6 959.5e-6 0))
+    (200e-6   ( 100e-6 959.5e-6 0))
+    (210e-6   ( 110e-6 959.5e-6 0))
+)
+EOF
+
+cat > constant/timeVsLaserPower <<'EOF'
+(
+    (0        350)
+    (210e-6   350)
+)
+EOF
+
+echo "Running developed-state 200 -> 210 us performance probe on 48 MPI ranks"
+mpirun -np 48 vacuumLaserbeamFoam -parallel > "$LOG" 2>&1
+
+if ! grep -q '^End$' "$LOG"; then
+    echo "Performance probe failed. Inspect $LOG" >&2
+    exit 1
+fi
+
+echo
+echo "===== PERFORMANCE RESULT ====="
+grep '^PERF_DIAGNOSTICS ' "$LOG" || {
+    echo "No PERF_DIAGNOSTICS record found. Was the instrumented solver rebuilt?" >&2
+    exit 1
+}
+
+# The probe state is diagnostic only. Remove it so the completed 200-us case
+# remains the latest physical result after the original dictionaries are
+# restored.
+rm -rf processor*/0.00021
+
+echo
+echo "PASS: 200-210 us performance probe complete; original dictionaries restored."
