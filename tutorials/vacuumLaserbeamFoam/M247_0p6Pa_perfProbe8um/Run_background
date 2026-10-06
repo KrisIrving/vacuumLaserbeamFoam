@@ -4,6 +4,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 nohup ./Allrun > log.Allrun 2>&1 &
 echo $! > run.pid
-echo "Started M247 200-us powder track."
+echo "Started M247 10-us performance probe."
 echo "PID: $(cat run.pid)"
 echo "Use ./Status to inspect progress."
