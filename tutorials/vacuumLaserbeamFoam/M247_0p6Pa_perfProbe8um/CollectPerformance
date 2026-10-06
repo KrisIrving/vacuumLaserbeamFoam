@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+./Status
+
+echo
+echo "===== PERFORMANCE ====="
+grep '^PERF_DIAGNOSTICS ' log.vacuumLaserbeamFoam | tail -1
+
+echo
+echo "===== NUMERICS ====="
+grep -E '^(ExecutionTime = |deltaT = |Courant Number|Interface Courant Number)'     log.vacuumLaserbeamFoam | tail -20
