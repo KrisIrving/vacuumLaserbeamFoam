@@ -41,6 +41,7 @@ compactRay::compactRay()
     bounceCount_(0),
     globalRayIndex_(-1),
     active_(false),
+    pendingSample_(false),
     path_()
 {}
 
@@ -54,6 +55,7 @@ compactRay::compactRay(const point& position, const vector& dir, scalar power)
     bounceCount_(0),
     globalRayIndex_(-1),
     active_(true),
+    pendingSample_(false),
     path_()
 {
     direction_ /= mag(direction_) + VSMALL;

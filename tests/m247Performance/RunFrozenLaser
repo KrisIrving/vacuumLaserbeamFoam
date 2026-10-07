@@ -1,8 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+RUN_TAG=frozen-laser
+PROBE_ARGS=()
+if [[ "${1:-}" == --handoff ]]; then
+    shift
+    RUN_TAG=frozen-handoff
+    PROBE_ARGS+=(--preserve-samples)
+fi
 SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
-WORK=${2:-tests/m247Performance/runs/frozen-laser-$(date +%Y%m%d-%H%M%S)}
+WORK=${2:-tests/m247Performance/runs/${RUN_TAG}-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
 [[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
@@ -23,5 +30,9 @@ trap bundle_on_exit EXIT
 ( cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake -j "$JOBS" ) \
     2>&1 | tee -a "$WORK/build.log"
 python3 tests/m247Performance/check_solver.py --laser-profile --seed-search --frozen-optics --output "$WORK/solverCheck.json"
+if [[ "$RUN_TAG" == frozen-handoff ]]; then
+    ( cd tests/m247Performance/cachedSearchTest && wclean && wmake -j "$JOBS" ) \
+        2>&1 | tee -a "$WORK/build.log"
+fi
 python3 tests/m247Performance/frozen_laser.py --source "$SOURCE" --work "$WORK" \
-    2>&1 | tee "$WORK/collection.log"
+    "${PROBE_ARGS[@]}" 2>&1 | tee "$WORK/collection.log"

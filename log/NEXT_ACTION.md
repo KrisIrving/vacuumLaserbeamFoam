@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run pending-sample optical candidate
+
+221754 frozen review verifies identical optical inputs but optical regression fails (2.346 W absorbed-power difference; spatial outputs fail). A moved-to ray sample is skipped on transfer by the current loop. Added a default-off pending-sample correction candidate and MPI packet check. Pull and run `./tests/m247Performance/RunFrozenLaser --handoff`; send `M247_frozen-handoff-..._review.tar.gz`. Only copied diagnostic cases enable the candidate. No transient/full-track test or promotion yet. See log/entries/2026-10-07-m247-frozen-result-handoff.md and tests/m247Performance/FROZEN_LASER.md. Earlier instructions below are checkpoint history.
+
 ## Run fixed-state optical comparison
 
 Pull feat/m247-material-port and run `./tests/m247Performance/RunFrozenLaser`. It automatically rebuilds the laser library and solver, captures shared optical inputs from the original partition, then executes one fixed-time laser update per partition at 180 us. No flow/thermal/time advancement. Exact input gates precede tracing; reconstructed spatial outputs and total power are checked separately. Five-minute budget per solver launch plus utility/build/shutdown time. Send the single `M247_frozen-laser-..._review.tar.gz`, including failures. This implements the next diagnostic; it is not another transient partition pair. See tests/m247Performance/FROZEN_LASER.md. Earlier instructions below are retained checkpoint history.

@@ -54,6 +54,14 @@ def read_trace(case,expected):
         if parse_records(text,prefix): raise ValueError('Unexpected transient/capture records')
     if parse_records(text,'RAY_TRAVERSAL_DIAGNOSTICS')!=[dict(schema=1,cached=1)] or parse_records(text,'CARTESIAN_SEED_DIAGNOSTICS')!=[dict(schema=1,enabled=0)]:
         raise ValueError('Wrong runtime ray mode')
+    if meta.get('preserve_ray_handoff_sample'):
+        if parse_records(text,'RAY_HANDOFF_DIAGNOSTICS')!=[dict(schema=1,enabled=1)]:
+            raise ValueError('Missing handoff correction mode')
+        handoffs=parse_records(text,'RAY_HANDOFF_WORK')
+        if (len(handoffs)!=1 or handoffs[0].get('schema')!=1
+            or abs(handoffs[0].get('time',-1)-TIME)>1e-12
+            or not 0<handoffs[0].get('resumed',-1)<=handoffs[0].get('crossings',-1)):
+            raise ValueError('Missing/invalid handoff work')
     rows=parse_records(text,'FROZEN_LASER_DIAGNOSTICS')
     if len(rows)!=1: raise ValueError('Exactly one frozen update required')
     row=rows[0]
@@ -86,6 +94,10 @@ def collect(work):
         raise ValueError('Invalid optical input capture')
     for key in ('source_snapshot_sha256','source','checkpoint'):
         if data[0][0][key]!=data[1][0][key]: raise ValueError('Input provenance mismatch')
+    modes=[bool(d[0].get('preserve_ray_handoff_sample')) for d in data]
+    if modes[0]!=modes[1]: raise ValueError('Handoff controls differ')
+    if modes[0] and parse_records((work/'partition.log').read_text(),'RAY_PACKET_TEST')!=[dict(schema=1,failures=0)]:
+        raise ValueError('Missing MPI ray packet check')
     for key in ('solver_sha256','laser_library_sha256'):
         if not data[0][1].get(key) or data[0][1][key]!=data[1][1].get(key): raise ValueError('Binary mismatch')
         if capture.get(key)!=data[0][1][key]: raise ValueError('Capture binary mismatch')
@@ -100,6 +112,8 @@ def collect(work):
     powers=[d[2]['depositedPower'] for d in data]
     delta=abs(powers[1]-powers[0]);allowed=1e-12+1e-8*abs(powers[0])
     result=dict(schema=1,frozen_time_s=TIME,transient_steps=0,production_approved=False,
+        preserve_ray_handoff_sample=modes[0],
+        handoff_work=[parse_records((c/'log.vacuumLaserbeamFoam').read_text(),'RAY_HANDOFF_WORK') for c in cases],
         optical_partition_gate=all(f['passed'] for f in fields) and delta<=allowed,
         fields=fields,deposited_power_W=powers,power_absolute_difference_W=delta,
         power_allowed_difference_W=allowed,initial_partition_check=initial,frozen_input_check=inputs,
@@ -117,7 +131,7 @@ def job(case,mode):
     subprocess.run([sys.executable,str(Path(__file__).with_name('run_probe.py')),
         '--case',str(case),'--wall-hours',str(5/60)],check=True)
 
-def run(work,source):
+def run(work,source,preserve_samples=False):
     if os.name!='posix': raise ValueError('Run on Ubuntu OpenFOAM host')
     cases=[]
     for name in NAMES:
@@ -125,6 +139,7 @@ def run(work,source):
         if meta['ranks']!=48 or (case/'constant/dynamicMeshDict').exists():
             raise ValueError('Original fixed mesh and 48 ranks required')
         meta.update(frozen_optics=True,frozen_time_s=TIME,
+            preserve_ray_handoff_sample=preserve_samples,
             purpose='Fixed-state optical comparison; duration/end metadata are copy-helper bounds, not simulated interval')
         (case/'probe.json').write_text(json.dumps(meta,indent=2)+'\n')
         set_entry(case/'system/controlDict','writePrecision',17)
@@ -132,6 +147,11 @@ def run(work,source):
         mesh_digest(case)
         native(work,['reconstructPar','-case',str(case),'-time','0.00018'])
         cases.append(case)
+    if preserve_samples:
+        native(work,['timeout','--kill-after=30s','240s','mpirun','-np','48',str(Path(os.environ['FOAM_USER_APPBIN'])/'m247CachedSearchTest'),
+            '-parallel','-case',str(cases[0])])
+    for case in cases:
+        set_entry(case/'constant/LaserProperties','preserveRayHandoffSample','true' if preserve_samples else 'false')
     # Use the checkpoint rayQ before overwriting any optical outputs.
     stats=write_weights(cases[1],TIME)
     (work/'partitionWeight.json').write_text(json.dumps(stats,indent=2)+'\n')
@@ -157,8 +177,9 @@ def run(work,source):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source',type=Path,required=True);parser.add_argument('--work',type=Path,required=True)
+    parser.add_argument('--preserve-samples',action='store_true')
     args=parser.parse_args()
-    try: run(args.work.resolve(),args.source.resolve())
+    try: run(args.work.resolve(),args.source.resolve(),args.preserve_samples)
     except (ValueError,OSError,KeyError,OverflowError,subprocess.SubprocessError) as error:
         parser.exit(1,f'Frozen optical diagnostic failed: {error}\n')
 if __name__=='__main__': main()

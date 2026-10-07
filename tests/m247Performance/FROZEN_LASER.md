@@ -1,5 +1,18 @@
 # Fixed-state optical partition diagnostic
 
+## Pending-sample candidate after the first frozen result
+
+The first frozen pair failed even with identical optical inputs: absorbed power differed by 2.346 W (0.718%) and spatial fields failed. The next diagnostic is:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RunFrozenLaser --handoff
+```
+
+This adds a default-off `preserveRayHandoffSample` candidate in both copied partitions. The sender's moved-to sample is carried as pending; the receiver processes it before moving again. Previously the receiver moved again before deposition, skipping that sample. Ray state serialization/equality/reset now include the pending flag. This intentionally changes the optical discretisation when enabled; it is not yet approved for transient production. Other partition-sensitive mechanisms may remain, so passing is not assumed.
+
+The wrapper also rebuilds and runs the real-mesh search test, now including a 48-rank ray-packet broadcast check for both pending states. A 240-second utility timeout with 30-second kill grace prevents lingering MPI checks. Runtime flags, crossing/resumed counts and packet check are included in the unchanged strict frozen collector. Send the single `M247_frozen-handoff-..._review.tar.gz`, including on failure. Existing five-minute solver/native budgets apply; builds and shutdown grace add time. Running without `--handoff` explicitly leaves the candidate off in copied cases.
+
 The weighted partition pair changed both coupled physics and execution cost. This diagnostic isolates the laser update by using identical precomputed internal optical inputs, the same mesh and 1536 rays, with no time advancement or flow/thermal solve.
 
 From the Ubuntu repository root:

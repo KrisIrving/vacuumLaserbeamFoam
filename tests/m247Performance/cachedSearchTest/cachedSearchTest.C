@@ -1,5 +1,6 @@
 #include "fvCFD.H"
 #include "findLocalCell.H"
+#include "compactRay.H"
 
 using namespace Foam;
 
@@ -8,6 +9,27 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
+
+    // Exercise the same list serialization/broadcast used by laser exchange.
+    label packetFailures=0;
+    for (label pending=0; pending<2; ++pending)
+    {
+        compactRay expected(point(1,2,3), vector(0,-1,0), 2.5);
+        expected.globalRayIndex_=17;
+        expected.pendingSample_=bool(pending);
+        DynamicList<compactRay> packet;
+        if (Pstream::master()) packet.append(expected);
+        Pstream::broadcast(packet);
+        if (packet.size()!=1 || packet[0]!=expected) ++packetFailures;
+        compactRay reset=expected;
+        reset.reset(point(1,2,3),vector(0,-1,0),2.5);
+        if (reset.pendingSample_) ++packetFailures;
+        compactRay other=expected;other.pendingSample_=!expected.pendingSample_;
+        if (other==expected) ++packetFailures;
+    }
+    reduce(packetFailures,sumOp<label>());
+    Info<< "RAY_PACKET_TEST schema=1 failures=" << packetFailures << endl;
+    if (packetFailures) return 1;
 
     localCellSearchWorkspace workspace;
     cartesianSeedBounds seedBounds;

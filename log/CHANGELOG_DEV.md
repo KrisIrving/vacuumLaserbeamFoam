@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Frozen optical sensitivity; pending-sample candidate
+
+Verified all 29 archive hashes and independently reparsed one-call/1536-ray frozen profiles. Shared input norms zero; absorbed power differs 2.346 W and spatial fields fail. Added default-off preserveRayHandoffSample to process the sender's moved-to point on receipt before another step; ray state is serialized/reset/compared. Added real MPI packet checks and RunFrozenLaser --handoff with mode/work/packet gates and distinct archive. No equivalence, speedup, unique-cause or production approval claim; actual OpenFOAM build and regression pending Ubuntu.
+
 ## 2026-10-07 — Shared-input fixed-state optical probe
 
 Added default-off solver capture/trace diagnostics and RunFrozenLaser. Generates one shared set of filtered alpha/normal/resistivity, checks exact initial internal fields and optical inputs across decompositions, then traces once per partition at 180 us without flow/thermal/time advancement. Checks frozen state, capture/trace provenance, 1536-ray sampling, rank/global profiles, deposition/rayQ spatial norms and absorbed power. Normal update/report path retained. Automatic rebuild, preflight, budgets and archive packaging. Actual OpenFOAM build/execution pending Ubuntu; no speedup or production approval claim.

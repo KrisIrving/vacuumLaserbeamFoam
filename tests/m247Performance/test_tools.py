@@ -451,6 +451,16 @@ class ThermalValidationTests(unittest.TestCase):
         self.make_frozen_pair();p=self.root/'frozenLaserReference/capture.log'
         p.write_text(p.read_text()+'Time = 0.000181\n')
         with self.assertRaisesRegex(ValueError,'input capture'): collect(self.root)
+    def test_handoff_probe_requires_runtime_mode_and_resumed_samples(self):
+        from frozen_laser import read_trace
+        self.make_frozen_pair();case=self.root/'frozenLaserReference'
+        p=case/'probe.json';meta=json.loads(p.read_text());meta['preserve_ray_handoff_sample']=True;p.write_text(json.dumps(meta))
+        with self.assertRaisesRegex(ValueError,'correction mode'): read_trace(case,'frozenLaserReference')
+        log=case/'log.vacuumLaserbeamFoam';base=log.read_text()+'RAY_HANDOFF_DIAGNOSTICS schema=1 enabled=1\n'
+        log.write_text(base+'RAY_HANDOFF_WORK schema=1 time=0.00018 crossings=10 resumed=0\n')
+        with self.assertRaisesRegex(ValueError,'handoff work'): read_trace(case,'frozenLaserReference')
+        log.write_text(base+'RAY_HANDOFF_WORK schema=1 time=0.00018 crossings=10 resumed=9\n')
+        read_trace(case,'frozenLaserReference')
     def test_non_debug_ray_number_is_optional_with_explicit_report(self):
         self.make_traversal_pair()
         for name in ('rayTraversalReference','rayTraversalCached'):

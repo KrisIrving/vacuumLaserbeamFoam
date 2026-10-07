@@ -380,6 +380,7 @@ laserHeatSource::laserHeatSource
     recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
     cachedRayTraversal_(lookupOrDefault<Switch>("cachedRayTraversal", false)),
     cartesianRaySeedSearch_(lookupOrDefault<Switch>("cartesianRaySeedSearch", false)),
+    preserveRayHandoffSample_(lookupOrDefault<Switch>("preserveRayHandoffSample", false)),
     laserProfiler_(lookupOrDefault<bool>("laserPerformanceDiagnostics", false)),
     laserNames_(0),
     laserDicts_(0),
@@ -394,6 +395,8 @@ laserHeatSource::laserHeatSource
         << label(cachedRayTraversal_) << endl;
     Info<< "CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled="
         << label(cartesianRaySeedSearch_) << endl;
+    Info<< "RAY_HANDOFF_DIAGNOSTICS schema=1 enabled="
+        << label(preserveRayHandoffSample_) << endl;
     if (cartesianRaySeedSearch_ && !cachedRayTraversal_)
         FatalErrorInFunction << "cartesianRaySeedSearch requires cachedRayTraversal"
             << exit(FatalError);
@@ -936,6 +939,7 @@ void laserHeatSource::updateDeposition
             << "Ray power absolute tolerance = " << rayPowerAbsTol << endl;
     }
 
+    label crossingSamples=0, resumedSamples=0;
     // Propagate the rays through the domain
     while (remainingGlobalRays.size() > 0)
     {
@@ -985,32 +989,48 @@ void laserHeatSource::updateDeposition
 
             while (myCellID != -1)
             {
-                laserProfiler_.add(laserPerformance::advances);
-                // Calculate the iterator distance as a fraction of the cell size
-                scalar iterator_distance;
-                if (cachedRayTraversal_)
+                if (!preserveRayHandoffSample_ || !curRay.pendingSample_)
                 {
-                    scalar& cached=iteratorDistances[myCellID];
-                    if (cached < 0) cached=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
-                    iterator_distance=cached;
+                    laserProfiler_.add(laserPerformance::advances);
+                    // Calculate the iterator distance as a fraction of the cell size
+                    scalar iterator_distance;
+                    if (cachedRayTraversal_)
+                    {
+                        scalar& cached=iteratorDistances[myCellID];
+                        if (cached < 0) cached=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
+                        iterator_distance=cached;
+                    }
+                    else iterator_distance=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
+
+                    // Move the ray by the iterator distance
+                    curRay.position_ += iterator_distance*curRay.direction_;
+
+                    // Find the new cell
+                    myCellID =
+                        laserProfiler_.search([&]() { return locateCell
+                        (curRay.position_, curRay.currentCell_); });
+
+                    // Update the ray's cellID
+                    curRay.currentCell_ = myCellID;
+
+                    if (myCellID == -1)
+                    {
+                        if (preserveRayHandoffSample_)
+                        {
+                            curRay.pendingSample_ = true;
+                            ++crossingSamples;
+                        }
+                        break;
+                    }
                 }
-                else iterator_distance=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
-
-                // Move the ray by the iterator distance
-                curRay.position_ += iterator_distance*curRay.direction_;
-
-                // Find the new cell
-                myCellID =
-                    laserProfiler_.search([&]() { return locateCell
-                    (curRay.position_, curRay.currentCell_); });
-
-                // Update the ray's cellID
-                curRay.currentCell_ = myCellID;
-
-                if (myCellID == -1)
+                else
                 {
-                    break;
+                    // This coordinate was already advanced to by the sender.
+                    // Process it once before taking the next physical step.
+                    curRay.currentCell_ = myCellID;
+                    ++resumedSamples;
                 }
+                curRay.pendingSample_ = false;
 
                 // Update the rayQ and rayNumber visualisation fields
                 rayQ_[myCellID] += curRay.power_;
@@ -1284,6 +1304,14 @@ void laserHeatSource::updateDeposition
         }
     }
 
+     if (preserveRayHandoffSample_)
+     {
+         reduce(crossingSamples, sumOp<label>());
+         reduce(resumedSamples, sumOp<label>());
+         Info<< "RAY_HANDOFF_WORK schema=1 time=" << runTime.value()
+             << " crossings=" << crossingSamples << " resumed=" << resumedSamples
+             << endl;
+     }
      laserProfiler_.start(laserPerformance::finalize);
      const scalar TotalQ = fvc::domainIntegrate(deposition_).value();
      Info<< "Total Q deposited this timestep: " << TotalQ <<endl;

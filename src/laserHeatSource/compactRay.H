@@ -78,6 +78,9 @@ class compactRay
             //- Is it active?
             bool active_;
 
+            //- A moved-to sample awaiting processing on its owning rank.
+            bool pendingSample_;
+
             //- List of all locations the ray has visited
             DynamicList<point> path_;
 
@@ -113,6 +116,7 @@ class compactRay
             bounceCount_ = 0;
             globalRayIndex_ = -1;
             active_ = true;
+            pendingSample_ = false;
         }
 
         //- Compare equals
@@ -126,6 +130,7 @@ class compactRay
              && bounceCount_ == other.bounceCount_
              && globalRayIndex_ == other.globalRayIndex_
              && active_ == other.active_
+             && pendingSample_ == other.pendingSample_
              && path_ == other.path_;
         }
 
@@ -145,6 +150,7 @@ class compactRay
                        << ray.bounceCount_
                        << ray.globalRayIndex_
                        << ray.active_
+                       << ray.pendingSample_
                        << ray.path_;
         }
 
@@ -158,6 +164,7 @@ class compactRay
                        >> ray.bounceCount_
                        >> ray.globalRayIndex_
                        >> ray.active_
+                       >> ray.pendingSample_
                        >> ray.path_;
         }
 };
