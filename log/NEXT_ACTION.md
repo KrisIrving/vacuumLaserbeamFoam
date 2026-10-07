@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Immediate Ubuntu action: measured laser substage costs
+
+Pull and run `./tests/m247Performance/RunLaserProfile`. It builds the laser library and clean solver object, preflights the loaded library, runs profiling off/on independent 180–180.2-us tight bounded cases with phase width zero, and auto-packages one archive. Each solver job has a 15-minute budget; build/copy time is additional. Send the printed M247_laser-profile-..._review.tar.gz. Profiling overhead and unchanged diagnostic/field results must pass before selecting an equivalent optimization. No speedup claim or new physical acceptance. See tests/m247Performance/LASER_PROFILE.md. Older actions below are superseded.
+
 ## Current decision after 183545 localization
 
 Both-state metal T sensitivity is small (max0.575/0.314 K), but raw metal pressure differences reach1.67/1.93 MPa and interface phase differences exceed0.99 in1498/537 cells. Width itself changes the mixture phase curve and Darcy state; do not promote smoothing or request another width test. Existing localization is sufficient. Next speed-development step: opt-in laser internal timing/counters with width zero, then measured equivalent optimization under matched regression. Phase closure/enthalpy/flow semantics need a separate physical design; 4-um/full-track production remains pending. No additional Ubuntu command is required for this review. See entries/2026-10-07-m247-phase-localization-decision.md. Older actions below are superseded.

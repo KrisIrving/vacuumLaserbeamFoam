@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import tarfile
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn')
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
     'probe.json': 'probe.json', 'run.json': 'run.json',
@@ -51,7 +51,7 @@ def package(work, output=None, exit_code=None):
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
         if (work/variant/'solverCheck.json').is_file():
             add(f'{variant}/solverCheck.json', f'{tag}_{variant}_solverCheck.json')
-    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv'):
+    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv', 'laserProfileReview.json', 'laserProfileStages.csv', 'laserProfileFields.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')
     if not entries:

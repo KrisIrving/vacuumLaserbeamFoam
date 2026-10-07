@@ -45,6 +45,7 @@ SourceFiles
 #include "interpolationTable.H"
 #include "OFstream.H"
 #include "compactRay.H"
+#include "laserPerformance.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -94,6 +95,7 @@ class laserHeatSource
         //- Keep visual ray trajectories (also carried in MPI ray messages).
         //  Disable only after a matched deposition/CFD comparison.
         const Switch recordRayPaths_;
+        laserPerformance laserProfiler_;
 
         //- List of the laser names
         wordList laserNames_;
@@ -136,7 +138,8 @@ class laserHeatSource
             const vector& V_incident,
             const scalar Radius_Flavour,
             const scalar Q_cond,
-            const scalar beam_radius
+            const scalar beam_radius,
+            laserPerformance& profiler
         ) const;
 
         //- Disallow default bitwise copy construct

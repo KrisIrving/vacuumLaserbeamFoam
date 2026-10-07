@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Default-off laser internal profiler
+
+Added write-time MPI substage means/maxima, work counters and stride128 trace-search sampling without changing ray physics. RunLaserProfile builds/preflights library and solver, compares off/on tight width-zero restarts and packages build/results. Collector gates on unchanged diagnostics/final fields and convergence.42 local Python checks pass; actual OpenFOAM build and measured costs remain pending. See `tests/m247Performance/LASER_PROFILE.md`.
+
 ## 2026-10-07 — Phase localization decision
 
 Verified 183545 archive: width response changes interface phase/Darcy state and raw pressure in solid metal despite converged thermal solves. Recorded arithmetic, field and pressure-log evidence; smoothing remains default-off and unapproved. No further width tests requested. Next speed work targets laser substage profiling and equivalent optimization; no new solver change in this review. See `entries/2026-10-07-m247-phase-localization-decision.md`.

@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -104,21 +104,25 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
+    laser_variant = variant in ('laserProfileOff','laserProfileOn')
+    tight_variant = blend_variant or laser_variant or variant=='enthalpyTight'
     blend_width = 0.005 if variant=='phaseBlendNarrow' else 0.01 if variant=='phaseBlendWide' else 0
     set_entry(output/'constant/LaserProperties', 'recordRayPaths',
-              'false' if blend_variant or variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
+              'false' if blend_variant or laser_variant or variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
+    set_entry(output/'constant/LaserProperties', 'laserPerformanceDiagnostics',
+              'true' if variant=='laserProfileOn' else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
               'false' if variant == 'quietThermal' else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/boundedEnthalpyCorrection',
-              'true' if blend_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
+              'true' if blend_variant or laser_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalResidualDiagnostics',
-              'true' if blend_variant or variant in ('thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
+              'true' if blend_variant or laser_variant or variant in ('thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureBlendHalfWidth', str(blend_width))
-    phase_tolerance = '0.001' if blend_variant or variant == 'enthalpyTight' else '0.01'
+    phase_tolerance = '0.001' if tight_variant else '0.01'
     set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureTolerance', phase_tolerance)
-    if blend_variant or variant in ('enthalpyStandard', 'enthalpyTight'):
+    if blend_variant or laser_variant or variant in ('enthalpyStandard', 'enthalpyTight'):
         set_entry(output/'system/fvSolution', 'MELTING/epsilonTolerance',
-                  '1e-5' if blend_variant or variant == 'enthalpyTight' else '1e-4')
+                  '1e-5' if tight_variant else '1e-4')
         # Keep the original binary restart readable; only new output is ASCII
         # so the review collector can compare fields without extra libraries.
         set_entry(control, 'writeFormat', 'ascii')
@@ -127,8 +131,9 @@ def prepare(source, output, start_us, duration_us, variant):
                     ranks=len(ranks), checkpoint=states[0].name,
                     source_snapshot_sha256=source_snapshot_sha256,
                     phase_temperature_tolerance_K=float(phase_tolerance),
-                    epsilon_tolerance=(1e-5 if blend_variant or variant == 'enthalpyTight' else 1e-4)
-                        if blend_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
+                    epsilon_tolerance=(1e-5 if tight_variant else 1e-4)
+                        if blend_variant or laser_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
+                    laser_performance_diagnostics=variant=='laserProfileOn',
                     phase_temperature_blend_half_width=blend_width,
                     purpose='mature-state performance and matched physics regression')
     (output/'probe.json').write_text(json.dumps(metadata, indent=2)+'\n')

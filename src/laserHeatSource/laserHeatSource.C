@@ -51,9 +51,11 @@ void laserHeatSource::createInitialRays
     const vector& V_incident,
     const scalar Radius_Flavour,
     const scalar Q_cond,
-    const scalar beam_radius
+    const scalar beam_radius,
+    laserPerformance& profiler
 ) const
 {
+    profiler.start(laserPerformance::seedGenerate);
     DynamicList<vector> initial_points;
     DynamicList<scalar> point_assoc_power;
 
@@ -215,6 +217,8 @@ void laserHeatSource::createInitialRays
         }
     }
 
+    profiler.stop(laserPerformance::seedGenerate);
+    profiler.start(laserPerformance::seedExchange);
     // List with size equal to number of processors
     List<pointField> gatheredData(Pstream::nProcs());
     List<scalarField> gatheredData_powers(Pstream::nProcs());
@@ -228,6 +232,9 @@ void laserHeatSource::createInitialRays
     // Distibulte the data accross the different processors
     Pstream::broadcastList(gatheredData);
     Pstream::broadcastList(gatheredData_powers);
+
+    profiler.stop(laserPerformance::seedExchange);
+    profiler.start(laserPerformance::seedLocate);
 
     // List of initial points
     pointField rayCoords
@@ -260,6 +267,8 @@ void laserHeatSource::createInitialRays
         rays[i].currentCell_ = mesh.findCell(rayCoords[i]);
         if (recordRayPaths_) rays[i].path_.append(rayCoords[i]);
     }
+    profiler.add(laserPerformance::initialRays, rays.size());
+    profiler.stop(laserPerformance::seedLocate);
 }
 
 
@@ -369,6 +378,7 @@ laserHeatSource::laserHeatSource
       : lookupOrDefault<Switch>("Radial_Polar_HS", true)
     ),
     recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
+    laserProfiler_(lookupOrDefault<bool>("laserPerformanceDiagnostics", false)),
     laserNames_(0),
     laserDicts_(0),
     timeVsLaserPosition_(0),
@@ -766,6 +776,7 @@ void laserHeatSource::updateDeposition
             globalBB_
         );
     }
+    if (deposition_.time().writeTime()) laserProfiler_.report(time);
 }
 
 
@@ -795,6 +806,7 @@ void laserHeatSource::updateDeposition
     const boundBox& globalBB
 )
 {
+    laserProfiler_.beginCall();
     const fvMesh& mesh  = deposition_.mesh();
     const Time& runTime  = mesh.time();
     const scalarField VI = mesh.V();
@@ -857,7 +869,8 @@ void laserHeatSource::updateDeposition
         V_incident,
         Radius_Flavour,
         Q_cond.value(),
-        beam_radius
+        beam_radius,
+        laserProfiler_
     );
 
     // remainingGlobalRays will store the rays that have yet to propagate out of
@@ -891,11 +904,13 @@ void laserHeatSource::updateDeposition
     // Propagate the rays through the domain
     while (remainingGlobalRays.size() > 0)
     {
+        laserProfiler_.add(laserPerformance::exchangeRounds);
         Info<< "Number of rays in domain: "<< remainingGlobalRays.size() << endl;
 
         // Find all rays on the current processor
         // localRays will store the remaining rays on this processor
         DynamicList<compactRay> localRays;
+        laserProfiler_.start(laserPerformance::ownership);
         forAll(remainingGlobalRays, rayI)
         {
             // Take a reference to the current ray
@@ -909,6 +924,7 @@ void laserHeatSource::updateDeposition
              && curRay.power_ > rayPowerAbsTol
             )
             {
+                laserProfiler_.add(laserPerformance::ownershipChecks);
                 const label myCellID =
                     findLocalCell
                     (
@@ -926,6 +942,9 @@ void laserHeatSource::updateDeposition
             }
         }
 
+        laserProfiler_.stop(laserPerformance::ownership);
+        laserProfiler_.add(laserPerformance::localSegments, localRays.size());
+        laserProfiler_.start(laserPerformance::trace);
         // Propagate the rays through the domain
         forAll(localRays, rayI)
         {
@@ -934,17 +953,18 @@ void laserHeatSource::updateDeposition
 
             // Find the cell the ray is currently in
             label myCellID =
-                findLocalCell
+                laserProfiler_.search([&]() { return findLocalCell
                 (
                     curRay.position_,
                     curRay.currentCell_,
                     mesh,
                     maxLocalSearch,
                     debug
-                );
+                ); });
 
             while (myCellID != -1)
             {
+                laserProfiler_.add(laserPerformance::advances);
                 // Calculate the iterator distance as a fraction of the cell size
                 const scalar iterator_distance =
                     (0.5/pi)*pow(VI[myCellID], 1.0/3.0);
@@ -954,14 +974,14 @@ void laserHeatSource::updateDeposition
 
                 // Find the new cell
                 myCellID =
-                    findLocalCell
+                    laserProfiler_.search([&]() { return findLocalCell
                     (
                         curRay.position_,
                         curRay.currentCell_,
                         mesh,
                         maxLocalSearch,
                         debug
-                    );
+                    ); });
 
                 // Update the ray's cellID
                 curRay.currentCell_ = myCellID;
@@ -983,6 +1003,7 @@ void laserHeatSource::updateDeposition
                 )
                 {
                     // Interface detected
+                    laserProfiler_.add(laserPerformance::interfaceEvents);
                     // Deposit a fraction of the power and calculate the reflection
 
                     scalar absorptivity = 0.0;
@@ -1199,6 +1220,7 @@ void laserHeatSource::updateDeposition
                     )
                     {
                         // Deposit half the energy and send it back the way it came
+                        laserProfiler_.add(laserPerformance::bulkEvents);
                         Info<< "Within the bulk" << endl;
 
                         deposition_[myCellID] += 0.5*curRay.power_/VI[myCellID];;
@@ -1212,11 +1234,14 @@ void laserHeatSource::updateDeposition
             }
         }
 
+        laserProfiler_.stop(laserPerformance::trace);
+        laserProfiler_.start(laserPerformance::exchange);
         // Sync all remaining local rays globally so remainingGlobalRays will
         // be the same on all processors
         remainingGlobalRays = localRays;
         Pstream::combineGather(remainingGlobalRays, combineRayLists());
         Pstream::broadcast(remainingGlobalRays);
+        laserProfiler_.stop(laserPerformance::exchange);
 
         // Record the latest ray paths
         // Note that once a ray has left the domain then its global path is no
@@ -1232,8 +1257,11 @@ void laserHeatSource::updateDeposition
         }
     }
 
+     laserProfiler_.start(laserPerformance::finalize);
      const scalar TotalQ = fvc::domainIntegrate(deposition_).value();
      Info<< "Total Q deposited this timestep: " << TotalQ <<endl;
+     laserProfiler_.stop(laserPerformance::finalize);
+     laserProfiler_.endCall();
 }
 
 

@@ -13,7 +13,8 @@ from package_results import package
 from collect_thermal_validation import read_field, collect as collect_validation
 from localize_field_differences import localize, region
 from collect_phase_blend import collect as collect_blend
-from check_solver import inspect_solver, MARKERS
+from check_solver import inspect_solver, inspect_laser_library, MARKERS
+from collect_laser_profile import collect as collect_laser, summarize as summarize_laser, STAGES
 from localize_phase_blend import inspect as inspect_blend
 
 class SolverPreflightTests(unittest.TestCase):
@@ -49,6 +50,18 @@ class SolverPreflightTests(unittest.TestCase):
                 self.assertFalse(result['passed'])
         finally:
             output.unlink()
+    def test_loader_shadow_and_old_laser_library_are_rejected(self):
+        import subprocess
+        library=self.root/'liblaserHeatSource.so'
+        library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
+        resolved=str(library.resolve())
+        with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => '+resolved,'')):
+            self.assertTrue(inspect_laser_library(self.binary,self.root)['passed'])
+            library.write_bytes(b'old library')
+            self.assertFalse(inspect_laser_library(self.binary,self.root)['passed'])
+        library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
+        with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => /different/liblaserHeatSource.so','')):
+            self.assertFalse(inspect_laser_library(self.binary,self.root)['passed'])
 
 class ThermalValidationTests(unittest.TestCase):
     def setUp(self):
@@ -174,6 +187,54 @@ class ThermalValidationTests(unittest.TestCase):
         log.write_text(log.read_text().replace('phaseBlendHalfWidth=0.01','phaseBlendHalfWidth=0'))
         with self.assertRaisesRegex(ValueError,'runtime phase'): inspect_blend(self.root)
         self.assertFalse((self.root/'comparison').exists())
+    def make_laser_pair(self):
+        self.make_pair()
+        import shutil
+        rows=[]
+        for time in (0.000181,0.000182):
+            row=dict(schema=1,time=time,ranks=1,total_s=0.4,totalMax_s=0.4,
+                traceSearchSampleSum_s=0.001,traceSearchSamplesSum=1,searchSampleStride=128,
+                callsMean=80,initialRaysMean=80,exchangeRoundsMean=80,ownershipChecksSum=80,
+                localSegmentsSum=80,advancesSum=80,traceSearchCallsSum=160,interfaceEventsSum=10,bulkEventsSum=2)
+            row.update({k+s:0.05 for k in STAGES for s in ('_s','Max_s')})
+            rows.append(row)
+        for variant,enabled in (('laserProfileOff',False),('laserProfileOn',True)):
+            folder=self.root/variant
+            shutil.copytree(self.root/'enthalpyTight',folder)
+            p=folder/'probe.json';meta=json.loads(p.read_text())
+            meta.update(variant=variant,phase_temperature_blend_half_width=0,laser_performance_diagnostics=enabled)
+            p.write_text(json.dumps(meta))
+            p=folder/'run.json';run=json.loads(p.read_text());run['laser_library_sha256']='same-lib';p.write_text(json.dumps(run))
+            p=folder/'log.vacuumLaserbeamFoam'
+            text=p.read_text().replace('boundedEnthalpy=1','boundedEnthalpy=1 phaseBlendHalfWidth=0')
+            if enabled:
+                records=['LASER_PERF_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in row.items()) for row in rows]
+                text=text.replace('End','\n'.join(records)+'\nEnd')
+            p.write_text(text)
+        return rows
+    def test_laser_profile_coverage_equivalence_and_archive(self):
+        self.make_laser_pair()
+        result=collect_laser(self.root)
+        self.assertTrue(result['regression_gate'])
+        self.assertFalse(result['production_approved'])
+        self.assertEqual(result['laser_profile']['counts']['traceSearchCallsSum'],320)
+        self.assertAlmostEqual(sum(r['mean_fraction'] for r in result['laser_profile']['stages']),1)
+        archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'),0)
+        try:
+            self.assertTrue(any(x['source']=='comparison/laserProfileReview.json' for x in manifest['files']))
+        finally: archive.unlink()
+    def test_profile_field_change_fails_equivalence(self):
+        self.make_laser_pair()
+        (self.root/'laserProfileOn/processor0/0.000182/T').write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (1501 1600);')
+        result=collect_laser(self.root)
+        self.assertFalse(result['regression_gate'])
+    def test_incomplete_or_nonadditive_laser_records_rejected(self):
+        rows=self.make_laser_pair()
+        for change in ({'trace_s':0.5},{'totalMax_s':0.1},{'traceSearchCallsSum':159},{'schema':0}):
+            edited=copy.deepcopy(rows);edited[0].update(change)
+            with self.assertRaises(ValueError): summarize_laser(edited,[0.000181,0.000182],1,160)
+        with self.assertRaisesRegex(ValueError,'cover'): summarize_laser(rows[:1],[0.000181,0.000182],1,160)
+        with self.assertRaisesRegex(ValueError,'all solver steps'): summarize_laser(rows,[0.000181,0.000182],1,161)
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):
@@ -373,6 +434,19 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(len(set(hashes)),1)
         differences={k for k in variants['enthalpyTight'] if variants['enthalpyTight'][k]!=variants['phaseBlendNarrow'][k]}
         self.assertEqual(differences,{'MELTING/phaseTemperatureBlendHalfWidth'})
+    def test_laser_variants_change_profiling_only(self):
+        variants={};hashes=[]
+        for variant in ('laserProfileOff','laserProfileOn'):
+            entries={}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({(path.name,key):value})):
+                meta=prepare(self.source,self.root/variant,180,0.2,variant)
+            variants[variant]=entries;hashes.append(meta['source_snapshot_sha256'])
+            self.assertEqual(entries['fvSolution','MELTING/phaseTemperatureBlendHalfWidth'],'0')
+            self.assertEqual(entries['fvSolution','MELTING/epsilonTolerance'],'1e-5')
+            self.assertEqual(entries['LaserProperties','recordRayPaths'],'false')
+        self.assertEqual(len(set(hashes)),1)
+        self.assertEqual({k for k in variants['laserProfileOff'] if variants['laserProfileOff'][k]!=variants['laserProfileOn'][k]},
+                         {('LaserProperties','laserPerformanceDiagnostics')})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []

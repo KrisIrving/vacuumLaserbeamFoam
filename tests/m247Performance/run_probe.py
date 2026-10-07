@@ -10,7 +10,7 @@ import shutil
 import signal
 import subprocess
 import time
-from check_solver import inspect_solver
+from check_solver import inspect_solver, inspect_laser_library
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -36,6 +36,10 @@ def main():
         (case/'solverCheck.json').write_text(json.dumps(check, indent=2)+'\n')
         if not check['passed']:
             parser.error('; '.join(check['errors']))
+    if metadata.get('variant') in ('laserProfileOff','laserProfileOn'):
+        check=inspect_laser_library(executable,os.environ.get('FOAM_USER_LIBBIN'))
+        (case/'solverCheck.json').write_text(json.dumps(check,indent=2)+'\n')
+        if not check['passed']: parser.error('; '.join(check['errors']))
     provenance = dict(solver=str(executable), solver_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())
     library = Path(os.environ.get('FOAM_USER_LIBBIN', '/nonexistent'))/'liblaserHeatSource.so'
     if library.is_file():
