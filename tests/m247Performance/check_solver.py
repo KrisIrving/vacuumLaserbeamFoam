@@ -11,7 +11,7 @@ import re
 
 MARKERS = (b' phaseBlendHalfWidth=', b' phaseOverrideWeight=')
 
-def inspect_laser_library(executable, libbin):
+def inspect_laser_library(executable, libbin, seed_search=False):
     if not libbin:
         raise ValueError('FOAM_USER_LIBBIN is unset')
     library=(Path(libbin)/'liblaserHeatSource.so').resolve()
@@ -20,6 +20,8 @@ def inspect_laser_library(executable, libbin):
     if any(marker not in data for marker in (b'LASER_PERF_DIAGNOSTICS schema=2 time=',
             b'LASER_RANK_DIAGNOSTICS schema=2 time=',b'RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached=')):
         errors.append('Old laser library: missing internal profiling marker')
+    if seed_search and b'CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled=' not in data:
+        errors.append('Old laser library: missing Cartesian seed search marker')
     result=subprocess.run(['ldd',str(Path(executable).resolve())],capture_output=True,text=True,check=True)
     match=re.search(r'liblaserHeatSource\.so\s+=>\s+(\S+)',result.stdout)
     if not match or Path(match[1]).resolve()!=library:
@@ -48,14 +50,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--laser-profile', action='store_true')
+    parser.add_argument('--seed-search', action='store_true')
     args = parser.parse_args()
     executable = shutil.which('vacuumLaserbeamFoam')
     try:
         if not executable:
             raise ValueError('vacuumLaserbeamFoam missing from PATH')
         result = inspect_solver(executable, os.environ.get('FOAM_USER_APPBIN'))
-        if args.laser_profile:
-            library=inspect_laser_library(executable,os.environ.get('FOAM_USER_LIBBIN'))
+        if args.laser_profile or args.seed_search:
+            library=inspect_laser_library(executable,os.environ.get('FOAM_USER_LIBBIN'),args.seed_search)
             result['laser_library_check']=library
             result['errors'].extend(library['errors'])
             result['passed']=not result['errors']

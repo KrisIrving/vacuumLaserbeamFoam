@@ -58,6 +58,9 @@ class SolverPreflightTests(unittest.TestCase):
         resolved=str(library.resolve())
         with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => '+resolved,'')):
             self.assertTrue(inspect_laser_library(self.binary,self.root)['passed'])
+            self.assertFalse(inspect_laser_library(self.binary,self.root,seed_search=True)['passed'])
+            library.write_bytes(markers+b'\x00CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled=')
+            self.assertTrue(inspect_laser_library(self.binary,self.root,seed_search=True)['passed'])
             library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
             self.assertFalse(inspect_laser_library(self.binary,self.root)['passed'])
         library.write_bytes(markers)
@@ -299,6 +302,35 @@ class ThermalValidationTests(unittest.TestCase):
     def test_broader_validation_requires_traversal_pair(self):
         with self.assertRaisesRegex(ValueError,'requires the paired traversal'):
             collect_laser(self.root,validation=True)
+    def make_seed_pair(self):
+        self.make_traversal_pair()
+        (self.root/'cachedSearchTest.log').write_text('CACHED_SEARCH_TEST checks=200 mismatches=0 cartesianChecks=100 fastAccepts=25 eligibleCells=2\n')
+        for old,new,enabled in (('rayTraversalReference','raySeedReference',False),('rayTraversalCached','raySeedCached',True)):
+            case=self.root/old;case.rename(self.root/new);case=self.root/new
+            p=case/'probe.json';meta=json.loads(p.read_text())
+            meta.update(variant=new,cached_ray_traversal=True,cartesian_ray_seed_search=enabled)
+            p.write_text(json.dumps(meta))
+            p=case/'log.vacuumLaserbeamFoam'
+            p.write_text(f'CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled={int(enabled)}\n'+p.read_text().replace('schema=1 cached=0','schema=1 cached=1'))
+    def test_seed_pair_preserves_field_and_work_gates(self):
+        self.make_seed_pair()
+        result=collect_laser(self.root,traversal=True,validation=True,seed_search=True)
+        self.assertTrue(result['regression_gate'])
+        self.assertTrue(result['work_counter_gate'])
+        self.assertFalse(result['performance_gate'])
+        self.assertEqual(result['optimization'],'cartesian seed interior')
+        self.assertFalse(result['production_approved'])
+    def test_seed_pair_rejects_wrong_runtime_and_unexercised_shortcut(self):
+        self.make_seed_pair()
+        p=self.root/'raySeedCached/log.vacuumLaserbeamFoam';original=p.read_text()
+        p.write_text(original.replace('schema=1 enabled=1','schema=1 enabled=0'))
+        with self.assertRaisesRegex(ValueError,'Cartesian seed search mode'):
+            collect_laser(self.root,traversal=True,seed_search=True)
+        p.write_text(original)
+        (self.root/'cachedSearchTest.log').write_text('CACHED_SEARCH_TEST checks=200 mismatches=0 cartesianChecks=100 fastAccepts=0 eligibleCells=2\n')
+        with self.assertRaisesRegex(ValueError,'not exercised'):
+            collect_laser(self.root,traversal=True,seed_search=True)
+        self.assertFalse((self.root/'comparison').exists())
     def test_traversal_mode_rejects_old_runtime(self):
         self.make_traversal_pair()
         p=self.root/'rayTraversalCached/log.vacuumLaserbeamFoam'
@@ -574,6 +606,19 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(len(set(hashes)),1)
         self.assertEqual({k for k in variants['rayTraversalReference'] if variants['rayTraversalReference'][k]!=variants['rayTraversalCached'][k]},
                          {('LaserProperties','cachedRayTraversal')})
+    def test_seed_variants_keep_validated_cache_enabled_and_change_seed_only(self):
+        variants={};hashes=[]
+        for variant in ('raySeedReference','raySeedCached'):
+            entries={}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({(path.name,key):value})):
+                meta=prepare(self.source,self.root/variant,180,2,variant)
+            variants[variant]=entries;hashes.append(meta['source_snapshot_sha256'])
+            self.assertTrue(meta['cached_ray_traversal'])
+            self.assertEqual(entries['LaserProperties','cachedRayTraversal'],'true')
+            self.assertEqual(entries['fvSolution','MELTING/epsilonTolerance'],'1e-5')
+        self.assertEqual(len(set(hashes)),1)
+        self.assertEqual({k for k in variants['raySeedReference'] if variants['raySeedReference'][k]!=variants['raySeedCached'][k]},
+                         {('LaserProperties','cartesianRaySeedSearch')})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []

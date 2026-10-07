@@ -379,6 +379,7 @@ laserHeatSource::laserHeatSource
     ),
     recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
     cachedRayTraversal_(lookupOrDefault<Switch>("cachedRayTraversal", false)),
+    cartesianRaySeedSearch_(lookupOrDefault<Switch>("cartesianRaySeedSearch", false)),
     laserProfiler_(lookupOrDefault<bool>("laserPerformanceDiagnostics", false)),
     laserNames_(0),
     laserDicts_(0),
@@ -391,6 +392,11 @@ laserHeatSource::laserHeatSource
     Info<< "radialPolarHeatSource = " << radialPolarHeatSource_ << endl;
     Info<< "RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached="
         << label(cachedRayTraversal_) << endl;
+    Info<< "CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled="
+        << label(cartesianRaySeedSearch_) << endl;
+    if (cartesianRaySeedSearch_ && !cachedRayTraversal_)
+        FatalErrorInFunction << "cartesianRaySeedSearch requires cachedRayTraversal"
+            << exit(FatalError);
 
     // Calculate global bounding box
     {
@@ -820,11 +826,14 @@ void laserHeatSource::updateDeposition
     scalarField iteratorDistances;
     if (cachedRayTraversal_) iteratorDistances.setSize(VI.size(), scalar(-1));
     localCellSearchWorkspace searchWorkspace;
+    cartesianSeedBounds seedBounds;
+    if (cartesianRaySeedSearch_ && !debug) seedBounds.reset(mesh);
     const auto locateCell=[&](const point& position, const label seed) -> label
     {
         if (cachedRayTraversal_ && !debug)
             return findLocalCellCached(position, seed, mesh, maxLocalSearch,
-                                       debug, searchWorkspace);
+                                       debug, searchWorkspace,
+                                       cartesianRaySeedSearch_ ? &seedBounds : nullptr);
         return findLocalCell(position, seed, mesh, maxLocalSearch, debug);
     };
     const dimensionedScalar a_cond

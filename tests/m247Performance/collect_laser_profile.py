@@ -101,11 +101,13 @@ def validate_rank_rows(rows, records, ranks):
     return [dict(rank=rank,**{k:sum(group[rank][k] for group in groups)
                 for k in required if k not in ('schema','time','rank')}) for rank in range(ranks)]
 
-def collect(work, traversal=False, validation=False):
+def collect(work, traversal=False, validation=False, seed_search=False):
+    if seed_search and not traversal:
+        raise ValueError('Seed search requires paired traversal collection')
     if validation and not traversal:
         raise ValueError('Validation mode requires the paired traversal cases')
     work=Path(work)
-    names=('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
+    names=('raySeedReference','raySeedCached') if seed_search else ('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
     cases=[work/v for v in names]
     probes=[read_probe(c) for c in cases]
     if validation:
@@ -127,8 +129,16 @@ def collect(work, traversal=False, validation=False):
             raise ValueError('Laser probe requires matched tight controls, width zero and expected profile switch')
         if traversal:
             mode=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'RAY_TRAVERSAL_DIAGNOSTICS')
-            if meta.get('cached_ray_traversal') is not bool(index) or len(mode)!=1 or mode[0].get('schema')!=1 or mode[0].get('cached')!=index:
+            cached=True if seed_search else bool(index)
+            if meta.get('cached_ray_traversal') is not cached or len(mode)!=1 or mode[0].get('schema')!=1 or mode[0].get('cached')!=int(cached):
                 raise ValueError('Missing/mismatched runtime cached traversal mode')
+            seed_mode=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'CARTESIAN_SEED_DIAGNOSTICS')
+            if seed_search:
+                if (meta.get('cartesian_ray_seed_search') is not bool(index) or len(seed_mode)!=1
+                    or seed_mode[0].get('schema')!=1 or seed_mode[0].get('enabled')!=index):
+                    raise ValueError('Missing/mismatched Cartesian seed search mode')
+            elif meta.get('cartesian_ray_seed_search',False) or any(r.get('enabled')!=0 for r in seed_mode):
+                raise ValueError('Unexpected Cartesian seed search in traversal pair')
         if (case/'constant/dynamicMeshDict').exists(): raise ValueError('Only fixed M247 mesh supported')
         for rank in range(meta['ranks']):
             for folder in (case/f'processor{rank}').iterdir():
@@ -155,6 +165,8 @@ def collect(work, traversal=False, validation=False):
         parity=parse_records((work/'cachedSearchTest.log').read_text(),'CACHED_SEARCH_TEST')
         if len(parity)!=1 or parity[0].get('checks',0)<=0 or parity[0].get('mismatches',-1)!=0:
             raise ValueError('Cached search parity test missing or failed')
+        if seed_search and (parity[0].get('cartesianChecks',0)<=0 or parity[0].get('fastAccepts',0)<=0 or parity[0].get('eligibleCells',0)<=0):
+            raise ValueError('Cartesian seed shortcut not exercised by mesh parity test')
         ref_records=parse_records(off_text,'LASER_PERF_DIAGNOSTICS')
         reference_profile=summarize(ref_records,[r['time'] for r in probes[0][2]],probes[0][0]['ranks'],probes[0][1]['steps'])
         reference_profile['rank_totals']=validate_rank_rows(parse_records(off_text,'LASER_RANK_DIAGNOSTICS'),ref_records,probes[0][0]['ranks'])
@@ -187,6 +199,7 @@ def collect(work, traversal=False, validation=False):
     result.update(extra)
     if traversal:
         result['validation_scope']='180-182us' if validation else 'paired traversal'
+        result['optimization']='cartesian seed interior' if seed_search else 'cached traversal'
         result['performance_gate']=(result['regression_gate'] and comparison['solver_loop_speedup']>=1.05 and comparison['job_wall_speedup']>=1.05)
         result['note']='Cached traversal candidate: require identical ray work, field/diagnostic regression and measured speedup. One short pair does not establish long-track performance or physical approval.'
     output=work/'comparison'
@@ -204,8 +217,9 @@ def main():
     parser.add_argument('--work',type=Path,required=True)
     parser.add_argument('--ray-traversal',action='store_true')
     parser.add_argument('--validation',action='store_true',help='Require the broader 180–182-us traversal pair')
+    parser.add_argument('--seed-search',action='store_true')
     args=parser.parse_args()
-    try: result=collect(args.work,args.ray_traversal,args.validation)
+    try: result=collect(args.work,args.ray_traversal,args.validation,args.seed_search)
     except (ValueError,OSError,KeyError) as error: parser.exit(1,f'Laser profile collection failed: {error}\n')
     print(f"Profiling equivalence gate: {result['regression_gate']}")
     if args.ray_traversal:

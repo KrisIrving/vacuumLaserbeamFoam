@@ -18,11 +18,79 @@ Author
 #include "HashSet.H"
 #include "SLList.H"
 #include "polyMesh.H"
+#include "scalarField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
+    // Accept only points strictly inside the six axis-aligned face planes.
+    // Ambiguous face points and every non-Cartesian cell use the old predicate.
+    // Rebuild per laser update so moving/topology-changing meshes cannot leave
+    // stale bounds. This shortcut never selects a different seed or neighbour.
+    struct cartesianSeedBounds
+    {
+        pointField lower, upper;
+        scalarField margins;
+        labelList eligible;
+
+        void reset(const polyMesh& mesh)
+        {
+            lower.setSize(mesh.nCells(), point::zero);
+            upper.setSize(mesh.nCells(), point::zero);
+            eligible.setSize(mesh.nCells(), 0);
+            eligible=0;
+            margins.setSize(mesh.nCells(), 0);
+            const vectorField& areas=mesh.faceAreas();
+            const pointField& centres=mesh.faceCentres();
+            const labelList& owners=mesh.faceOwner();
+            forAll(mesh.cells(), celli)
+            {
+                const cell& faces=mesh.cells()[celli];
+                if (faces.size()!=6) continue;
+                label mask=0;
+                forAll(faces, i)
+                {
+                    const label facei=faces[i];
+                    const vector normal=(owners[facei]==celli)
+                        ? areas[facei] : -areas[facei];
+                    label axis=-1;
+                    for (label d=0; d<3; ++d)
+                        if (normal[d]!=0)
+                        {
+                            if (axis!=-1) { axis=-2; break; }
+                            axis=d;
+                        }
+                    if (axis<0) { mask=0; break; }
+                    const bool positive=normal[axis]>0;
+                    const label bit=1 << (2*axis+label(positive));
+                    if (mask & bit) { mask=0; break; }
+                    mask |= bit;
+                    (positive ? upper[celli] : lower[celli])[axis]=centres[facei][axis];
+                }
+                if (mask==63 && lower[celli].x()<upper[celli].x()
+                    && lower[celli].y()<upper[celli].y()
+                    && lower[celli].z()<upper[celli].z())
+                {
+                    eligible[celli]=1;
+                    margins[celli]=64*SMALL*(mag(lower[celli])+mag(upper[celli])
+                        +mag(upper[celli]-lower[celli]));
+                }
+            }
+        }
+
+        bool containsInterior(const point& p, const label seed) const
+        {
+            if (seed<0 || seed>=eligible.size() || !eligible[seed]) return false;
+            const point& lo=lower[seed];
+            const point& hi=upper[seed];
+            const scalar margin=margins[seed];
+            return p.x()>lo.x()+margin && p.x()<hi.x()-margin
+                && p.y()>lo.y()+margin && p.y()<hi.y()-margin
+                && p.z()>lo.z()+margin && p.z()<hi.z()-margin;
+        }
+    };
 
     // Reuse FIFO storage while preserving the legacy traversal order,
     // duplicate queue entries, containment predicates and search limit.
@@ -39,11 +107,14 @@ namespace Foam
         const polyMesh& mesh,
         const label maxLocalSearch,
         const Switch debug,
-        localCellSearchWorkspace& workspace
+        localCellSearchWorkspace& workspace,
+        const cartesianSeedBounds* seedBounds=nullptr
     )
     {
         if (seedCellID < 0 || seedCellID >= mesh.nCells())
             return mesh.findCell(p);
+        if (seedBounds && seedBounds->containsInterior(p, seedCellID))
+            return seedCellID;
         if (mesh.primitiveMesh::pointInCell(p, seedCellID))
             return seedCellID;
 

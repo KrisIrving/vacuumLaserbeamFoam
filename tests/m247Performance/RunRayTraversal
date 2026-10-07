@@ -5,12 +5,22 @@ DURATION_US=0.2
 WALL_HOURS=0.25
 RUN_TAG=ray-traversal
 COLLECT_ARGS=(--ray-traversal)
+PREFLIGHT_ARGS=(--laser-profile)
+VARIANTS=(rayTraversalReference rayTraversalCached)
 if [[ "${1:-}" == --validation ]]; then
     shift
     DURATION_US=2
     WALL_HOURS=0.5
     RUN_TAG=ray-traversal-validation
     COLLECT_ARGS+=(--validation)
+elif [[ "${1:-}" == --seed-search ]]; then
+    shift
+    DURATION_US=2
+    WALL_HOURS=0.5
+    RUN_TAG=ray-seed-search
+    VARIANTS=(raySeedReference raySeedCached)
+    COLLECT_ARGS+=(--validation --seed-search)
+    PREFLIGHT_ARGS+=(--seed-search)
 fi
 SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
 WORK=${2:-tests/m247Performance/runs/${RUN_TAG}-$(date +%Y%m%d-%H%M%S)}
@@ -46,11 +56,11 @@ trap bundle_on_exit EXIT
     2>&1 | tee -a "$WORK/build.log"
 ( cd tests/m247Performance/cachedSearchTest && wclean && wmake -j "$JOBS" ) \
     2>&1 | tee -a "$WORK/build.log"
-python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
-for VARIANT in rayTraversalReference rayTraversalCached; do
+python3 tests/m247Performance/check_solver.py "${PREFLIGHT_ARGS[@]}" --output "$WORK/solverCheck.json"
+for VARIANT in "${VARIANTS[@]}"; do
     python3 tests/m247Performance/prepare_probe.py --source "$SOURCE" --output "$WORK/$VARIANT" \
         --start-us 180 --duration-us "$DURATION_US" --variant "$VARIANT"
-    if [[ "$VARIANT" == rayTraversalReference ]]; then
+    if [[ "$VARIANT" == "${VARIANTS[0]}" ]]; then
         RANKS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ranks"])' "$WORK/$VARIANT/probe.json")
         timeout 120s mpirun -np "$RANKS" "$FOAM_USER_APPBIN/m247CachedSearchTest" \
             -parallel -case "$WORK/$VARIANT" 2>&1 | tee "$WORK/cachedSearchTest.log"

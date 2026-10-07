@@ -1,5 +1,15 @@
 # Development changelog
 
+## 2026-10-07 — Broader cache PASS and seed search candidate
+
+201432archive hashes/log/work/thermal checks pass; seven saved-field norms zero.
+Job400.4→334.3s,1.19758x; loop1.19772x. Added default-off strict Cartesian
+seed interior shortcut with legacy fallback and per-call geometry rebuilding.
+RunRaySeedSearch isolates the new switch atop validated cache,expanded real-mesh
+parity and marker/runtime gates,2us/30-minute budget and tagged archive.
+59Python tests/Bash syntax pass; new OpenFOAM build/CFD pending Ubuntu.
+See entries/2026-10-07-m247-seed-search-candidate.md.
+
 ## 2026-10-07 — Broaden cached traversal regression to2 us
 
 Added ValidateRayTraversal: shared build/parity/run/package pipeline, matched

@@ -96,6 +96,7 @@ class laserHeatSource
         //  Disable only after a matched deposition/CFD comparison.
         const Switch recordRayPaths_;
         const Switch cachedRayTraversal_;
+        const Switch cartesianRaySeedSearch_;
         laserPerformance laserProfiler_;
 
         //- List of the laser names

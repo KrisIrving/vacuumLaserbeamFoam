@@ -2,6 +2,21 @@
 
 Updated: 2026-10-07
 
+## Immediate action: validated cache plus seed-cell shortcut
+
+201432broader cache validation passes:29hashes verified,seven fields exactly
+equal,166steps/no caps,matched logged physics/ray work; job1.19758x and
+loop1.19772x. Retain validated opt-in cache; no repeat of completed pair.
+Pull feature branch and run `./tests/m247Performance/RunRaySeedSearch`.
+This builds/checks real-mesh parity and compares cache vs cache+default-off
+Cartesian seed interior shortcut over180–182us with30-minute budget per job.
+Send printed M247_ray-seed-search-..._review.tar.gz,including failure.
+59local Python tests and Bash syntax pass; new C++/CFD/gain pending Ubuntu.
+See tests/m247Performance/RAY_SEED_SEARCH.md and
+entries/2026-10-07-m247-seed-search-candidate.md. Older actions superseded.
+Long-track architecture: fixed local fine mesh,then fixed thermal/fluid coupling
+prototype,then moving window; seed optimization does not establish24h affordability.
+
 ## Immediate action: 180–182-us cached traversal validation
 
 Pull feat/m247-material-port and run
