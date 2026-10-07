@@ -2,6 +2,20 @@
 
 Updated: 2026-10-08
 
+## Preview local fine mesh after successful region audit
+
+002346 region audit completes: 30 archive hashes valid, 12 bounded snapshots,
+136 um minimum molten clearance. Active occupancy is small, but its padded
+bounding box covers 77.5% of the domain. Use field-driven selection instead.
+Pull and run `./tests/m247Performance/PreviewLocalRefinement`; it builds only
+a mesh-check utility and compares four/ten-layer static refinement previews
+on copied 180 us fields, with three-million-cell budgets. No CFD advances.
+Send the automatic M247_local-refinement-..._review.tar.gz archive. Native
+build/refinement pending Ubuntu; 88 Python tests and Bash syntax pass.
+Do not repeat InspectRegionBudget. See tests/m247Performance/LOCAL_REFINEMENT.md
+and entries/2026-10-08-m247-region-budget-local-refinement.md. Older sections
+below are checkpoint history, superseded by this action.
+
 ## Repair region-audit build and rerun read-only inspection
 
 Ubuntu v2512 compilation failed on cyclicAMIPolyPatch.H: regionAudit lacked

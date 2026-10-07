@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/local-refinement-$(date +%Y%m%d-%H%M%S)}
+JOBS=${3:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "source=$SOURCE"
+    echo "Static mesh previews from copied180us fields; no CFD solver"
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+( cd tests/m247Performance/meshPreviewCheck && wclean && wmake -j "$JOBS" ) \
+    2>&1 | tee "$WORK/build.log"
+UTILITY=${FOAM_USER_APPBIN:?Source OpenFOAM}/m247MeshPreviewCheck
+sha256sum "$UTILITY" tests/m247Performance/meshPreviewCheck/meshPreviewCheck.C > "$WORK/previewBinary.txt"
+python3 tests/m247Performance/local_refinement.py --source "$SOURCE" --work "$WORK" \
+    --utility "$UTILITY" 2>&1 | tee "$WORK/collection.log"

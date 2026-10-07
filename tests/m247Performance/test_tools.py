@@ -972,5 +972,31 @@ class RegionAuditTests(unittest.TestCase):
         with patch('region_audit.read_probe',return_value=(m,{},[])),patch('region_audit.compare'):
             with self.assertRaisesRegex(ValueError,'modes'):read_pair(Path('unused'))
 
+class LocalRefinementTests(unittest.TestCase):
+    def test_moment_gate_detects_material_loss(self):
+        from local_refinement import moments,compare_moments
+        text='M247_MESH_MOMENTS schema=1 time=0.00018 cells=756000 volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\nEnd\n'
+        before=moments(text);after=dict(before,cells=1000000)
+        self.assertTrue(all(r['passed'] for r in compare_moments(before,after)))
+        after['metalVolume']*=.99
+        self.assertFalse(all(r['passed'] for r in compare_moments(before,after)))
+        for invalid in (text.replace('alphaMax=1','alphaMax=1.1'),text.replace('volume=5e-10','volume=1e999'),text.replace('time=0.00018','time=0.0002')):
+            with self.assertRaises(ValueError):moments(invalid)
+    def test_selection_coverage_and_mesh_quality_required(self):
+        from local_refinement import selected_count,mesh_ok
+        text='\n'.join(f'cellSet refineCells now size {n}' for n in (100,200,400))+'\nEnd\n'
+        self.assertEqual(selected_count(text),[100,200,400])
+        with self.assertRaises(ValueError):selected_count(text.replace('400','150'))
+        with self.assertRaises(ValueError):selected_count(text.replace('\nEnd',''))
+        mesh_ok('Mesh OK.\nEnd\n')
+        with self.assertRaises(ValueError):mesh_ok('Failed1mesh check\nEnd\n')
+    def test_preview_failure_evidence_is_packaged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            w=Path(directory)/'local-refinement';w.mkdir()
+            for name in ('build.log','previewInputs.json','coarseMoments.log','localRefine4_topoSetDict','localRefine4_refinement.log'):(w/name).write_text('data')
+            output,m=package(w,exit_code=1)
+            self.assertEqual(len(m['files']),5)
+            self.assertIn('localRefine4_refinement.log',[e['source'] for e in m['files']])
+
 if __name__=='__main__':
     unittest.main()

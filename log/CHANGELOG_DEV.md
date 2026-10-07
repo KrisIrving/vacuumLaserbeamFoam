@@ -1,5 +1,16 @@
 # Development changelog
 
+## 2026-10-08 — Region budget passes; local mesh sizing previews
+
+Verified 30 archive hashes and independently reproduced the regional report.
+12 snapshots bounded; molten minimum clearance136um; original late keyhole
+still grows0.870376um/us. Padded active box covers77.5pct, so added field-driven
+static previews preserving powder interfaces/warm cells with4/10-layer halos,
+native hex refinement,3million-cell budget,mapping moments and mesh quality.
+Only copied fields change; no CFD. Automatic distinctly named archive on
+success/failure.88Python tests/Bash syntax pass; native build/run pendingUbuntu.
+Next pull and PreviewLocalRefinement; no repeated region audit required.
+
 ## 2026-10-08 — Region audit meshTools dependency repair
 
 User v2512 build fails on missing cyclicAMIPolyPatch.H through fvCFD.H.
