@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Correct precision target in exchange profiler
+
+Ubuntu compilation exposed precision() being called on messageStream Info. Obtain the underlying Ostream with Info(), then set/restore precision there. This repairs logging only; profiling stages and ray/physics behavior are unchanged. The supplied compiler output is sufficient to identify the failure; its archive was not inspected. Full OpenFOAM compilation remains pending Ubuntu. See entries/2026-10-07-m247-exchange-stream-fix.md.
+
 ## 2026-10-07 — Schema-2 exchange and rank profiler
 
 Split outgoing copy/gather/broadcast, measure nested existing merge work, and gather rank tracing/merge counters only at output times. Strict collector reconciles groups and rejects older libraries; automatic archive includes both new CSVs under a laser-exchange tag. Ray transport, merge semantics and physics stay unchanged. 45 Python tests and Bash syntax pass; actual OpenFOAM compilation and regression remain pending Ubuntu. See entries/2026-10-07-m247-laser-exchange-profiler.md.

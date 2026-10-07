@@ -4,6 +4,7 @@
 #include "PstreamReduceOps.H"
 #include "scalarField.H"
 #include "IOstreams.H"
+#include "OSstream.H"
 #include <array>
 #include <chrono>
 
@@ -77,8 +78,9 @@ public:
         reduce(mean,sumOp<scalar>()); reduce(maximum,maxOp<scalar>());
         mean/=Pstream::nProcs();
         // Preserve large integer counters when checking rank/global sums.
-        const auto oldPrecision=Info.precision();
-        Info.precision(15);
+        Ostream& diagnosticStream=Info();
+        const auto oldPrecision=diagnosticStream.precision();
+        diagnosticStream.precision(15);
         Info<< "LASER_PERF_DIAGNOSTICS schema=2 time=" << time
             << " ranks=" << Pstream::nProcs()
             << " total_s=" << mean << " totalMax_s=" << maximum;
@@ -136,7 +138,7 @@ public:
                 Info<< endl;
             }
         }
-        Info.precision(oldPrecision);
+        diagnosticStream.precision(oldPrecision);
         seconds_.fill(0); counters_.fill(0); total_=sampledSearch_=samples_=0;
         detailSeconds_.fill(0);
         searchSequence_=0;

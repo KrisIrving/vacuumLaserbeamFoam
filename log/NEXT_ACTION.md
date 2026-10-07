@@ -2,6 +2,16 @@
 
 Updated: 2026-10-07
 
+## Build repair: exchange-profiler logging precision
+
+The 192743 compiler output identifies an invalid precision() call on Info,
+which is a messageStream. The profiler now obtains its Ostream via Info(),
+sets precision there and restores it after reporting. Pull and rerun
+`./tests/m247Performance/RunLaserProfile`; the command rebuilds automatically
+and prints a fresh review archive. Existing failure logs suffice for diagnosis;
+actual Ubuntu compilation and CFD remain pending. See
+entries/2026-10-07-m247-exchange-stream-fix.md.
+
 ## Immediate Ubuntu action: exchange details and rank work
 
 Pull feat/m247-material-port and run `./tests/m247Performance/RunLaserProfile`.
