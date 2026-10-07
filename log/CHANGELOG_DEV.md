@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Phase localization decision
+
+Verified 183545 archive: width response changes interface phase/Darcy state and raw pressure in solid metal despite converged thermal solves. Recorded arithmetic, field and pressure-log evidence; smoothing remains default-off and unapproved. No further width tests requested. Next speed work targets laser substage profiling and equivalent optimization; no new solver change in this review. See `entries/2026-10-07-m247-phase-localization-decision.md`.
+
 ## 2026-10-07 — Phase width-response review and offline localization
 
 Valid phase probe converges but large local width differences remain. Added InspectPhaseBlend for existing hard/narrow and narrow/wide final fields, with region/threshold/worst-cell reports and one archive. Checks runtime mode, provenance and fixed mesh; preserves prior outputs. Thirty-seven local tests pass; no new CFD or closure acceptance. See `entries/2026-10-07-m247-phase-blend-result.md`.

@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Current decision after 183545 localization
+
+Both-state metal T sensitivity is small (max0.575/0.314 K), but raw metal pressure differences reach1.67/1.93 MPa and interface phase differences exceed0.99 in1498/537 cells. Width itself changes the mixture phase curve and Darcy state; do not promote smoothing or request another width test. Existing localization is sufficient. Next speed-development step: opt-in laser internal timing/counters with width zero, then measured equivalent optimization under matched regression. Phase closure/enthalpy/flow semantics need a separate physical design; 4-um/full-track production remains pending. No additional Ubuntu command is required for this review. See entries/2026-10-07-m247-phase-localization-decision.md. Older actions below are superseded.
+
 ## Current action: offline phase width-response localization
 
 182533 phase probe is valid: new binary/modes, all 16 steps converge, zero caps, 36–38 s. Width sensitivity remains unresolved: narrow/wide max T21.9 K, U5.56 m/s, epsilon1=1, raw p_rgh2.20 MPa. Pull and run `./tests/m247Performance/InspectPhaseBlend tests/m247Performance/runs/phase-blend-20261007-182533`. Send the new localization archive. It reads existing final fields only; no rebuild or CFD. No physical/width acceptance or 4-um/full-track approval yet. See entries/2026-10-07-m247-phase-blend-result.md. Older actions below are superseded.
