@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 tests/m247Performance/runs/phase-blend-YYYYMMDD-HHMMSS" >&2
+    exit 1
+fi
+WORK=$1
+ARCHIVE="${WORK%/}_localization-$(date +%Y%m%d-%H%M%S).tar.gz"
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --output "$ARCHIVE" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+python3 tests/m247Performance/localize_phase_blend.py --work "$WORK"

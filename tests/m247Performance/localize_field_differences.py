@@ -6,7 +6,7 @@ import heapq
 import json
 import math
 from pathlib import Path
-from collect_probe import read_probe, compare
+from collect_probe import read_probe, compare, parse_records
 from collect_thermal_validation import FIELDS, read_field, final_state, residual_gate
 
 THRESHOLDS = {'T':(1,10,100), 'U':(0.1,1,10), 'epsilon1':(0.001,0.01,0.1,0.5,0.99),
@@ -19,13 +19,29 @@ def region(a,b):
     if min(a,b)>=0.99: return 'metalBoth'
     return 'interfaceOrChanged'
 
-def localize(work, top=10):
+def localize(work, top=10, reference_variant='enthalpyTight', candidate_variant='enthalpyStandard'):
     if top<1: raise ValueError('Top-cell count must be positive')
-    reference,candidate = work/'enthalpyTight',work/'enthalpyStandard'
+    pair=(reference_variant,candidate_variant)
+    phase_pairs=(('enthalpyTight','phaseBlendNarrow'),('phaseBlendNarrow','phaseBlendWide'))
+    if pair != ('enthalpyTight','enthalpyStandard') and pair not in phase_pairs:
+        raise ValueError('Unsupported localization pair')
+    reference,candidate = work/reference_variant,work/candidate_variant
     tight,normal = read_probe(reference),read_probe(candidate)
     compare(tight,normal)  # validates source snapshot, time, ranks and sample times
-    if tight[0]['variant']!='enthalpyTight' or normal[0]['variant']!='enthalpyStandard':
+    if tight[0]['variant']!=reference_variant or normal[0]['variant']!=candidate_variant:
         raise ValueError('Unexpected validation variants')
+    if pair in phase_pairs:
+        widths={'enthalpyTight':0,'phaseBlendNarrow':0.005,'phaseBlendWide':0.01}
+        for case,probe,variant in ((reference,tight,reference_variant),(candidate,normal,candidate_variant)):
+            meta=probe[0]
+            if (meta.get('phase_temperature_blend_half_width')!=widths[variant]
+                or meta.get('epsilon_tolerance')!=1e-5
+                or meta.get('phase_temperature_tolerance_K')!=0.001):
+                raise ValueError('Phase localization requires matching tight controls and expected width')
+            records=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'THERMAL_RESIDUAL_DIAGNOSTICS')
+            if any('phaseBlendHalfWidth' not in r or abs(r['phaseBlendHalfWidth']-widths[variant])>1e-12
+                   or 'phaseOverrideWeight' not in r or not 0<=r['phaseOverrideWeight']<=1 for r in records):
+                raise ValueError('Missing/mismatched runtime phase diagnostics')
     for key in ('solver_sha256','laser_library_sha256'):
         hashes=[json.loads((p/'run.json').read_text()).get(key) for p in (reference,candidate)]
         if hashes[0]!=hashes[1] or (key=='solver_sha256' and not hashes[0]):

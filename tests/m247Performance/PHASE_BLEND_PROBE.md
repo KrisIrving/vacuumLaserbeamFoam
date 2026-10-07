@@ -50,3 +50,19 @@ selected OpenFOAM paths, executable hash and compiled diagnostic markers.
 Failures are packaged too. The phase wrapper now checks markers and rejects
 PATH shadowing before CFD. Runtime width/weight validation remains necessary.
 Do not rerun the three cases until the build archive is reviewed.
+# Current next action after valid 182533 probe
+
+The rebuilt three-way probe converges, but local phase/velocity/pressure width
+sensitivity remains unresolved. Run, from the repository root:
+
+```bash
+./tests/m247Performance/InspectPhaseBlend tests/m247Performance/runs/phase-blend-20261007-182533
+```
+
+This reads existing final processor fields, checks matching provenance,
+fixed mesh, tight controls and runtime widths, and reports both pairs by gas,
+interface and metal regions with worst-cell context. No rebuild or new CFD.
+Send the printed phase-blend-..._localization-...tar.gz archive. Existing reports
+and archives are never overwritten. Raw pressure differences are not gauge
+aligned. This localization does not grant physical approval. The build gate
+instructions below describe the previous failure and are now superseded.

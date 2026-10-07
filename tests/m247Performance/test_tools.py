@@ -14,6 +14,7 @@ from collect_thermal_validation import read_field, collect as collect_validation
 from localize_field_differences import localize, region
 from collect_phase_blend import collect as collect_blend
 from check_solver import inspect_solver, MARKERS
+from localize_phase_blend import inspect as inspect_blend
 
 class SolverPreflightTests(unittest.TestCase):
     def setUp(self):
@@ -146,6 +147,32 @@ class ThermalValidationTests(unittest.TestCase):
         p.write_text(p.read_text().replace('phaseBlendHalfWidth=0.005','oldWidth=0.005'))
         with self.assertRaisesRegex(ValueError,'Rebuild'):
             collect_blend(self.root)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_phase_localization_reports_both_pairs_and_preserves_outputs(self):
+        self.make_blend_triplet()
+        field=self.root/'phaseBlendWide/processor0/0.000182/T'
+        field.write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (1501 1600);')
+        result=inspect_blend(self.root)
+        self.assertTrue(result['convergence_gate'])
+        self.assertFalse(result['production_approved'])
+        self.assertEqual(len(result['comparisons']),2)
+        worst=next(r for r in result['comparisons'][1]['worst_cells'] if r['field']=='T')
+        self.assertEqual((worst['rank'],worst['local_cell'],worst['region']),(0,0,'gasBoth'))
+        self.assertAlmostEqual(worst['absolute_difference'],1)
+        report=self.root/'comparison/phaseBlendLocalization.json'
+        before=report.read_bytes()
+        with self.assertRaisesRegex(ValueError,'already exist'): inspect_blend(self.root)
+        self.assertEqual(report.read_bytes(),before)
+        archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'),0)
+        try:
+            self.assertTrue(any(x['source']=='comparison/phaseBlendLocalization.json' for x in manifest['files']))
+        finally:
+            archive.unlink()
+    def test_phase_localization_rejects_runtime_width_mismatch_before_report(self):
+        self.make_blend_triplet()
+        log=self.root/'phaseBlendWide/log.vacuumLaserbeamFoam'
+        log.write_text(log.read_text().replace('phaseBlendHalfWidth=0.01','phaseBlendHalfWidth=0'))
+        with self.assertRaisesRegex(ValueError,'runtime phase'): inspect_blend(self.root)
         self.assertFalse((self.root/'comparison').exists())
 
 class PackagingTests(unittest.TestCase):

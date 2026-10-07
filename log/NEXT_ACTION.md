@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Current action: offline phase width-response localization
+
+182533 phase probe is valid: new binary/modes, all 16 steps converge, zero caps, 36–38 s. Width sensitivity remains unresolved: narrow/wide max T21.9 K, U5.56 m/s, epsilon1=1, raw p_rgh2.20 MPa. Pull and run `./tests/m247Performance/InspectPhaseBlend tests/m247Performance/runs/phase-blend-20261007-182533`. Send the new localization archive. It reads existing final fields only; no rebuild or CFD. No physical/width acceptance or 4-um/full-track approval yet. See entries/2026-10-07-m247-phase-blend-result.md. Older actions below are superseded.
+
 ## Current build repair: initialise phase controls before properties
 
 The 172208 build archive confirms a C++ scope error: createFields.H calls updateProps.H before the old time-loop-only declaration of phaseTemperatureBlendHalfWidth. The setting is now owned and initialised by createFields.H, with shared startup/runtime validation, covering normal and postProcess inclusion. Pull and run `./tests/m247Performance/BuildPhaseBlend` again and send its automatic archive. Actual Ubuntu compilation remains pending. No CFD repeat until build verification. See entries/2026-10-07-m247-phase-blend-initialisation-fix.md. Older actions below are superseded.

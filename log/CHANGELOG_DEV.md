@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Phase width-response review and offline localization
+
+Valid phase probe converges but large local width differences remain. Added InspectPhaseBlend for existing hard/narrow and narrow/wide final fields, with region/threshold/worst-cell reports and one archive. Checks runtime mode, provenance and fixed mesh; preserves prior outputs. Thirty-seven local tests pass; no new CFD or closure acceptance. See `entries/2026-10-07-m247-phase-blend-result.md`.
+
 ## 2026-10-07 — Initialise blend control before createFields property update
 
 Ubuntu build log confirms a missing declaration in both normal and postProcess createFields inclusion. Moved width ownership/initialisation before the first updateProps call; share validation with runtime reload and avoid a shadowed time-loop width. Existing 35 Python checks pass; actual OpenFOAM rebuild remains pending. See `entries/2026-10-07-m247-phase-blend-initialisation-fix.md`.
