@@ -1,5 +1,7 @@
 # M247 mature-state performance pair
 
+Current next test after the successful 0.2-us thermal probe: `RunThermalValidation` compares standard and 10x tighter candidate convergence over 180–182 us, including final internal-field differences. It packages one review archive automatically. See [THERMAL_VALIDATION.md](THERMAL_VALIDATION.md).
+
 Both RunPair and RunThermalProbe now automatically collect review files into `runs/M247_<run-directory-name>_review.tar.gz` on exit, including failures. Send that one archive. Names inside include the run tag and variant, e.g. `thermal-20261007-154702_enthalpyBounded_solver.log`. Archives contain logs, metadata, selected dictionaries and available comparison outputs, with a SHA256 manifest and missing-file list. Processor fields/meshes are excluded. Existing archives are never overwritten, and existing WORK directories are rejected before starting a new wrapper run. Packaging failure is reported and does not hide a failed simulation.
 
 For an already completed test, package it without rerunning CFD:

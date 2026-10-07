@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import tarfile
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight')
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
     'probe.json': 'probe.json', 'run.json': 'run.json',
@@ -45,7 +45,7 @@ def package(work, output=None, exit_code=None):
     for variant in variants:
         for relative, suffix in FILES.items():
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
-    for name in ('comparison.json', 'diagnosticComparison.csv'):
+    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')
     if not entries:

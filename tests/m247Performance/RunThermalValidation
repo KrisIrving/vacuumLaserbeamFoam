@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/validation-$(date +%Y%m%d-%H%M%S)}
+START_US=${3:-180}
+DURATION_US=${4:-2}
+if [[ -e "$WORK" ]]; then
+    echo "Run directory already exists; choose a fresh WORK directory: $WORK" >&2
+    exit 1
+fi
+bundle_on_exit() {
+    local run_status=$?
+    trap - EXIT
+    if [[ -d "$WORK" ]]; then
+        if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$run_status"; then
+            echo "Automatic packaging failed; preserve the run directory." >&2
+            if [[ "$run_status" -eq 0 ]]; then run_status=1; fi
+        fi
+    fi
+    exit "$run_status"
+}
+trap bundle_on_exit EXIT
+for VARIANT in enthalpyStandard enthalpyTight; do
+    echo "Preparing $VARIANT at $WORK/$VARIANT"
+    python3 tests/m247Performance/prepare_probe.py \
+        --source "$SOURCE" --output "$WORK/$VARIANT" \
+        --start-us "$START_US" --duration-us "$DURATION_US" --variant "$VARIANT"
+    echo "Running $VARIANT; live log: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
+    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.5
+done
+python3 tests/m247Performance/collect_thermal_validation.py --work "$WORK"
+echo "Field and diagnostic differences are for review; no production approval is implied."

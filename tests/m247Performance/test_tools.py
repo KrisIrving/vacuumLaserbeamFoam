@@ -9,6 +9,64 @@ from unittest.mock import patch
 from collect_probe import SECTIONS, METRICS, compare, read_probe
 from prepare_probe import prepare, snapshot_digest
 from package_results import package
+from collect_thermal_validation import read_field, collect as collect_validation
+
+class ThermalValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+    def tearDown(self):
+        self.temp.cleanup()
+    def test_ascii_vector_and_uniform_scalar(self):
+        p = self.root/'field'
+        p.write_text('FoamFile { format ascii; } internalField nonuniform List<vector> 2 ((1 2 3)(4 5 6));')
+        self.assertEqual(read_field(p),([1,2,3,4,5,6],3,False))
+        p.write_text('FoamFile { format ascii; } internalField uniform 0.5;')
+        self.assertEqual(read_field(p),([0.5],1,True))
+    def test_truncated_field_rejected(self):
+        p = self.root/'field'
+        p.write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 3 (1 2);')
+        with self.assertRaisesRegex(ValueError,'Truncated'):
+            read_field(p)
+    def test_binary_format_rejected(self):
+        p = self.root/'field'
+        p.write_text('FoamFile { format binary; } internalField uniform 1;')
+        with self.assertRaisesRegex(ValueError,'ASCII'):
+            read_field(p)
+    def make_pair(self):
+        for variant in ('enthalpyStandard','enthalpyTight'):
+            folder = fixture(self.root/variant,variant)
+            p = folder/'probe.json'; meta=json.loads(p.read_text())
+            meta.update(ranks=1,phase_temperature_tolerance_K=0.001 if variant=='enthalpyTight' else 0.01,
+                        epsilon_tolerance=1e-5 if variant=='enthalpyTight' else 1e-4)
+            p.write_text(json.dumps(meta))
+            p=folder/'run.json'; run=json.loads(p.read_text());run['solver_sha256']='same';p.write_text(json.dumps(run))
+            lines=[]
+            for i in range(160):
+                lines.append(f'THERMAL_RESIDUAL_DIAGNOSTICS time={0.00018+(i+1)*2e-6/160:.12g} boundedEnthalpy=1 phaseTemperatureChecked=1 maxResidual=1e-06 phaseTemperatureResidual_K=0.0005 aboveTolerance=0')
+            p=folder/'log.vacuumLaserbeamFoam'
+            p.write_text(p.read_text().replace('ranks=48','ranks=1').replace('End','\n'.join(lines)+'\nEnd'))
+            state=folder/'processor0/0.000182';state.mkdir(parents=True)
+            for name in ('T','epsilon1','alpha.metal','p_rgh'):
+                values='1500 1600' if name=='T' else '0 1'
+                if name=='T' and variant=='enthalpyStandard': values='1500.1 1600'
+                (state/name).write_text(f'FoamFile {{ format ascii; }} internalField nonuniform List<scalar> 2 ({values});')
+            (state/'U').write_text('FoamFile { format ascii; } internalField nonuniform List<vector> 2 ((0 0 0)(1 2 3));')
+    def test_complete_validation_reports_field_sensitivity(self):
+        self.make_pair()
+        result = collect_validation(self.root)
+        self.assertTrue(result['convergence_gate'])
+        self.assertFalse(result['production_approved'])
+        temperature=next(f for f in result['fields'] if f['field']=='T')
+        self.assertAlmostEqual(temperature['max_abs_difference'],0.1)
+        self.assertAlmostEqual(temperature['cell_unweighted_rms_difference'],0.1/(2**0.5))
+        self.assertTrue((self.root/'comparison/thermalValidation.json').is_file())
+    def test_missing_final_field_does_not_create_report(self):
+        self.make_pair()
+        (self.root/'enthalpyStandard/processor0/0.000182/U').unlink()
+        with self.assertRaises(OSError):
+            collect_validation(self.root)
+        self.assertFalse((self.root/'comparison').exists())
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):
@@ -166,6 +224,21 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'already exists'):
             prepare(self.source,target,180,2,'baseline')
         self.assertEqual((target/'keep').read_text(),'keep')
+    def test_validation_tolerances_and_output_controls_match(self):
+        variants = {}
+        hashes = []
+        for variant in ('enthalpyStandard','enthalpyTight'):
+            entries = {}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({key:value})):
+                meta=prepare(self.source,self.root/variant,180,2,variant)
+            variants[variant]=entries
+            hashes.append(meta['source_snapshot_sha256'])
+            self.assertEqual(entries['writeFormat'],'ascii')
+            self.assertEqual(entries['recordRayPaths'],'false')
+            self.assertEqual(entries['MELTING/boundedEnthalpyCorrection'],'true')
+        self.assertEqual(hashes[0],hashes[1])
+        differing={k for k in variants['enthalpyStandard'] if variants['enthalpyStandard'][k]!=variants['enthalpyTight'][k]}
+        self.assertEqual(differing,{'MELTING/epsilonTolerance','MELTING/phaseTemperatureTolerance'})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []

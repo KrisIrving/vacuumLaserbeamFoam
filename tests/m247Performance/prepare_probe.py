@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -104,18 +104,28 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     set_entry(output/'constant/LaserProperties', 'recordRayPaths',
-              'false' if variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded') else 'true')
+              'false' if variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
               'false' if variant == 'quietThermal' else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/boundedEnthalpyCorrection',
-              'true' if variant == 'enthalpyBounded' else 'false')
+              'true' if variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalResidualDiagnostics',
-              'true' if variant in ('thermalLegacy', 'enthalpyBounded') else 'false')
-    set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureTolerance', '0.01')
+              'true' if variant in ('thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
+    phase_tolerance = '0.001' if variant == 'enthalpyTight' else '0.01'
+    set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureTolerance', phase_tolerance)
+    if variant in ('enthalpyStandard', 'enthalpyTight'):
+        set_entry(output/'system/fvSolution', 'MELTING/epsilonTolerance',
+                  '1e-5' if variant == 'enthalpyTight' else '1e-4')
+        # Keep the original binary restart readable; only new output is ASCII
+        # so the review collector can compare fields without extra libraries.
+        set_entry(control, 'writeFormat', 'ascii')
     metadata = dict(schema=1, source=str(source), variant=variant,
                     start_s=start, end_s=end, duration_us=duration_us,
                     ranks=len(ranks), checkpoint=states[0].name,
                     source_snapshot_sha256=source_snapshot_sha256,
+                    phase_temperature_tolerance_K=float(phase_tolerance),
+                    epsilon_tolerance=(1e-5 if variant == 'enthalpyTight' else 1e-4)
+                        if variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
                     purpose='mature-state performance and matched physics regression')
     (output/'probe.json').write_text(json.dumps(metadata, indent=2)+'\n')
     return metadata

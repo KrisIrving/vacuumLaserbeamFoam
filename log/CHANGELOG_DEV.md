@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Longer candidate convergence validation
+
+Added a 180–182-us standard/tighter candidate test with per-step convergence checks, final all-rank internal-field differences, and automatic review archives. Uses the existing candidate binary; physical production approval remains pending. Twenty-five local tests pass. See `entries/2026-10-07-m247-tolerance-validation-tooling.md` and `tests/m247Performance/THERMAL_VALIDATION.md`.
+
 ## 2026-10-07 — Ubuntu thermal result and automatic review archives
 
 The 0.2-us Ubuntu candidate converged in 10–14 correctors/step with zero cap hits and reduced job wall from 127.13 to 35.04 s (3.63x). Longer physical validation remains pending. Both test wrappers now automatically package small review files with run/variant names and a SHA256/missing-file manifest; existing runs can be packaged without rerunning. Nineteen local tests and shell syntax checks pass. See `entries/2026-10-07-m247-thermal-probe-result.md`.
