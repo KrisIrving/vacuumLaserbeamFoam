@@ -2,6 +2,22 @@
 
 Updated: 2026-10-07
 
+## Immediate action: 180–182-us cached traversal validation
+
+Pull feat/m247-material-port and run
+`./tests/m247Performance/ValidateRayTraversal` on Ubuntu. It automatically builds,
+checks real-mesh search parity, and runs independent reference/cached cases
+from the same 180-us checkpoint to182 us with a30-minute wall budget per job.
+Build/copy time and termination grace are additional. Seven physical/deposition
+fields, common-time diagnostics, thermal convergence and identical global/rank
+ray work remain required; performance needs at least5% loop and job improvement.
+Send the single printed M247_ray-traversal-validation-..._review.tar.gz, including
+on failure.56 local tests pass; actual broader CFD is pending Ubuntu.
+No new solver algorithm or default change. The completed0.2-us pair need not be
+repeated. If this passes, next development targets tracing imbalance before
+fine-grid/full-track cost estimates. Older actions below are superseded.
+See entries/2026-10-07-m247-traversal-broader-validation.md.
+
 ## Decision after collection-200224: keep validated cache candidate
 
 Archive integrity and all short regression/performance gates pass. Seven final

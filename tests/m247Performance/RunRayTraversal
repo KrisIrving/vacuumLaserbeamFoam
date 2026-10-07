@@ -1,8 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+DURATION_US=0.2
+WALL_HOURS=0.25
+RUN_TAG=ray-traversal
+COLLECT_ARGS=(--ray-traversal)
+if [[ "${1:-}" == --validation ]]; then
+    shift
+    DURATION_US=2
+    WALL_HOURS=0.5
+    RUN_TAG=ray-traversal-validation
+    COLLECT_ARGS+=(--validation)
+fi
 SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
-WORK=${2:-tests/m247Performance/runs/ray-traversal-$(date +%Y%m%d-%H%M%S)}
+WORK=${2:-tests/m247Performance/runs/${RUN_TAG}-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
 [[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
@@ -24,6 +35,7 @@ trap bundle_on_exit EXIT
     command -v wmake || true
     command -v vacuumLaserbeamFoam || true
     git rev-parse HEAD || true
+    echo "probe_start_us=180 probe_duration_us=$DURATION_US wall_hours_per_job=$WALL_HOURS"
 } > "$WORK/buildEnvironment.txt"
 ( cd src/laserHeatSource && wmakeLnInclude -u . \
     && test -r lnInclude/laserPerformance.H \
@@ -37,14 +49,14 @@ trap bundle_on_exit EXIT
 python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
 for VARIANT in rayTraversalReference rayTraversalCached; do
     python3 tests/m247Performance/prepare_probe.py --source "$SOURCE" --output "$WORK/$VARIANT" \
-        --start-us 180 --duration-us 0.2 --variant "$VARIANT"
+        --start-us 180 --duration-us "$DURATION_US" --variant "$VARIANT"
     if [[ "$VARIANT" == rayTraversalReference ]]; then
         RANKS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ranks"])' "$WORK/$VARIANT/probe.json")
         timeout 120s mpirun -np "$RANKS" "$FOAM_USER_APPBIN/m247CachedSearchTest" \
             -parallel -case "$WORK/$VARIANT" 2>&1 | tee "$WORK/cachedSearchTest.log"
     fi
-    echo "Running $VARIANT; live log: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
-    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.25
+    echo "Running $VARIANT for $DURATION_US us; wall budget $WALL_HOURS h; live log: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
+    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours "$WALL_HOURS"
 done
-python3 tests/m247Performance/collect_laser_profile.py --ray-traversal --work "$WORK" \
+python3 tests/m247Performance/collect_laser_profile.py "${COLLECT_ARGS[@]}" --work "$WORK" \
     2>&1 | tee "$WORK/collection.log"

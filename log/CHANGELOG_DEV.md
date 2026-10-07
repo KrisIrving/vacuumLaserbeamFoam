@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-07 — Broaden cached traversal regression to2 us
+
+Added ValidateRayTraversal: shared build/parity/run/package pipeline, matched
+180–182-us reference/cached cases and30-minute budget per job. Collector rejects
+short or mislabelled intervals in validation mode.56 Python tests pass, including
+interval and mode rejection; Bash syntax checked. Solver/physics unchanged,
+broader OpenFOAM execution pending Ubuntu. See
+entries/2026-10-07-m247-traversal-broader-validation.md.
+
 ## 2026-10-07 — Cached traversal short validation complete
 
 Collection-200224 integrity and regression/performance gates pass. Seven756k-cell physical/deposition fields have zero differences, search parity and ray-work gates pass. Observed job1.125x/loop1.1385x, inner laser cost minus21.29%. Retain opt-in cache; default/production approval unchanged. Next development broadens paired validation to2us before tracing balance/backend work. No new solver change or additional Ubuntu run in this review. See entries/2026-10-07-m247-cached-traversal-validated.md.

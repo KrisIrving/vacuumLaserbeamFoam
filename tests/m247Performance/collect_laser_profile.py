@@ -101,11 +101,18 @@ def validate_rank_rows(rows, records, ranks):
     return [dict(rank=rank,**{k:sum(group[rank][k] for group in groups)
                 for k in required if k not in ('schema','time','rank')}) for rank in range(ranks)]
 
-def collect(work, traversal=False):
+def collect(work, traversal=False, validation=False):
+    if validation and not traversal:
+        raise ValueError('Validation mode requires the paired traversal cases')
     work=Path(work)
     names=('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
     cases=[work/v for v in names]
     probes=[read_probe(c) for c in cases]
+    if validation:
+        for meta,_,_ in probes:
+            if (abs(meta['start_s']-0.00018)>1e-12 or abs(meta['end_s']-0.000182)>1e-12
+                or abs(meta['duration_us']-2)>1e-9):
+                raise ValueError('Broader validation requires exactly 180–182 us (2 us)')
     comparison,diagnostics=compare(*probes)
     runs=[json.loads((c/'run.json').read_text()) for c in cases]
     for key in ('solver_sha256','laser_library_sha256'):
@@ -179,6 +186,7 @@ def collect(work, traversal=False):
                 note='Instrumentation equivalence only; no speedup or physical closure approval is implied.')
     result.update(extra)
     if traversal:
+        result['validation_scope']='180-182us' if validation else 'paired traversal'
         result['performance_gate']=(result['regression_gate'] and comparison['solver_loop_speedup']>=1.05 and comparison['job_wall_speedup']>=1.05)
         result['note']='Cached traversal candidate: require identical ray work, field/diagnostic regression and measured speedup. One short pair does not establish long-track performance or physical approval.'
     output=work/'comparison'
@@ -195,8 +203,9 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work',type=Path,required=True)
     parser.add_argument('--ray-traversal',action='store_true')
+    parser.add_argument('--validation',action='store_true',help='Require the broader 180–182-us traversal pair')
     args=parser.parse_args()
-    try: result=collect(args.work,args.ray_traversal)
+    try: result=collect(args.work,args.ray_traversal,args.validation)
     except (ValueError,OSError,KeyError) as error: parser.exit(1,f'Laser profile collection failed: {error}\n')
     print(f"Profiling equivalence gate: {result['regression_gate']}")
     if args.ray_traversal:

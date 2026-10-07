@@ -281,6 +281,24 @@ class ThermalValidationTests(unittest.TestCase):
             self.assertTrue(any(x['source']=='comparison/rayTraversalReview.json' for x in manifest['files']))
             self.assertIn('rayTraversalCached',manifest['variants'])
         finally: archive.unlink()
+    def test_broader_traversal_validation_accepts_matched_two_us(self):
+        self.make_traversal_pair()
+        result=collect_laser(self.root,traversal=True,validation=True)
+        self.assertTrue(result['regression_gate'])
+        self.assertEqual(result['validation_scope'],'180-182us')
+        self.assertFalse(result['production_approved'])
+    def test_broader_validation_rejects_short_probe_metadata(self):
+        self.make_traversal_pair()
+        for name in ('rayTraversalReference','rayTraversalCached'):
+            p=self.root/name/'probe.json'
+            meta=json.loads(p.read_text());meta['duration_us']=0.2
+            p.write_text(json.dumps(meta))
+        with self.assertRaisesRegex(ValueError,'exactly 180'):
+            collect_laser(self.root,traversal=True,validation=True)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_broader_validation_requires_traversal_pair(self):
+        with self.assertRaisesRegex(ValueError,'requires the paired traversal'):
+            collect_laser(self.root,validation=True)
     def test_traversal_mode_rejects_old_runtime(self):
         self.make_traversal_pair()
         p=self.root/'rayTraversalCached/log.vacuumLaserbeamFoam'

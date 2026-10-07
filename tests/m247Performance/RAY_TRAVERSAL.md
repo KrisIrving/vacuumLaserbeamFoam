@@ -4,7 +4,7 @@ Run from the Ubuntu repository root:
 
 ```bash
 git pull --ff-only origin feat/m247-material-port
-./tests/m247Performance/RunRayTraversal
+./tests/m247Performance/ValidateRayTraversal
 ```
 
 The wrapper refreshes lnInclude, builds the laser library, clean solver and
@@ -15,11 +15,18 @@ valid/invalid seeds, with search limits 0, 1 and 100. FIFO storage is reused
 across calls. It has a 120-second wall limit and must report zero mismatches.
 Build or test failures stop the pipeline and are automatically archived.
 
-The two fresh 180–180.2-us cases differ only in cachedRayTraversal, a default-off
+The next validation uses two fresh 180–182-us (2-us) cases. They differ only in
+cachedRayTraversal, a default-off
 LaserProperties switch. Both retain 1536 rays per call from the source setup,
 profile timing, tight bounded enthalpy, phase blend width zero and ray paths
-off. Each CFD job has a 15-minute wall budget; builds, copying and the search
+off. Each CFD job has a 30-minute wall budget; builds, copying and the search
 test are additional. MPI count is read from the copied checkpoint metadata.
+On budget expiry the runner requests a saved stop, then applies its existing
+termination grace period; the budget is not an exact process lifetime cap.
+ValidateRayTraversal forwards optional SOURCE, WORK and JOBS arguments to the
+shared wrapper. The collector explicitly requires the 180–182-us interval.
+The original RunRayTraversal command still runs the historical 0.2-us/15-minute
+short pair; that completed short test does not need repeating.
 
 The candidate caches the original (0.5/pi)*pow(V,1/3) expression on first use
 per cell per laser update. It neither substitutes cbrt nor changes step size.
@@ -45,12 +52,12 @@ full-track speedup. Failure of equivalence stops collection with a failure
 archive; failure of the performance threshold is reported without promoting
 the candidate. Production approval remains false.
 
-Send the single printed M247_ray-traversal-YYYYMMDD-HHMMSS_review.tar.gz. It
+Send the single printed M247_ray-traversal-validation-YYYYMMDD-HHMMSS_review.tar.gz. It
 includes build and real-mesh test logs, both variant logs/dictionaries/provenance,
 rayTraversalReview.json, field comparison, stage/exchange and rank reports.
 The large saved fields remain on Ubuntu. No source-case modification occurs.
 
-Local validation: 53 Python harness tests and Bash syntax checks pass.
+Local validation: 56 Python harness tests and Bash syntax checks pass.
 The 195231 archive verifies compilation, 50688 real-mesh parity checks with zero
 mismatches, identical logged diagnostics/work and shorter cached runtime.
 Its initial collector failed because rayNumber was incorrectly mandatory.
