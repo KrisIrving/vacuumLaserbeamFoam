@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 import re
 import tarfile
+from prepare_probe import VARIANTS
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached')
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
     'probe.json': 'probe.json', 'run.json': 'run.json',

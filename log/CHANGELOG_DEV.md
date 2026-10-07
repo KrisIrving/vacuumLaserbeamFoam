@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-07 — Seed performance FAIL; repair review packaging
+
+204122report:seven fields equal/work matched,no thermal caps,but job0.98492x
+and performance gate false. Parity322560/0; only244eligible cells. Do not
+promote or repeat seed candidate. Archive omitted seed variants due to stale
+packaging whitelist; full-log audit pending recovery. Import shared preparation
+catalog and add RepackageReview for collection only with original files retained.
+60Python tests/Bash syntax pass. See entries/2026-10-07-m247-seed-search-result.md.
+
 ## 2026-10-07 — Broader cache PASS and seed search candidate
 
 201432archive hashes/log/work/thermal checks pass; seven saved-field norms zero.

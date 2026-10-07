@@ -2,6 +2,21 @@
 
 Updated: 2026-10-07
 
+## Immediate action: recover204122logs; stop seed shortcut experiments
+
+Seed candidate report passes regression but fails performance:327.3→332.3s.
+Real-mesh parity322560/0; exact-axis eligibility only244/756000cells. Keep
+cartesianRaySeedSearch off and retain validated cachedRayTraversal. No CFD rerun.
+Archive11hashes verify,but variants=[] because packaging omitted new names;
+full solver logs/provenance are absent,so report gates are not independently
+log-verified yet. Shared variant catalog fixes this;60Python tests pass.
+Pull and run
+`./tests/m247Performance/RepackageReview tests/m247Performance/runs/ray-seed-search-20261007-204122`.
+Send printed collection archive. Next development targets tracing load
+distribution/particle backend and local fine mesh/domain coupling rather than
+further strict-axis seed optimization. See
+entries/2026-10-07-m247-seed-search-result.md. Older actions superseded.
+
 ## Immediate action: validated cache plus seed-cell shortcut
 
 201432broader cache validation passes:29hashes verified,seven fields exactly

@@ -1,5 +1,23 @@
 # Cartesian seed-cell shortcut
 
+## Result: do not promote; recover packaging only
+
+204122completed pair reports zero seven-field differences and matched work,but
+no gain:job327.335→332.346s,performance gate false. Exact axis alignment
+qualifies only244/756000cells; parity322560checks/0mismatches. Keep the switch
+off; do not rerun this candidate. Its original archive omitted both variant
+logs/metadata due to a separate stale packaging whitelist,now shared with
+preparation.60local tests pass. Restore evidence without CFD:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RepackageReview tests/m247Performance/runs/ray-seed-search-20261007-204122
+```
+
+Send the printed collection archive. Seven-field/thermal conclusions above
+are the Ubuntu report; missing full logs prevent independent log verification
+until recovery. Remaining instructions describe the historical experiment.
+
 The previous180–182-us cache pair passed:29manifest entries verified,
 seven756000-cell fields have zero differences in the Ubuntu comparison report,
 166steps,14.319thermal correctors/step,max18,no caps. Independently rechecked

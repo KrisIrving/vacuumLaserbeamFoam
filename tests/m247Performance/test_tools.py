@@ -416,6 +416,23 @@ class PackagingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'already exists'):
             package(self.work)
         self.assertEqual(before,output.read_bytes())
+    def test_seed_pair_archives_both_logs_provenance_and_dictionaries(self):
+        from package_results import FILES
+        work=self.root/'seed-pair'
+        for variant in ('raySeedReference','raySeedCached'):
+            for relative in FILES:
+                path=work/variant/relative;path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_text(variant+' '+relative)
+            path=work/variant/'processor0/T';path.parent.mkdir();path.write_text('exclude fields')
+        output,manifest=package(work)
+        self.assertEqual(manifest['variants'],['raySeedReference','raySeedCached'])
+        self.assertFalse(manifest['missing_files'])
+        self.assertIsNone(manifest['wrapper_exit_code'])
+        with tarfile.open(output) as archive:
+            for variant in manifest['variants']:
+                for suffix in FILES.values():
+                    self.assertIn('seed-pair_'+variant+'_'+suffix,archive.getnames())
+            self.assertFalse(any('processor' in name for name in archive.getnames()))
     def test_empty_run_rejected(self):
         empty = self.root/'empty'
         empty.mkdir()

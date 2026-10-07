@@ -1,0 +1,10 @@
+#!/bin/bash
+# Collect existing results only. No compilation, solver or field comparison.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+WORK=${1:?Usage: RepackageReview tests/m247Performance/runs/RUN-DIRECTORY}
+[[ -d "$WORK" ]] || { echo "Run directory missing: $WORK" >&2; exit 1; }
+WORK=$(cd "$WORK" && pwd)
+OUTPUT="$(dirname "$WORK")/M247_$(basename "$WORK")_collection-$(date +%Y%m%d-%H%M%S)_review.tar.gz"
+# Do not assign a new solver/wrapper success status during packaging recovery.
+python3 tests/m247Performance/package_results.py --work "$WORK" --output "$OUTPUT"
