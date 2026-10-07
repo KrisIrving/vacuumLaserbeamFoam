@@ -54,9 +54,15 @@ Local validation: 53 Python harness tests and Bash syntax checks pass.
 The 195231 archive verifies compilation, 50688 real-mesh parity checks with zero
 mismatches, identical logged diagnostics/work and shorter cached runtime.
 Its initial collector failed because rayNumber was incorrectly mandatory.
-Saved physical/deposition field regression remains pending offline collection.
+The subsequent collection-200224 archive passes saved physical/deposition field
+regression: all seven mandatory fields have exactly zero differences over756k
+cells; optional rayNumber is explicitly not_written. Both regression and5%
+performance gates pass (job1.125x, loop1.1385x). Retain the opt-in candidate;
+default remains off and broader validation/production approval remain pending.
 
-Recover this completed run without rebuilding or rerunning CFD:
+The recovery command below has already completed successfully for195231; no
+repeat is needed. It remains available for another failed collection without
+rebuilding or rerunning CFD:
 
 ```bash
 ./tests/m247Performance/InspectRayTraversal tests/m247Performance/runs/ray-traversal-20261007-195231

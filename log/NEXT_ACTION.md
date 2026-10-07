@@ -2,6 +2,19 @@
 
 Updated: 2026-10-07
 
+## Decision after collection-200224: keep validated cache candidate
+
+Archive integrity and all short regression/performance gates pass. Seven final
+fields over756k cells differ exactly zero; rayNumber explicitly not_written.
+Search parity50688/0 mismatches, identical logged physics/work and zero thermal
+caps. Job36.0399/32.0343 s (1.125x), loop1.1385x; inner laser cost falls21.29%.
+Retain opt-in cachedRayTraversal, keep default false. Tracing imbalance remains
+about13x max/mean. Next development prepares a matched180–182-us broader
+validation before partitioning/particle-backend optimization. No additional
+Ubuntu command or upload is needed for this completed review; do not repeat
+the short pair/collection. See entries/2026-10-07-m247-cached-traversal-validated.md.
+Older actions are superseded.
+
 ## Immediate action: collect existing 195231 fields, no CFD rerun
 
 The cached candidate builds, passes 50688 search parity checks and completes

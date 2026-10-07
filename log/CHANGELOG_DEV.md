@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Cached traversal short validation complete
+
+Collection-200224 integrity and regression/performance gates pass. Seven756k-cell physical/deposition fields have zero differences, search parity and ray-work gates pass. Observed job1.125x/loop1.1385x, inner laser cost minus21.29%. Retain opt-in cache; default/production approval unchanged. Next development broadens paired validation to2us before tracing balance/backend work. No new solver change or additional Ubuntu run in this review. See entries/2026-10-07-m247-cached-traversal-validated.md.
+
 ## 2026-10-07 — Recover cached-traversal field collection
 
 195231 build/parity and both jobs pass; logged physics/work agree, job speedup1.125, loop1.1385. Archive has no comparison report. Fix inherited non-debug rayNumber NO_WRITE incompatibility: seven physical/deposition fields mandatory, visual ID optional with explicit absence/partial checks. Added offline InspectRayTraversal and collection stderr packaging; 53 harness tests pass. No solver change or physical approval. See entries/2026-10-07-m247-traversal-195231-collection-fix.md.
