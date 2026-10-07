@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run the ray-weighted partition experiment
+
+Pull feat/m247-material-port and run `./tests/m247Performance/RunRayPartition` on Ubuntu. No C++ rebuild is needed. Two copied 48-rank cases compare the original partition against checkpoint-rayQ-weighted Scotch over 180–182 us, with a 30-minute CFD budget per case. Initial global mesh/field checks precede both jobs; final fields are compared on the original global mesh after reconstruction. Send the automatically generated `M247_ray-partition-..._review.tar.gz`, including on failure. Weighting is a proxy, so speedup is unverified and strict regression gates remain unchanged. See tests/m247Performance/RAY_PARTITION.md.
+
 ## Decision after210403recovery: stop seed shortcut, target tracing distribution
 
 Recovery complete:27hashes verified,both full logs/provenance present. Independent

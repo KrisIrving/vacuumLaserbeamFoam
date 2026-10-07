@@ -337,6 +337,63 @@ class ThermalValidationTests(unittest.TestCase):
         p.write_text(p.read_text().replace('cached=1','cached=0'))
         with self.assertRaisesRegex(ValueError,'runtime cached traversal'): collect_laser(self.root,traversal=True)
         self.assertFalse((self.root/'comparison').exists())
+    def make_partition_pair(self):
+        import shutil
+        from ray_partition import NAMES, FIELDS, require_initial_equal
+        self.make_seed_pair()
+        for index,(old,new) in enumerate(zip(('raySeedReference','raySeedCached'),NAMES)):
+            case=self.root/old;case.rename(self.root/new);case=self.root/new
+            p=case/'probe.json';meta=json.loads(p.read_text());meta.update(variant=new,ranks=48,cartesian_ray_seed_search=False)
+            p.write_text(json.dumps(meta))
+            mesh=case/'constant/polyMesh';mesh.mkdir(parents=True)
+            for part in ('points','faces','owner','neighbour','boundary'): (mesh/part).write_text('same global mesh '+part)
+            for time in ('0.00018','0.000182'):
+                folder=case/time;folder.mkdir()
+                for name in FIELDS: shutil.copyfile(case/'processor0/0.000182'/name,folder/name)
+            p=case/'log.vacuumLaserbeamFoam';lines=[]
+            for line in p.read_text().splitlines():
+                if line.startswith('LASER_PERF_DIAGNOSTICS '):
+                    row=parse_records_for_test(line,'LASER_PERF_DIAGNOSTICS')
+                    row['ranks']=48;row['initialRaysMean']=row['callsMean']*1536
+                    for key in RANK_COUNTS.values(): row[key]*=48
+                    row['ownershipChecksSum']*=48
+                    lines.append('LASER_PERF_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in row.items()))
+                elif line.startswith('LASER_RANK_DIAGNOSTICS '):
+                    row=parse_records_for_test(line,'LASER_RANK_DIAGNOSTICS')
+                    for rank in range(48):
+                        data=dict(row,rank=rank)
+                        if index and rank<2:
+                            change=2 if rank==0 else -2
+                            data['advances']+=change;data['searches']+=change
+                        lines.append('LASER_RANK_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in data.items()))
+                else: lines.append(line.replace('enabled=1','enabled=0').replace('ranks=1 ','ranks=48 '))
+            p.write_text('\n'.join(lines)+'\n')
+        (self.root/'initialPartitionCheck.json').write_text(json.dumps(require_initial_equal(*(self.root/n for n in NAMES))))
+    def test_partition_compares_global_fields_without_equal_rank_work(self):
+        from ray_partition import collect
+        self.make_partition_pair()
+        result=collect(self.root)
+        self.assertTrue(result['regression_gate'])
+        self.assertFalse(result['performance_gate'])
+        self.assertEqual(len(result['fields']),7)
+        self.assertNotEqual(result['reference_laser_profile']['rank_totals'][0]['searches'],result['laser_profile']['rank_totals'][0]['searches'])
+        archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'))
+        try:
+            self.assertIn('rayPartitionWeighted',manifest['variants'])
+            self.assertTrue(any(e['source']=='comparison/rayPartitionReview.json' for e in manifest['files']))
+        finally: archive.unlink()
+    def test_partition_global_field_change_fails_regression(self):
+        from ray_partition import collect
+        self.make_partition_pair()
+        (self.root/'rayPartitionWeighted/0.000182/rayQ').write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 2);')
+        self.assertFalse(collect(self.root)['regression_gate'])
+    def test_partition_initial_field_and_mesh_changes_rejected(self):
+        from ray_partition import require_initial_equal, NAMES
+        self.make_partition_pair();cases=[self.root/n for n in NAMES]
+        p=cases[1]/'0.00018/T';original=p.read_text();p.write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (100 200);')
+        with self.assertRaisesRegex(ValueError,'initial fields'): require_initial_equal(*cases)
+        p.write_text(original);(cases[1]/'constant/polyMesh/points').write_text('changed order')
+        with self.assertRaisesRegex(ValueError,'mesh/order'): require_initial_equal(*cases)
     def test_non_debug_ray_number_is_optional_with_explicit_report(self):
         self.make_traversal_pair()
         for name in ('rayTraversalReference','rayTraversalCached'):
@@ -438,6 +495,19 @@ class PackagingTests(unittest.TestCase):
         empty.mkdir()
         with self.assertRaisesRegex(ValueError,'recognised'):
             package(empty)
+
+class RayPartitionWeightTests(unittest.TestCase):
+    def test_weights_balance_base_cost_and_nonuniform_ray_proxy(self):
+        from ray_partition import weights
+        values,stats=weights([0,0,1,3])
+        self.assertEqual(values,[1,1,2,4])
+        self.assertEqual(stats['mean_weight'],2)
+        for invalid in ([],[0,0],[-1,2],[float('nan')],[float('inf')]):
+            with self.assertRaises(ValueError): weights(invalid)
+
+def parse_records_for_test(line,prefix):
+    from collect_probe import parse_records
+    return parse_records(line,prefix)[0]
 
 def fixture(root, variant='baseline', scale=1):
     root.mkdir()

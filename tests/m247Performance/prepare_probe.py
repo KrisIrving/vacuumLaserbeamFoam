@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached', 'rayPartitionReference', 'rayPartitionWeighted')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -105,7 +105,8 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
     seed_variant = variant in ('raySeedReference','raySeedCached')
-    traversal_variant = seed_variant or variant in ('rayTraversalReference','rayTraversalCached')
+    partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted')
+    traversal_variant = partition_variant or seed_variant or variant in ('rayTraversalReference','rayTraversalCached')
     laser_variant = traversal_variant or variant in ('laserProfileOff','laserProfileOn')
     tight_variant = blend_variant or laser_variant or variant=='enthalpyTight'
     blend_width = 0.005 if variant=='phaseBlendNarrow' else 0.01 if variant=='phaseBlendWide' else 0
@@ -114,7 +115,7 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/LaserProperties', 'laserPerformanceDiagnostics',
               'true' if traversal_variant or variant=='laserProfileOn' else 'false')
     set_entry(output/'constant/LaserProperties', 'cachedRayTraversal',
-              'true' if seed_variant or variant=='rayTraversalCached' else 'false')
+              'true' if partition_variant or seed_variant or variant=='rayTraversalCached' else 'false')
     set_entry(output/'constant/LaserProperties', 'cartesianRaySeedSearch',
               'true' if variant=='raySeedCached' else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
@@ -140,7 +141,7 @@ def prepare(source, output, start_us, duration_us, variant):
                     epsilon_tolerance=(1e-5 if tight_variant else 1e-4)
                         if blend_variant or laser_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
                     laser_performance_diagnostics=traversal_variant or variant=='laserProfileOn',
-                    cached_ray_traversal=seed_variant or variant=='rayTraversalCached',
+                    cached_ray_traversal=partition_variant or seed_variant or variant=='rayTraversalCached',
                     cartesian_ray_seed_search=variant=='raySeedCached',
                     phase_temperature_blend_half_width=blend_width,
                     purpose='mature-state performance and matched physics regression')

@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Ray-weighted partition benchmark
+
+Added a matched original/weighted Scotch benchmark using checkpoint rayQ, native reconstruction/decomposition, exact initial checks and serial global final-field comparison. Retains validated cache, sampling and thermal controls; verifies rank counters within each partition without demanding equal cross-partition work. Each CFD job is budgeted at 30 minutes. Automatic archives include native logs, initial checks, weights and distinct variant evidence. No solver code changes or measured acceleration claim; Ubuntu validation pending.
+
 ## 2026-10-07 — Seed recovery complete; tracing distribution target
 
 210403recovery27hashes verified; full logs independently confirm matched

@@ -39,7 +39,7 @@ def read_field(path):
 
 def final_state(case, rank, time):
     candidates = []
-    for child in (case/f'processor{rank}').iterdir():
+    for child in (case if rank is None else case/f'processor{rank}').iterdir():
         if child.is_dir():
             try:
                 if abs(float(child.name)-time)<=1e-12: candidates.append(child)
@@ -52,7 +52,7 @@ def final_state(case, rank, time):
 def field_differences(reference, candidate, ranks, time, field_names=FIELDS):
     totals = {name:dict(cells=0,max_abs_difference=0.0,sum_squared_difference=0.0,
         reference_max_abs=0.0,components=3 if name=='U' else 1) for name in field_names}
-    for rank in range(ranks):
+    for rank in ((None,) if ranks is None else range(ranks)):
         folders = [final_state(p,rank,time) for p in (reference,candidate)]
         data = [{name:read_field(folder/name) for name in field_names} for folder in folders]
         counts = {len(values)//components for fields in data for values,components,uniform in fields.values() if not uniform}
