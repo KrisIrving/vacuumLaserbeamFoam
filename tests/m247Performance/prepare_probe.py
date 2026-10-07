@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached', 'rayPartitionReference', 'rayPartitionWeighted', 'frozenLaserReference', 'frozenLaserWeighted')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached', 'rayPartitionReference', 'rayPartitionWeighted', 'frozenLaserReference', 'frozenLaserWeighted', 'rayImpactLegacy', 'rayImpactCorrected')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -43,7 +43,8 @@ def checkpoint(rank, time):
     return candidates[0]
 
 def prepare(source, output, start_us, duration_us, variant, corrected_rays=False):
-    if corrected_rays and variant not in ('rayTraversalReference','rayTraversalCached'):
+    corrected_rays=corrected_rays or variant=='rayImpactCorrected'
+    if corrected_rays and variant not in ('rayTraversalReference','rayTraversalCached','rayImpactCorrected'):
         raise ValueError('Corrected transient pair requires traversal variants')
     source, output = source.resolve(), output.resolve()
     if not all(math.isfinite(x) for x in (start_us, duration_us)):
@@ -108,12 +109,12 @@ def prepare(source, output, start_us, duration_us, variant, corrected_rays=False
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     for key in ('preserveRayHandoffSample','consistentRayTermination'):
         set_entry(output/'constant/LaserProperties',key,'true' if corrected_rays else 'false')
-    if corrected_rays:
+    if corrected_rays or variant=='rayImpactLegacy':
         set_entry(control,'writePrecision',17)
         set_entry(control,'writeCompression','off')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
     seed_variant = variant in ('raySeedReference','raySeedCached')
-    partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted','frozenLaserReference','frozenLaserWeighted')
+    partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted','frozenLaserReference','frozenLaserWeighted','rayImpactLegacy','rayImpactCorrected')
     traversal_variant = partition_variant or seed_variant or variant in ('rayTraversalReference','rayTraversalCached')
     laser_variant = traversal_variant or variant in ('laserProfileOff','laserProfileOn')
     tight_variant = blend_variant or laser_variant or variant=='enthalpyTight'

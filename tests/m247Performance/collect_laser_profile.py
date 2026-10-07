@@ -125,7 +125,9 @@ def corrected_work(text,meta,calls):
         raise ValueError('Corrected work interval incomplete')
     return dict(handoff=handoff,termination=termination)
 
-def collect(work, traversal=False, validation=False, seed_search=False, corrected_rays=False):
+def collect(work, traversal=False, validation=False, seed_search=False, corrected_rays=False, physics_impact=False):
+    if physics_impact and (not traversal or not validation or seed_search or corrected_rays):
+        raise ValueError('Physics impact requires its own broader traversal pair')
     if corrected_rays and (not traversal or not validation or seed_search):
         raise ValueError('Corrected ray pair requires broader traversal validation')
     if seed_search and not traversal:
@@ -133,10 +135,10 @@ def collect(work, traversal=False, validation=False, seed_search=False, correcte
     if validation and not traversal:
         raise ValueError('Validation mode requires the paired traversal cases')
     work=Path(work)
-    names=('raySeedReference','raySeedCached') if seed_search else ('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
+    names=('rayImpactLegacy','rayImpactCorrected') if physics_impact else ('raySeedReference','raySeedCached') if seed_search else ('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
     cases=[work/v for v in names]
     probes=[read_probe(c) for c in cases]
-    if corrected_rays and any(p[0]['ranks']!=48 for p in probes):
+    if (corrected_rays or physics_impact) and any(p[0]['ranks']!=48 for p in probes):
         raise ValueError('Corrected transient validation requires 48 ranks')
     if validation:
         for meta,_,_ in probes:
@@ -157,7 +159,7 @@ def collect(work, traversal=False, validation=False, seed_search=False, correcte
             raise ValueError('Laser probe requires matched tight controls, width zero and expected profile switch')
         if traversal:
             mode=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'RAY_TRAVERSAL_DIAGNOSTICS')
-            cached=True if seed_search else bool(index)
+            cached=True if seed_search or physics_impact else bool(index)
             if meta.get('cached_ray_traversal') is not cached or len(mode)!=1 or mode[0].get('schema')!=1 or mode[0].get('cached')!=int(cached):
                 raise ValueError('Missing/mismatched runtime cached traversal mode')
             seed_mode=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'CARTESIAN_SEED_DIAGNOSTICS')
@@ -225,6 +227,25 @@ def collect(work, traversal=False, validation=False, seed_search=False, correcte
                 profiling_job_overhead_ratio=runs[1]['elapsed_wall_s']/runs[0]['elapsed_wall_s'],
                 note='Instrumentation equivalence only; no speedup or physical closure approval is implied.')
     result.update(extra)
+    if physics_impact:
+        packet=parse_records((work/'cachedSearchTest.log').read_text(),'RAY_PACKET_TEST')
+        if packet!=[dict(schema=1,failures=0)]: raise ValueError('MPI ray packet check missing or failed')
+        for k in ('preserve_ray_handoff_sample','consistent_ray_termination'):
+            if probes[0][0].get(k) is not False: raise ValueError('Legacy impact controls changed')
+        for prefix in ('RAY_HANDOFF_DIAGNOSTICS','RAY_TERMINATION_DIAGNOSTICS'):
+            if parse_records(off_text,prefix)!=[dict(schema=1,enabled=0)]: raise ValueError('Legacy impact runtime changed')
+        if any(parse_records(off_text,p) for p in ('RAY_HANDOFF_WORK','RAY_TERMINATION_WORK')):
+            raise ValueError('Legacy case emitted correction work')
+        for case,probe in zip(cases,probes):
+            rows=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'LASER_PERF_DIAGNOSTICS')
+            if (any(r['initialRaysMean']!=1536*r['callsMean'] for r in rows)
+                or sum(r['callsMean'] for r in rows)!=probe[1]['steps']):
+                raise ValueError('Impact sampling or call coverage changed')
+        result['corrected_ray_work']=corrected_work(text,probes[1][0],probes[1][1]['steps'])
+        result['execution_gate']=converged and comparison['thermal_limit_gate']
+        result['legacy_equivalence_gate']=comparison['diagnostic_pass'] and all(f['passed'] for f in fields)
+        result['regression_gate']=result['execution_gate'] and result['legacy_equivalence_gate']
+        result['physics_impact']=True
     if corrected_rays:
         packet=parse_records((work/'cachedSearchTest.log').read_text(),'RAY_PACKET_TEST')
         if packet!=[dict(schema=1,failures=0)]: raise ValueError('MPI ray packet check missing or failed')
@@ -247,9 +268,23 @@ def collect(work, traversal=False, validation=False, seed_search=False, correcte
         result['note']='Cached traversal candidate: require identical ray work, field/diagnostic regression and measured speedup. One short pair does not establish long-track performance or physical approval.'
         if corrected_rays:
             result['note']+=' Both cases enable sample handoff and consistent termination on the original partition. This compares cache off/on within corrected physics; it does not validate the correction against legacy physics or promote weighted partitioning.'
+        if physics_impact:
+            result.pop('profiling_job_overhead_ratio',None)
+            result['performance_gate']=None
+            result['optimization']='legacy versus corrected optical policy'
+            result['note']='Intentional physics-impact measurement, both cached on original partition. Strict legacy field/diagnostic equality remains reported; differences are not acceptance. Execution gate checks completion/convergence. Timing ratios compare different policies, not equivalent acceleration. No production or finer-mesh approval.'
     output=work/'comparison'
     if output.exists(): raise ValueError('Comparison directory already exists')
     output.mkdir()
+    if physics_impact:
+        from localize_field_differences import localize
+        localized=localize(work,reference_variant=names[0],candidate_variant=names[1])
+        (output/'fieldLocalization.json').write_text(json.dumps(localized,indent=2)+'\n')
+        for name,rows in (('fieldRegions.csv',localized['regions']),('worstCells.csv',localized['worst_cells'])):
+            with (output/name).open('x',newline='') as stream:
+                writer=csv.DictWriter(stream,fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows)
+        result['localization_summary']=dict(cells=localized['cells'],regions=localized['regions'],
+            note='Alpha bins and threshold counts are diagnostic, not physical acceptance limits.')
     (output/('rayTraversalReview.json' if traversal else 'laserProfileReview.json')).write_text(json.dumps(result,indent=2)+'\n')
     for name,rows in (('laserProfileStages.csv',profile['stages']),('laserExchangeDetails.csv',profile['exchange_details']),
                       ('laserRankWork.csv',rank_rows),('laserProfileFields.csv',fields),('diagnosticComparison.csv',diagnostics)):
@@ -264,11 +299,14 @@ def main():
     parser.add_argument('--validation',action='store_true',help='Require the broader 180–182-us traversal pair')
     parser.add_argument('--seed-search',action='store_true')
     parser.add_argument('--corrected-rays',action='store_true')
+    parser.add_argument('--physics-impact',action='store_true')
     args=parser.parse_args()
-    try: result=collect(args.work,args.ray_traversal,args.validation,args.seed_search,args.corrected_rays)
+    try: result=collect(args.work,args.ray_traversal,args.validation,args.seed_search,args.corrected_rays,args.physics_impact)
     except (ValueError,OSError,KeyError) as error: parser.exit(1,f'Laser profile collection failed: {error}\n')
-    print(f"Profiling equivalence gate: {result['regression_gate']}")
-    if args.ray_traversal:
+    print(f"{'Strict legacy equivalence' if args.physics_impact else 'Profiling equivalence'} gate: {result['regression_gate']}")
+    if args.physics_impact:
+        print(f"Policy loop/job time ratio (legacy/corrected): {result['comparison']['solver_loop_speedup']:.3f}/{result['comparison']['job_wall_speedup']:.3f}; not equivalent acceleration")
+    elif args.ray_traversal:
         print(f"Loop/job speedup: {result['comparison']['solver_loop_speedup']:.3f}/{result['comparison']['job_wall_speedup']:.3f}")
         print(f"Matched ray work: {result['work_counter_gate']}; performance gate (>=5%): {result['performance_gate']}")
     else: print(f"Profiling job overhead ratio: {result['profiling_job_overhead_ratio']:.3f}")
@@ -277,6 +315,9 @@ def main():
     for row in result['laser_profile']['exchange_details']:
         print(f"  exchange/{row['detail']}: {row['mean_s']:.3f} s")
     print('Merge is nested inside gather; blocking gather/broadcast include waiting.')
-    if not result['regression_gate']: parser.exit(2,'Instrumentation regression gate failed.\n')
+    if args.physics_impact:
+        print('Execution gate:',result['execution_gate'],'strict legacy equivalence:',result['legacy_equivalence_gate'])
+        if not result['execution_gate']: parser.exit(2,'Physics-impact run did not converge.\n')
+    elif not result['regression_gate']: parser.exit(2,'Instrumentation regression gate failed.\n')
 
 if __name__=='__main__': main()

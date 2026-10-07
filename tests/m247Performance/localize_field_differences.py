@@ -23,7 +23,7 @@ def localize(work, top=10, reference_variant='enthalpyTight', candidate_variant=
     if top<1: raise ValueError('Top-cell count must be positive')
     pair=(reference_variant,candidate_variant)
     phase_pairs=(('enthalpyTight','phaseBlendNarrow'),('phaseBlendNarrow','phaseBlendWide'))
-    if pair != ('enthalpyTight','enthalpyStandard') and pair not in phase_pairs:
+    if pair != ('enthalpyTight','enthalpyStandard') and pair not in phase_pairs and pair!=('rayImpactLegacy','rayImpactCorrected'):
         raise ValueError('Unsupported localization pair')
     reference,candidate = work/reference_variant,work/candidate_variant
     tight,normal = read_probe(reference),read_probe(candidate)

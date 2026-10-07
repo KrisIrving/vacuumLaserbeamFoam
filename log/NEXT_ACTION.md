@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run legacy/corrected physics-impact pair
+
+231038 corrected transient cache pair passes all strict gates:166 converged steps/no caps, seven final norms zero, identical correction/ray work;377.372 to349.341s,1.08024x job speedup. Next pull and run `./tests/m247Performance/RunRayTraversal --physics-impact`. Both cases use cache on original partition; only ray corrections differ, with automatic metal/gas/interface localization. Same180–182us and30-minute/job budgets. Send `M247_ray-physics-impact-..._review.tar.gz`. This measures intentional physical changes and does not approve them or relabel policy timing as equivalent acceleration. See tests/m247Performance/RAY_PHYSICS_IMPACT.md. Earlier sections are checkpoint history.
+
 ## Run corrected transient cache validation
 
 225102 frozen optical regression passes strict gates (power delta 1.7e-13 W, relative spatial differences about 1e-14; matching physical ray events and cutoff tail). Pull and run `./tests/m247Performance/RunRayTraversal --corrected`. Two 48-rank original-partition cases solve 180–182 us with both corrections enabled; only traversal caching differs. Each job has a 30-minute budget. Send the automatic `M247_ray-corrected-validation-..._review.tar.gz`. Collector checks full coupled physics/convergence, fields, cache work and per-step correction accounting. No weighted partition or legacy-physics/full-track approval implied. See tests/m247Performance/CORRECTED_RAYS.md. Earlier sections are checkpoint history.

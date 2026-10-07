@@ -21,6 +21,13 @@ elif [[ "${1:-}" == --corrected ]]; then
     RUN_TAG=ray-corrected-validation
     COLLECT_ARGS+=(--validation --corrected-rays)
     PREPARE_ARGS+=(--corrected-rays)
+elif [[ "${1:-}" == --physics-impact ]]; then
+    shift
+    DURATION_US=2
+    WALL_HOURS=0.5
+    RUN_TAG=ray-physics-impact
+    VARIANTS=(rayImpactLegacy rayImpactCorrected)
+    COLLECT_ARGS+=(--validation --physics-impact)
 elif [[ "${1:-}" == --seed-search ]]; then
     shift
     DURATION_US=2

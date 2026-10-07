@@ -382,10 +382,10 @@ class ThermalValidationTests(unittest.TestCase):
             self.assertIn('rayPartitionWeighted',manifest['variants'])
             self.assertTrue(any(e['source']=='comparison/rayPartitionReview.json' for e in manifest['files']))
         finally: archive.unlink()
-    def test_corrected_transient_collection_accepts_complete_matched_pair(self):
+    def make_corrected_transient_pair(self,impact=False):
         import shutil
         self.make_partition_pair()
-        names=('rayTraversalReference','rayTraversalCached')
+        names=('rayImpactLegacy','rayImpactCorrected') if impact else ('rayTraversalReference','rayTraversalCached')
         common=(self.root/'rayPartitionReference/log.vacuumLaserbeamFoam').read_text()
         work='RAY_HANDOFF_DIAGNOSTICS schema=1 enabled=1\nRAY_TERMINATION_DIAGNOSTICS schema=1 enabled=1\n'
         for i in range(160):
@@ -394,13 +394,26 @@ class ThermalValidationTests(unittest.TestCase):
             work+=f'RAY_TERMINATION_WORK schema=1 time={time:.15g} threshold=1e-6 cutoffRays=10 discardedPower=5e-6\n'
         for index,(old,new) in enumerate(zip(('rayPartitionReference','rayPartitionWeighted'),names)):
             case=self.root/old;case.rename(self.root/new);case=self.root/new
-            p=case/'probe.json';meta=json.loads(p.read_text());meta.update(variant=new,cached_ray_traversal=bool(index),preserve_ray_handoff_sample=True,consistent_ray_termination=True);p.write_text(json.dumps(meta))
-            (case/'log.vacuumLaserbeamFoam').write_text(common.replace('cached=1',f'cached={index}')+work)
+            enabled=bool(index) if impact else True
+            p=case/'probe.json';meta=json.loads(p.read_text());meta.update(variant=new,cached_ray_traversal=True if impact else bool(index),preserve_ray_handoff_sample=enabled,consistent_ray_termination=enabled);p.write_text(json.dumps(meta))
+            correction=work if enabled else 'RAY_HANDOFF_DIAGNOSTICS schema=1 enabled=0\nRAY_TERMINATION_DIAGNOSTICS schema=1 enabled=0\n'
+            (case/'log.vacuumLaserbeamFoam').write_text(common.replace('cached=1',f'cached={1 if impact else index}')+correction)
             for rank in range(1,48): shutil.copytree(case/'processor0',case/f'processor{rank}')
         (self.root/'cachedSearchTest.log').write_text('CACHED_SEARCH_TEST checks=100 mismatches=0\nRAY_PACKET_TEST schema=1 failures=0\n')
+    def test_corrected_transient_collection_accepts_complete_matched_pair(self):
+        self.make_corrected_transient_pair()
         result=collect_laser(self.root,traversal=True,validation=True,corrected_rays=True)
         self.assertTrue(result['regression_gate'] and result['corrected_ray_work_gate'])
         self.assertFalse(result['production_approved'])
+    def test_physics_impact_keeps_equality_failure_and_localizes_differences(self):
+        self.make_corrected_transient_pair(impact=True)
+        (self.root/'rayImpactCorrected/processor0/0.000182/T').write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (100 102);')
+        result=collect_laser(self.root,traversal=True,validation=True,physics_impact=True)
+        self.assertTrue(result['execution_gate'])
+        self.assertFalse(result['legacy_equivalence_gate'])
+        self.assertFalse(result['production_approved'])
+        self.assertIsNone(result['performance_gate'])
+        self.assertTrue((self.root/'comparison/fieldLocalization.json').is_file())
     def test_partition_global_field_change_fails_regression(self):
         from ray_partition import collect
         self.make_partition_pair()
@@ -829,6 +842,19 @@ class PreparationTests(unittest.TestCase):
             variants[variant]=entries
         self.assertEqual({k for k in variants['rayTraversalReference'] if variants['rayTraversalReference'][k]!=variants['rayTraversalCached'][k]},
                          {('LaserProperties','cachedRayTraversal')})
+    def test_impact_pair_changes_only_two_correction_switches(self):
+        variants={};digests=[]
+        for variant in ('rayImpactLegacy','rayImpactCorrected'):
+            entries={}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({(path.name,key):value})):
+                meta=prepare(self.source,self.root/variant,180,2,variant)
+            self.assertTrue(meta['cached_ray_traversal'])
+            self.assertEqual(entries['controlDict','frozenLaserProbe'],'off')
+            self.assertEqual(entries['controlDict','writePrecision'],17)
+            variants[variant]=entries;digests.append(meta['source_snapshot_sha256'])
+        self.assertEqual(digests[0],digests[1])
+        self.assertEqual({k for k in variants['rayImpactLegacy'] if variants['rayImpactLegacy'][k]!=variants['rayImpactCorrected'][k]},
+            {('LaserProperties','preserveRayHandoffSample'),('LaserProperties','consistentRayTermination')})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []
