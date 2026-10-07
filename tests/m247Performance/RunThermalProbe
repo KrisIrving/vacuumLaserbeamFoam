@@ -5,6 +5,22 @@ SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
 WORK=${2:-tests/m247Performance/runs/thermal-$(date +%Y%m%d-%H%M%S)}
 START_US=${3:-180}
 DURATION_US=${4:-0.2}
+if [[ -e "$WORK" ]]; then
+    echo "Run directory already exists; choose a fresh WORK directory: $WORK" >&2
+    exit 1
+fi
+bundle_on_exit() {
+    local run_status=$?
+    trap - EXIT
+    if [[ -d "$WORK" ]]; then
+        if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$run_status"; then
+            echo "Automatic packaging failed; preserve the run directory and inspect the message above." >&2
+            if [[ "$run_status" -eq 0 ]]; then run_status=1; fi
+        fi
+    fi
+    exit "$run_status"
+}
+trap bundle_on_exit EXIT
 for VARIANT in thermalLegacy enthalpyBounded; do
     echo "Preparing $VARIANT at $WORK/$VARIANT"
     python3 tests/m247Performance/prepare_probe.py \
@@ -13,5 +29,5 @@ for VARIANT in thermalLegacy enthalpyBounded; do
     echo "Running $VARIANT; live output: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
     python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.25
 done
-echo "Send both solver logs and probe.json/run.json files from $WORK."
+echo "Review files will be named by variant and packaged automatically from $WORK."
 echo "This is a convergence investigation; no production validation PASS is claimed."

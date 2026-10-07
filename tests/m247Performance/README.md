@@ -1,5 +1,16 @@
 # M247 mature-state performance pair
 
+Both RunPair and RunThermalProbe now automatically collect review files into `runs/M247_<run-directory-name>_review.tar.gz` on exit, including failures. Send that one archive. Names inside include the run tag and variant, e.g. `thermal-20261007-154702_enthalpyBounded_solver.log`. Archives contain logs, metadata, selected dictionaries and available comparison outputs, with a SHA256 manifest and missing-file list. Processor fields/meshes are excluded. Existing archives are never overwritten, and existing WORK directories are rejected before starting a new wrapper run. Packaging failure is reported and does not hide a failed simulation.
+
+For an already completed test, package it without rerunning CFD:
+
+```bash
+python3 tests/m247Performance/package_results.py \
+  --work tests/m247Performance/runs/thermal-20261007-154702
+```
+
+Use the actual printed directory for other runs; `--output <new-path>.tar.gz` chooses a different archive name if an archive already exists. `manifest.json` records collection status, not a physical validation PASS.
+
 Ubuntu result: the first ray pair measured 1.120x job speedup, but both modes hit the thermal cap in all 166 steps. The next priority is the short nonlinear thermal investigation described in [THERMAL_PROBE.md](THERMAL_PROBE.md), using `RunThermalProbe`. The ray pair below remains available; earlier pending-execution statements describe its original delivery status.
 
 This first performance change targets optional visual ray history. In the

@@ -2,11 +2,52 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
 from collect_probe import SECTIONS, METRICS, compare, read_probe
 from prepare_probe import prepare, snapshot_digest
+from package_results import package
+
+class PackagingTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.work = self.root/'thermal-test'
+        for variant in ('thermalLegacy','enthalpyBounded'):
+            folder = self.work/variant
+            folder.mkdir(parents=True)
+            (folder/'log.vacuumLaserbeamFoam').write_text(variant+'\nEnd\n')
+            (folder/'probe.json').write_text('{}')
+            (folder/'run.json').write_text('{}')
+            (folder/'processor0').mkdir()
+            (folder/'processor0/T').write_text('large fields excluded')
+    def tearDown(self):
+        self.temp.cleanup()
+    def test_variant_names_and_manifest_preserve_identity(self):
+        output, manifest = package(self.work,exit_code=2)
+        with tarfile.open(output) as archive:
+            names = archive.getnames()
+            self.assertIn('thermal-test_thermalLegacy_solver.log',names)
+            self.assertIn('thermal-test_enthalpyBounded_solver.log',names)
+            self.assertFalse(any('processor' in n for n in names))
+            info = json.load(archive.extractfile('manifest.json'))
+            self.assertEqual(info['wrapper_exit_code'],2)
+            self.assertTrue(info['missing_files'])
+            self.assertEqual(archive.extractfile('thermal-test_thermalLegacy_solver.log').read(),
+                             (self.work/'thermalLegacy/log.vacuumLaserbeamFoam').read_bytes())
+    def test_existing_archive_is_not_overwritten(self):
+        output, _ = package(self.work)
+        before = output.read_bytes()
+        with self.assertRaisesRegex(ValueError,'already exists'):
+            package(self.work)
+        self.assertEqual(before,output.read_bytes())
+    def test_empty_run_rejected(self):
+        empty = self.root/'empty'
+        empty.mkdir()
+        with self.assertRaisesRegex(ValueError,'recognised'):
+            package(empty)
 
 def fixture(root, variant='baseline', scale=1):
     root.mkdir()

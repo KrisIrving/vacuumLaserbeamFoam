@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Ubuntu thermal result and automatic review archives
+
+The 0.2-us Ubuntu candidate converged in 10–14 correctors/step with zero cap hits and reduced job wall from 127.13 to 35.04 s (3.63x). Longer physical validation remains pending. Both test wrappers now automatically package small review files with run/variant names and a SHA256/missing-file manifest; existing runs can be packaged without rerunning. Nineteen local tests and shell syntax checks pass. See `entries/2026-10-07-m247-thermal-probe-result.md`.
+
 ## 2026-10-07 — M247 thermal convergence investigation
 
 Reviewed both full Ubuntu logs: all 25,066 phase corrections per run have max increment 1, while T linear solves take 1–2 iterations. Added default-off residual cell diagnostics and an experimental enthalpy slope correction with an additional phase-temperature gate. Added a 0.2-us legacy/candidate probe. Sixteen local harness/model tests pass; Ubuntu build and CFD validation are pending. See `entries/2026-10-07-m247-thermal-log-review.md` and `tests/m247Performance/THERMAL_PROBE.md`.

@@ -1,5 +1,9 @@
 # Short thermal convergence investigation
 
+Measured Ubuntu result on 2026-10-07: both 16-step probes finished. Candidate used 180 correctors total (10–14/step), zero cap hits, max final epsilon increment 8.000739225e-5 and max phase-temperature mismatch 0.009980752911 K. Legacy used 2416 correctors and 16 cap hits, with final max increments 1 at alpha about 0.054 in an interface cell. Job wall was 127.133841 s legacy versus 35.036218 s candidate (3.629x). This short sample supports the over-correction diagnosis but is not long-track/field validation. See the result entry in log/entries/.
+
+RunThermalProbe now automatically prints a single named `.tar.gz` review archive on exit. Send that archive; file names include the run tag and variant. Existing completed tests can be packaged with `python3 tests/m247Performance/package_results.py --work <printed-work-directory>` without rerunning. Large processor fields are retained locally and excluded from this small review archive.
+
 The uploaded Ubuntu logs establish that each variant took 166 steps and 25,066 thermal correctors. Every logged maximum epsilon increment was exactly 1. Final temperature linear residuals were at most 4.431423425e-10, with 24,734 one-iteration and 332 two-iteration solves. Both variants' complete epsilon residual histories match at logged precision. The final volume-mean epsilon increments range from 7.96035792e-6 to 1.447513268e-5. These are nonlinear phase-update failures, not expensive linear temperature iterations.
 
 The location and cell identity of those unit increments are not in the original logs. They can indicate different cells flipping at successive iterations; do not assume one particular cell has a two-cycle yet.

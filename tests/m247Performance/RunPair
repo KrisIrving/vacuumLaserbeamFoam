@@ -6,6 +6,22 @@ SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
 WORK=${2:-tests/m247Performance/runs/$(date +%Y%m%d-%H%M%S)}
 START_US=${3:-180}
 DURATION_US=${4:-2}
+if [[ -e "$WORK" ]]; then
+    echo "Run directory already exists; choose a fresh WORK directory: $WORK" >&2
+    exit 1
+fi
+bundle_on_exit() {
+    local run_status=$?
+    trap - EXIT
+    if [[ -d "$WORK" ]]; then
+        if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$run_status"; then
+            echo "Automatic packaging failed; preserve the run directory and inspect the message above." >&2
+            if [[ "$run_status" -eq 0 ]]; then run_status=1; fi
+        fi
+    fi
+    exit "$run_status"
+}
+trap bundle_on_exit EXIT
 
 for VARIANT in baseline noRayPaths; do
     python3 tests/m247Performance/prepare_probe.py \
@@ -15,4 +31,4 @@ for VARIANT in baseline noRayPaths; do
 done
 python3 tests/m247Performance/collect_probe.py \
     --reference "$WORK/baseline" --candidate "$WORK/noRayPaths" --output "$WORK/comparison"
-echo "Results retained at $WORK. Send comparison/comparison.json and both solver logs."
+echo "Results retained at $WORK; review files will be packaged automatically."
