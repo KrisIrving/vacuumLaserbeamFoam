@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import tarfile
+import re
 import unittest
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ from prepare_probe import prepare, snapshot_digest
 from package_results import package
 from collect_thermal_validation import read_field, collect as collect_validation
 from localize_field_differences import localize, region
+from collect_phase_blend import collect as collect_blend
 
 class ThermalValidationTests(unittest.TestCase):
     def setUp(self):
@@ -84,6 +86,32 @@ class ThermalValidationTests(unittest.TestCase):
         self.assertEqual(region(1.0,0.98),'interfaceOrChanged')
         self.assertEqual(region(0.0,0.01),'gasBoth')
         self.assertEqual(region(0.99,1.0),'metalBoth')
+    def make_blend_triplet(self):
+        self.make_pair()
+        import shutil
+        for variant,width in (('enthalpyTight',0),('phaseBlendNarrow',0.005),('phaseBlendWide',0.01)):
+            if variant!='enthalpyTight':
+                shutil.copytree(self.root/'enthalpyTight',self.root/variant)
+            folder=self.root/variant
+            p=folder/'probe.json';meta=json.loads(p.read_text())
+            meta.update(variant=variant,phase_temperature_blend_half_width=width)
+            p.write_text(json.dumps(meta))
+            p=folder/'log.vacuumLaserbeamFoam'
+            text=re.sub(r' phaseBlendHalfWidth=[0-9.]+| phaseOverrideWeight=[0-9.]+','',p.read_text())
+            p.write_text(text.replace('boundedEnthalpy=1',f'boundedEnthalpy=1 phaseBlendHalfWidth={width} phaseOverrideWeight=0.5'))
+    def test_blend_collection_checks_widths_and_reports_no_approval(self):
+        self.make_blend_triplet()
+        result=collect_blend(self.root)
+        self.assertTrue(result['convergence_gate'])
+        self.assertFalse(result['production_approved'])
+        self.assertEqual(len(result['comparisons']),2)
+    def test_blend_collection_rejects_old_binary_diagnostics(self):
+        self.make_blend_triplet()
+        p=self.root/'phaseBlendNarrow/log.vacuumLaserbeamFoam'
+        p.write_text(p.read_text().replace('phaseBlendHalfWidth=0.005','oldWidth=0.005'))
+        with self.assertRaisesRegex(ValueError,'Rebuild'):
+            collect_blend(self.root)
+        self.assertFalse((self.root/'comparison').exists())
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):
@@ -192,6 +220,20 @@ class CollectorTests(unittest.TestCase):
             read_probe(self.candidate)
 
 class EnthalpyModelTests(unittest.TestCase):
+    def test_smooth_phase_override_limits_and_threshold_continuity(self):
+        def temperatures(alpha,width):
+            weight=(1 if alpha>0.05 else 0) if width==0 else max(0,min(1,(alpha-(0.05-width))/(2*width)))
+            if width: weight=weight*weight*(3-2*weight)
+            return [(1-weight)*(alpha*m+(1-alpha)*g)+weight*m for m,g in ((1537,1),(1631,10))]
+        for width in (0.005,0.01):
+            for alpha in (0,0.01,0.04,0.06,1):
+                self.assertEqual(temperatures(alpha,width),temperatures(alpha,0))
+            below,above=[temperatures(a,width) for a in (0.05-1e-9,0.05+1e-9)]
+            self.assertLess(abs(above[0]-below[0]),0.001)
+            for i in range(101):
+                solidus,liquidus=temperatures(i/100,width)
+                self.assertGreater(liquidus,solidus)
+        self.assertGreater(temperatures(0.05+1e-9,0)[0]-temperatures(0.05-1e-9,0)[0],1400)
     def test_interface_scalar_model_converges_without_clipped_two_cycle(self):
         # Analytical isolated-cell model, not a CFD regression test.
         cp, latent, span, solidus = 540.0, 9001.0, 94.0, 1537.0
@@ -256,6 +298,19 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(hashes[0],hashes[1])
         differing={k for k in variants['enthalpyStandard'] if variants['enthalpyStandard'][k]!=variants['enthalpyTight'][k]}
         self.assertEqual(differing,{'MELTING/epsilonTolerance','MELTING/phaseTemperatureTolerance'})
+    def test_blend_variants_change_width_only(self):
+        variants={};hashes=[]
+        for variant in ('enthalpyTight','phaseBlendNarrow','phaseBlendWide'):
+            entries={}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({key:value})):
+                meta=prepare(self.source,self.root/variant,180,0.2,variant)
+            variants[variant]=entries;hashes.append(meta['source_snapshot_sha256'])
+            self.assertEqual(entries['MELTING/epsilonTolerance'],'1e-5')
+            self.assertEqual(entries['MELTING/phaseTemperatureTolerance'],'0.001')
+            self.assertEqual(entries['writeFormat'],'ascii')
+        self.assertEqual(len(set(hashes)),1)
+        differences={k for k in variants['enthalpyTight'] if variants['enthalpyTight'][k]!=variants['phaseBlendNarrow'][k]}
+        self.assertEqual(differences,{'MELTING/phaseTemperatureBlendHalfWidth'})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []

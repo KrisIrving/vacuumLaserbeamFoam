@@ -1,5 +1,7 @@
 # M247 mature-state performance pair
 
+Current development step: rebuild and run `RunPhaseBlendProbe`, a default-off continuous phase-temperature override experiment with two transition widths and the hard-rule reference. See [PHASE_BLEND_PROBE.md](PHASE_BLEND_PROBE.md). This changes the mixed-cell closure and remains unapproved; all three runs use matching tight convergence settings and one review archive.
+
 Latest 2-us Ubuntu result: both tolerances converge, but large local field maxima require region/cell inspection. Next action is offline `InspectThermalValidation <existing-work-directory>`, not another CFD run. See [FIELD_LOCALIZATION.md](FIELD_LOCALIZATION.md). It adds localization summaries and produces one new named review archive.
 
 Current next test after the successful 0.2-us thermal probe: `RunThermalValidation` compares standard and 10x tighter candidate convergence over 180–182 us, including final internal-field differences. It packages one review archive automatically. See [THERMAL_VALIDATION.md](THERMAL_VALIDATION.md).

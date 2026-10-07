@@ -34,6 +34,7 @@
     Info<< "THERMAL_RESIDUAL_DIAGNOSTICS time=" << runTime.value()
         << " correctors=" << iter
         << " boundedEnthalpy=" << boundedEnthalpyCorrection
+        << " phaseBlendHalfWidth=" << phaseTemperatureBlendHalfWidth
         << " maxResidual=" << maxResidual << " meanResidual=" << meanResidual
         << " phaseTemperatureResidual_K=" << phaseTemperatureResidual
         << " phaseTemperatureChecked=" << boundedEnthalpyCorrection
@@ -42,6 +43,8 @@
         << " ownerRank=" << owner << " localCell=" << sample[12]
         << " x=" << sample[0] << " y=" << sample[1] << " z=" << sample[2]
         << " alphaMetal=" << sample[3] << " T=" << sample[4]
+        << " phaseOverrideWeight="
+        << phaseTemperatureOverrideWeight(sample[3], phaseTemperatureBlendHalfWidth)
         << " Tprev=" << sample[5] << " epsilon=" << sample[6]
         << " epsilonPrev=" << sample[7] << " cp=" << sample[8]
         << " latentHeat=" << sample[9] << " solidus=" << sample[10]

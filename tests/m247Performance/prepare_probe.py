@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -103,19 +103,22 @@ def prepare(source, output, start_us, duration_us, variant):
         set_entry(control, key, value)
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
+    blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
+    blend_width = 0.005 if variant=='phaseBlendNarrow' else 0.01 if variant=='phaseBlendWide' else 0
     set_entry(output/'constant/LaserProperties', 'recordRayPaths',
-              'false' if variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
+              'false' if blend_variant or variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
               'false' if variant == 'quietThermal' else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/boundedEnthalpyCorrection',
-              'true' if variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
+              'true' if blend_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalResidualDiagnostics',
-              'true' if variant in ('thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
-    phase_tolerance = '0.001' if variant == 'enthalpyTight' else '0.01'
+              'true' if blend_variant or variant in ('thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'false')
+    set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureBlendHalfWidth', str(blend_width))
+    phase_tolerance = '0.001' if blend_variant or variant == 'enthalpyTight' else '0.01'
     set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureTolerance', phase_tolerance)
-    if variant in ('enthalpyStandard', 'enthalpyTight'):
+    if blend_variant or variant in ('enthalpyStandard', 'enthalpyTight'):
         set_entry(output/'system/fvSolution', 'MELTING/epsilonTolerance',
-                  '1e-5' if variant == 'enthalpyTight' else '1e-4')
+                  '1e-5' if blend_variant or variant == 'enthalpyTight' else '1e-4')
         # Keep the original binary restart readable; only new output is ASCII
         # so the review collector can compare fields without extra libraries.
         set_entry(control, 'writeFormat', 'ascii')
@@ -124,8 +127,9 @@ def prepare(source, output, start_us, duration_us, variant):
                     ranks=len(ranks), checkpoint=states[0].name,
                     source_snapshot_sha256=source_snapshot_sha256,
                     phase_temperature_tolerance_K=float(phase_tolerance),
-                    epsilon_tolerance=(1e-5 if variant == 'enthalpyTight' else 1e-4)
-                        if variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
+                    epsilon_tolerance=(1e-5 if blend_variant or variant == 'enthalpyTight' else 1e-4)
+                        if blend_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
+                    phase_temperature_blend_half_width=blend_width,
                     purpose='mature-state performance and matched physics regression')
     (output/'probe.json').write_text(json.dumps(metadata, indent=2)+'\n')
     return metadata

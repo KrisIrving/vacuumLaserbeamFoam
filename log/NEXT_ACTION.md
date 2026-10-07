@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Immediate development test: continuous phase-temperature override
+
+Rebuild the branch on Ubuntu and run `./tests/m247Performance/RunPhaseBlendProbe`. It compares hard-rule enthalpyTight and smooth half-widths 0.005/0.01 over 180–180.2 us, all tight thermal tolerances, matched outputs and independent original checkpoints. Send the single automatic archive. Width defaults to zero in the solver and all older probes. This is an experimental mixed-cell closure change; coupling review confirms actual case PowderSim=false and direct epsilon Darcy, with same epsilon/latent/phase-consistency path and candidate rhok recomputation. Restart latent adjustment, width sensitivity, energy and longer-field validation remain pending. Do not interpret smoothing as an approved physical fix. Details: tests/m247Performance/PHASE_BLEND_PROBE.md. Older next actions below are superseded.
+
 ## Latest diagnosis: alpha=0.05 phase-rule discontinuity
 
 Localization archive received and verified. The large global T/U extrema are in gasBoth; metalBoth max/RMS differences are T 3.49/0.0123 K and U 0.0355/0.000169 m/s. Interface still has up to 39.2 K and 2.21 m/s differences. All seven epsilon endpoint differences coincide with alpha crossing 0.05. updateProps jumps phase temperatures from pseudo-gas-dominated about 78/91 K to metal 1537/1631 K at this threshold, demonstrating an equilibrium-rule artifact. Next code design must address continuous interface phase treatment together with enthalpy and flow-mask semantics, under an opt-in experimental mode and validation; do not hide it by ignoring interface cells or merely changing convergence tolerance. No localization rerun needed. Full-track/4-um production remains pending. See entries/2026-10-07-m247-localization-diagnosis.md. Older next-action items below are superseded.

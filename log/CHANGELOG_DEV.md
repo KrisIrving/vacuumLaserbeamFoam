@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Opt-in continuous phase-temperature candidate
+
+Added default-off smooth alpha-phase override, coupled phase/enthalpy diagnostics and a three-way width-sensitivity short probe. Preserves legacy branches outside the transition; numerical closure and restart energy response require validation. Thirty-one local tests pass; Ubuntu compilation/CFD pending. See `entries/2026-10-07-m247-continuous-phase-candidate.md` and `tests/m247Performance/PHASE_BLEND_PROBE.md`.
+
 ## 2026-10-07 — Localization diagnosis
 
 Verified existing localization archive. Global large T/U differences are in numerical gas; seven epsilon endpoint flips all cross the hard alpha=0.05 phase-temperature override. Recorded evidence and coupled interface-treatment requirements. No solver changes or new CFD. See `entries/2026-10-07-m247-localization-diagnosis.md`.

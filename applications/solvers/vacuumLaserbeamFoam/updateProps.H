@@ -11,7 +11,16 @@
     const scalar Tliquidus1Value = Tliquidus1.value();
     forAll(alpha1I, celli)
     {
-        if (alpha1I[celli] > 0.05)
+        if (phaseTemperatureBlendHalfWidth > 0)
+        {
+            const scalar w = phaseTemperatureOverrideWeight
+                (alpha1I[celli], phaseTemperatureBlendHalfWidth);
+            TSolidusI[celli] =
+                (1-w)*TSolidusI[celli] + w*Tsolidus1Value;
+            TLiquidusI[celli] =
+                (1-w)*TLiquidusI[celli] + w*Tliquidus1Value;
+        }
+        else if (alpha1I[celli] > 0.05)
         {
             TSolidusI[celli] = Tsolidus1Value;
             TLiquidusI[celli] = Tliquidus1Value;
@@ -20,6 +29,12 @@
 
     TSolidus.correctBoundaryConditions();
     TLiquidus.correctBoundaryConditions();
+    if (phaseTemperatureBlendHalfWidth > 0)
+    {
+        // Candidate buoyancy uses the same phase temperatures as TEqn.
+        // Retain the legacy operation order exactly when disabled.
+        rhok = (1.0 - max(epsilon1*(beta)*(T - TSolidus), 0.0));
+    }
 
     #include "updateKappaCp.H"
 

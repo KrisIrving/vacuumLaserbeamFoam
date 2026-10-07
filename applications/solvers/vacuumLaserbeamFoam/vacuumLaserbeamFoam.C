@@ -71,6 +71,7 @@ Authors
 #include "vacuumRadiationModel.H"
 
 #include "vacuumPerformance.H"
+#include "phaseTemperatureBlend.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

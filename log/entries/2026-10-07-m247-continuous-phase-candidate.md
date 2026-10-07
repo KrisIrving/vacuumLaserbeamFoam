@@ -1,0 +1,11 @@
+# Opt-in continuous alpha-phase override and three-way short probe
+
+User authorized the next development step after localization identified the alpha=0.05 hard switch. Added phaseTemperatureBlendHalfWidth (default 0). Positive width uses cubic smoothstep to blend mixed gas/metal phase temperatures into the full-metal override near 0.05; both outside branches match the legacy rule exactly. Width validation enforces 0<=h<0.04 and requires the bounded enthalpy correction. Both solidus/liquidus use the same weight; for bounded alpha their ordering remains positive.
+
+Coupling audit: actual M247 LaserProperties has PowderSim=false, so UEqn's Darcy uses epsilon1 directly. TEqn latent terms, phase consistency and surface/radiation inputs retain that same existing phase indicator. Mixture cp/filtered latent heat and Darcy expressions are not replaced. For the candidate only, rhok is refreshed after phase temperatures change. PowderSim=true mask threshold and alpha-filter clips remain separate issues; no claim of complete closure/conservation repair is made.
+
+This is deliberately a changed numerical mixed-cell closure, not a physically established alloy property. Widths 0.005/0.01 are chosen for sensitivity experiments. Original restart epsilon is retained, which can induce a latent adjustment on switching closures. Energy accounting and evolved-field comparisons are required before acceptance. Baseline default operation order and prior probe modes remain unchanged.
+
+Added RunPhaseBlendProbe: independent 180–180.2-us hard-rule/narrow/wide triplet, identical tight convergence settings, noRayPaths, ASCII writes, 15-minute budget per job, named archive. Collector requires reported new mode and matching binary/source data, checks convergence, and reports hard/narrow response and narrow/wide field sensitivity. production_approved remains false. No new long-run or fine-grid compute is requested.
+
+Local validation: 31 Python harness/model/collector tests, Bash syntax and diff checks pass. OpenFOAM compilation/execution not available locally; Ubuntu validation pending. Mathematical tests are not CFD solver tests. User command and limitations: tests/m247Performance/PHASE_BLEND_PROBE.md.
