@@ -27,7 +27,7 @@ trap bundle_on_exit EXIT
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
 python3 tests/m247Performance/region_audit.py --prepare --source "$SOURCE" --impact "$IMPACT" --work "$WORK"
-( cd tests/m247Performance/regionAudit && wmake -j "$JOBS" ) 2>&1 | tee "$WORK/build.log"
+( cd tests/m247Performance/regionAudit && wclean && wmake -j "$JOBS" ) 2>&1 | tee "$WORK/build.log"
 UTILITY=${FOAM_USER_APPBIN:?Source the OpenFOAM environment}/m247RegionAudit
 sha256sum "$UTILITY" tests/m247Performance/regionAudit/regionAudit.C > "$WORK/auditBinary.txt"
 echo "Reading six original snapshots on 48 ranks; 10-minute utility budget"

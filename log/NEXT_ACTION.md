@@ -2,6 +2,17 @@
 
 Updated: 2026-10-08
 
+## Repair region-audit build and rerun read-only inspection
+
+Ubuntu v2512 compilation failed on cyclicAMIPolyPatch.H: regionAudit lacked
+meshTools include/link dependencies. Added both and clean only this utility
+before rebuilding. Pull and rerun `./tests/m247Performance/InspectRegionBudget`;
+no solver rebuild or CFD rerun. Send the new automatic region-budget archive.
+Current compiler output is sufficient; the old failure archive need not be
+sent separately. Bash/static checks pass; native build pending Ubuntu. See
+entries/2026-10-08-m247-region-audit-meshTools-build-fix.md. Earlier sections are
+checkpoint history.
+
 ## Read existing regional geometry/cost; no further CFD pair now
 
 233712 impact review completes successfully but strict legacy equality fails.

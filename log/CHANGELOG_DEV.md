@@ -1,5 +1,13 @@
 # Development changelog
 
+## 2026-10-08 — Region audit meshTools dependency repair
+
+User v2512 build fails on missing cyclicAMIPolyPatch.H through fvCFD.H.
+Added meshTools include/link dependencies and clean the audit target before
+rebuild. No solver equations, fields or audit semantics change. Bash/static
+checks pass; actual Ubuntu build pending. Pull and rerun InspectRegionBudget;
+existing fields reused and a fresh named review archive generated automatically.
+
 ## 2026-10-08 — Ray impact reviewed; regional/domain cost audit
 
 Verified32archivehashes,166convergedsteps/no caps and full corrected MPI/cutoff
