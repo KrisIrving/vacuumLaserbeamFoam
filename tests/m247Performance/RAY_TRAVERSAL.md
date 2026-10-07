@@ -1,0 +1,51 @@
+# Cached traversal candidate
+
+Run from the Ubuntu repository root:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RunRayTraversal
+```
+
+The wrapper refreshes lnInclude, builds the laser library, clean solver and
+real-mesh search test. It prepares an independent reference checkpoint copy and
+runs m247CachedSearchTest on every rank before CFD. That test compares legacy
+and cached lookups at cell centres, exact face centres, outside points and
+valid/invalid seeds, with search limits 0, 1 and 100. FIFO storage is reused
+across calls. It has a 120-second wall limit and must report zero mismatches.
+Build or test failures stop the pipeline and are automatically archived.
+
+The two fresh 180–180.2-us cases differ only in cachedRayTraversal, a default-off
+LaserProperties switch. Both retain 1536 rays per call from the source setup,
+profile timing, tight bounded enthalpy, phase blend width zero and ray paths
+off. Each CFD job has a 15-minute wall budget; builds, copying and the search
+test are additional. MPI count is read from the copied checkpoint metadata.
+
+The candidate caches the original (0.5/pi)*pow(V,1/3) expression on first use
+per cell per laser update. It neither substitutes cbrt nor changes step size.
+Caches are discarded every update, avoiding stale geometry between calls.
+A DynamicList FIFO and checked set reuse storage for neighbour searches.
+Predicate order, duplicate queue entries, maxLocalSearch cutoff and mesh.findCell
+fallback remain unchanged. Debug mode retains the original search/logging path.
+Ray generation, initial location, optics, MPI routing and deposition order stay
+the same. This is an experimental equivalent optimization, not a V3.1 port.
+
+The collector requires successful search parity, expected runtime mode, matched
+source/binary controls and profiles, identical global interval and rank work
+counters, per-step thermal convergence and common-time physical diagnostics.
+Final all-rank fields compared are T, epsilon1, alpha.metal, U, p_rgh, Deposition,
+rayQ and rayNumber. The norm tolerance is 1e-12 + 1e-8 times the reference field
+maximum. The separate performance gate requires at least 5% improvement in
+both loop and job times; a single short pair cannot establish statistical or
+full-track speedup. Failure of equivalence stops collection with a failure
+archive; failure of the performance threshold is reported without promoting
+the candidate. Production approval remains false.
+
+Send the single printed M247_ray-traversal-YYYYMMDD-HHMMSS_review.tar.gz. It
+includes build and real-mesh test logs, both variant logs/dictionaries/provenance,
+rayTraversalReview.json, field comparison, stage/exchange and rank reports.
+The large saved fields remain on Ubuntu. No source-case modification occurs.
+
+Local validation: 51 Python harness tests and Bash syntax checks pass.
+OpenFOAM compilation, real-mesh parity, CFD equivalence and measured speed are
+pending Ubuntu; the Windows host has no OpenFOAM compiler environment.

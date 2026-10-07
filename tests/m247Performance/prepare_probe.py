@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -104,13 +104,16 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
-    laser_variant = variant in ('laserProfileOff','laserProfileOn')
+    traversal_variant = variant in ('rayTraversalReference','rayTraversalCached')
+    laser_variant = traversal_variant or variant in ('laserProfileOff','laserProfileOn')
     tight_variant = blend_variant or laser_variant or variant=='enthalpyTight'
     blend_width = 0.005 if variant=='phaseBlendNarrow' else 0.01 if variant=='phaseBlendWide' else 0
     set_entry(output/'constant/LaserProperties', 'recordRayPaths',
               'false' if blend_variant or laser_variant or variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else 'true')
     set_entry(output/'constant/LaserProperties', 'laserPerformanceDiagnostics',
-              'true' if variant=='laserProfileOn' else 'false')
+              'true' if traversal_variant or variant=='laserProfileOn' else 'false')
+    set_entry(output/'constant/LaserProperties', 'cachedRayTraversal',
+              'true' if variant=='rayTraversalCached' else 'false')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
               'false' if variant == 'quietThermal' else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/boundedEnthalpyCorrection',
@@ -133,7 +136,8 @@ def prepare(source, output, start_us, duration_us, variant):
                     phase_temperature_tolerance_K=float(phase_tolerance),
                     epsilon_tolerance=(1e-5 if tight_variant else 1e-4)
                         if blend_variant or laser_variant or variant in ('enthalpyBounded', 'enthalpyStandard', 'enthalpyTight') else None,
-                    laser_performance_diagnostics=variant=='laserProfileOn',
+                    laser_performance_diagnostics=traversal_variant or variant=='laserProfileOn',
+                    cached_ray_traversal=variant=='rayTraversalCached',
                     phase_temperature_blend_half_width=blend_width,
                     purpose='mature-state performance and matched physics regression')
     (output/'probe.json').write_text(json.dumps(metadata, indent=2)+'\n')

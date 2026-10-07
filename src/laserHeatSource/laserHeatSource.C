@@ -378,6 +378,7 @@ laserHeatSource::laserHeatSource
       : lookupOrDefault<Switch>("Radial_Polar_HS", true)
     ),
     recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
+    cachedRayTraversal_(lookupOrDefault<Switch>("cachedRayTraversal", false)),
     laserProfiler_(lookupOrDefault<bool>("laserPerformanceDiagnostics", false)),
     laserNames_(0),
     laserDicts_(0),
@@ -388,6 +389,8 @@ laserHeatSource::laserHeatSource
     globalBB_(mesh.bounds())  // Initialize with local bounds first
 {
     Info<< "radialPolarHeatSource = " << radialPolarHeatSource_ << endl;
+    Info<< "RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached="
+        << label(cachedRayTraversal_) << endl;
 
     // Calculate global bounding box
     {
@@ -812,6 +815,18 @@ void laserHeatSource::updateDeposition
     const scalarField VI = mesh.V();
     const dimensionedScalar time = runTime.time();
     const scalar pi = constant::mathematical::pi;
+    // Per-call caches: valid even when volumes change between updates.
+    // A negative sentinel computes exactly the original expression on first use.
+    scalarField iteratorDistances;
+    if (cachedRayTraversal_) iteratorDistances.setSize(VI.size(), scalar(-1));
+    localCellSearchWorkspace searchWorkspace;
+    const auto locateCell=[&](const point& position, const label seed) -> label
+    {
+        if (cachedRayTraversal_ && !debug)
+            return findLocalCellCached(position, seed, mesh, maxLocalSearch,
+                                       debug, searchWorkspace);
+        return findLocalCell(position, seed, mesh, maxLocalSearch, debug);
+    };
     const dimensionedScalar a_cond
     (
         "a_cond", dimensionSet(0, 1, 0, 0, 0), laserRadius
@@ -925,15 +940,7 @@ void laserHeatSource::updateDeposition
             )
             {
                 laserProfiler_.add(laserPerformance::ownershipChecks);
-                const label myCellID =
-                    findLocalCell
-                    (
-                        curRay.position_,
-                        curRay.currentCell_,
-                        mesh,
-                        maxLocalSearch,
-                        debug
-                    );
+                const label myCellID = locateCell(curRay.position_, curRay.currentCell_);
 
                 if (myCellID != -1)
                 {
@@ -953,35 +960,29 @@ void laserHeatSource::updateDeposition
 
             // Find the cell the ray is currently in
             label myCellID =
-                laserProfiler_.search([&]() { return findLocalCell
-                (
-                    curRay.position_,
-                    curRay.currentCell_,
-                    mesh,
-                    maxLocalSearch,
-                    debug
-                ); });
+                laserProfiler_.search([&]() { return locateCell
+                (curRay.position_, curRay.currentCell_); });
 
             while (myCellID != -1)
             {
                 laserProfiler_.add(laserPerformance::advances);
                 // Calculate the iterator distance as a fraction of the cell size
-                const scalar iterator_distance =
-                    (0.5/pi)*pow(VI[myCellID], 1.0/3.0);
+                scalar iterator_distance;
+                if (cachedRayTraversal_)
+                {
+                    scalar& cached=iteratorDistances[myCellID];
+                    if (cached < 0) cached=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
+                    iterator_distance=cached;
+                }
+                else iterator_distance=(0.5/pi)*pow(VI[myCellID], 1.0/3.0);
 
                 // Move the ray by the iterator distance
                 curRay.position_ += iterator_distance*curRay.direction_;
 
                 // Find the new cell
                 myCellID =
-                    laserProfiler_.search([&]() { return findLocalCell
-                    (
-                        curRay.position_,
-                        curRay.currentCell_,
-                        mesh,
-                        maxLocalSearch,
-                        debug
-                    ); });
+                    laserProfiler_.search([&]() { return locateCell
+                    (curRay.position_, curRay.currentCell_); });
 
                 // Update the ray's cellID
                 curRay.currentCell_ = myCellID;

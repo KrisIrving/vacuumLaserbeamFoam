@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Official ray review and cached traversal candidate
+
+Reviewed tagged upstream V3.0/V3.1 and merged particle-tracing PR113. Added default-off cached step lengths and reusable FIFO search storage with legacy containment/order/limit/fallback semantics. RunRayTraversal builds a real-mesh old/new search test before matched short CFD, checks eight fields and identical ray work, and packages a single named archive. 51 Python tests and Bash syntax pass; actual C++/CFD and speed remain pending Ubuntu. See entries/2026-10-07-m247-official-ray-traversal-candidate.md.
+
 ## 2026-10-07 — Exchange profile result and tracing target
 
 193145 archive integrity/build/regression pass; 756k saved cells have identical five-field results. Independent log checks reconcile 96 rank rows. Merge is negligible; tracing strongly concentrated in two ranks, and blocking broadcast includes waits. Recorded evidence and selected equivalent tracing/search optimization before partitioning comparison. No additional CFD request or numerical change in this review. See entries/2026-10-07-m247-exchange-profile-result.md.

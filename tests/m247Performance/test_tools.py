@@ -53,7 +53,7 @@ class SolverPreflightTests(unittest.TestCase):
     def test_loader_shadow_and_old_laser_library_are_rejected(self):
         import subprocess
         library=self.root/'liblaserHeatSource.so'
-        markers=b'LASER_PERF_DIAGNOSTICS schema=2 time=\x00LASER_RANK_DIAGNOSTICS schema=2 time='
+        markers=b'LASER_PERF_DIAGNOSTICS schema=2 time=\x00LASER_RANK_DIAGNOSTICS schema=2 time=\x00RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached='
         library.write_bytes(markers)
         resolved=str(library.resolve())
         with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => '+resolved,'')):
@@ -255,6 +255,52 @@ class ThermalValidationTests(unittest.TestCase):
         log.write_text('\n'.join(line for line in log.read_text().splitlines() if not line.startswith('LASER_RANK_DIAGNOSTICS')))
         with self.assertRaisesRegex(ValueError,'Incomplete laser rank'): collect_laser(self.root)
         self.assertFalse((self.root/'comparison').exists())
+    def make_traversal_pair(self):
+        self.make_laser_pair()
+        (self.root/'cachedSearchTest.log').write_text('CACHED_SEARCH_TEST checks=100 mismatches=0\n')
+        import shutil
+        for name,enabled in (('rayTraversalReference',False),('rayTraversalCached',True)):
+            case=self.root/name
+            shutil.copytree(self.root/'laserProfileOn',case)
+            p=case/'probe.json';meta=json.loads(p.read_text())
+            meta.update(variant=name,cached_ray_traversal=enabled)
+            p.write_text(json.dumps(meta))
+            p=case/'log.vacuumLaserbeamFoam'
+            p.write_text(f'RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached={int(enabled)}\n'+p.read_text())
+            for field in ('Deposition','rayQ','rayNumber'):
+                (case/'processor0/0.000182'/field).write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 1);')
+    def test_traversal_equivalence_and_no_unmeasured_speedup(self):
+        self.make_traversal_pair()
+        result=collect_laser(self.root,traversal=True)
+        self.assertTrue(result['regression_gate'])
+        self.assertTrue(result['work_counter_gate'])
+        self.assertFalse(result['performance_gate'])
+        self.assertEqual(len(result['fields']),8)
+        archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'),0)
+        try:
+            self.assertTrue(any(x['source']=='comparison/rayTraversalReview.json' for x in manifest['files']))
+            self.assertIn('rayTraversalCached',manifest['variants'])
+        finally: archive.unlink()
+    def test_traversal_mode_rejects_old_runtime(self):
+        self.make_traversal_pair()
+        p=self.root/'rayTraversalCached/log.vacuumLaserbeamFoam'
+        p.write_text(p.read_text().replace('cached=1','cached=0'))
+        with self.assertRaisesRegex(ValueError,'runtime cached traversal'): collect_laser(self.root,traversal=True)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_traversal_deposition_field_change_fails(self):
+        self.make_traversal_pair()
+        (self.root/'rayTraversalCached/processor0/0.000182/Deposition').write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 2);')
+        self.assertFalse(collect_laser(self.root,traversal=True)['regression_gate'])
+    def test_traversal_search_parity_failure_rejected(self):
+        self.make_traversal_pair()
+        (self.root/'cachedSearchTest.log').write_text('CACHED_SEARCH_TEST checks=100 mismatches=1\n')
+        with self.assertRaisesRegex(ValueError,'parity test'): collect_laser(self.root,traversal=True)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_changed_ray_work_fails_even_with_equal_fields(self):
+        self.make_traversal_pair()
+        p=self.root/'rayTraversalCached/log.vacuumLaserbeamFoam'
+        p.write_text(p.read_text().replace('ownershipChecksSum=80','ownershipChecksSum=81'))
+        self.assertFalse(collect_laser(self.root,traversal=True)['regression_gate'])
     def test_rank_counter_mismatch_rejected_before_output(self):
         self.make_laser_pair()
         log=self.root/'laserProfileOn/log.vacuumLaserbeamFoam'
@@ -485,6 +531,18 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(len(set(hashes)),1)
         self.assertEqual({k for k in variants['laserProfileOff'] if variants['laserProfileOff'][k]!=variants['laserProfileOn'][k]},
                          {('LaserProperties','laserPerformanceDiagnostics')})
+    def test_traversal_variants_change_cache_only(self):
+        variants={};hashes=[]
+        for variant in ('rayTraversalReference','rayTraversalCached'):
+            entries={}
+            with patch('prepare_probe.set_entry',side_effect=lambda path,key,value:entries.update({(path.name,key):value})):
+                meta=prepare(self.source,self.root/variant,180,0.2,variant)
+            variants[variant]=entries;hashes.append(meta['source_snapshot_sha256'])
+            self.assertTrue(meta['laser_performance_diagnostics'])
+            self.assertEqual(entries['fvSolution','MELTING/epsilonTolerance'],'1e-5')
+        self.assertEqual(len(set(hashes)),1)
+        self.assertEqual({k for k in variants['rayTraversalReference'] if variants['rayTraversalReference'][k]!=variants['rayTraversalCached'][k]},
+                         {('LaserProperties','cachedRayTraversal')})
     def test_thermal_probe_changes_only_candidate_correction(self):
         calls = {}
         digests = []

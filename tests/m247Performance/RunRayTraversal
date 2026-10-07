@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/ray-traversal-$(date +%Y%m%d-%H%M%S)}
+JOBS=${3:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "FOAM_USER_LIBBIN=${FOAM_USER_LIBBIN:-unset}"
+    command -v wmake || true
+    command -v vacuumLaserbeamFoam || true
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+( cd src/laserHeatSource && wmakeLnInclude -u . \
+    && test -r lnInclude/laserPerformance.H \
+    && wmake -j "$JOBS" libso ) 2>&1 | tee "$WORK/build.log"
+# The class layout changed: rebuild the solver object even if old dependency
+# scanning missed a nested include. Each pipeline must fail before the next.
+( cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake -j "$JOBS" ) \
+    2>&1 | tee -a "$WORK/build.log"
+( cd tests/m247Performance/cachedSearchTest && wclean && wmake -j "$JOBS" ) \
+    2>&1 | tee -a "$WORK/build.log"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+for VARIANT in rayTraversalReference rayTraversalCached; do
+    python3 tests/m247Performance/prepare_probe.py --source "$SOURCE" --output "$WORK/$VARIANT" \
+        --start-us 180 --duration-us 0.2 --variant "$VARIANT"
+    if [[ "$VARIANT" == rayTraversalReference ]]; then
+        RANKS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ranks"])' "$WORK/$VARIANT/probe.json")
+        timeout 120s mpirun -np "$RANKS" "$FOAM_USER_APPBIN/m247CachedSearchTest" \
+            -parallel -case "$WORK/$VARIANT" 2>&1 | tee "$WORK/cachedSearchTest.log"
+    fi
+    echo "Running $VARIANT; live log: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
+    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.25
+done
+python3 tests/m247Performance/collect_laser_profile.py --ray-traversal --work "$WORK"

@@ -2,6 +2,21 @@
 
 Updated: 2026-10-07
 
+## Immediate action: equivalent cached ray traversal
+
+Official V3.0 compactRay and V3.1 particle-tracing sources reviewed. Added a
+default-off cachedRayTraversal candidate, preserving legacy lookup predicates,
+FIFO order, sampling and optics while caching step lengths and search storage.
+Pull and run `./tests/m247Performance/RunRayTraversal`. It builds all targets,
+runs an old/new real-mesh search parity test first, then fresh matched 180–180.2-us
+reference/cached cases with a 15-minute budget per CFD job. Send the single
+printed `M247_ray-traversal-..._review.tar.gz`, including on failure. Regression
+includes eight final fields, per-rank work and thermal/physical diagnostics.
+51 local harness tests pass; actual OpenFOAM build/CFD and speedup are pending.
+See tests/m247Performance/RAY_TRAVERSAL.md and
+entries/2026-10-07-m247-official-ray-traversal-candidate.md. Older actions are
+superseded.
+
 ## Decision after exchange-profile-193145
 
 Compilation, schema-2 statistics and instrumentation regression pass. Five

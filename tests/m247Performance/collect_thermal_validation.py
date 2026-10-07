@@ -49,17 +49,17 @@ def final_state(case, rank, time):
         raise ValueError(f'Missing or ambiguous final field state: {case}, rank {rank}')
     return candidates[0]
 
-def field_differences(reference, candidate, ranks, time):
+def field_differences(reference, candidate, ranks, time, field_names=FIELDS):
     totals = {name:dict(cells=0,max_abs_difference=0.0,sum_squared_difference=0.0,
-        reference_max_abs=0.0,components=3 if name=='U' else 1) for name in FIELDS}
+        reference_max_abs=0.0,components=3 if name=='U' else 1) for name in field_names}
     for rank in range(ranks):
         folders = [final_state(p,rank,time) for p in (reference,candidate)]
-        data = [{name:read_field(folder/name) for name in FIELDS} for folder in folders]
+        data = [{name:read_field(folder/name) for name in field_names} for folder in folders]
         counts = {len(values)//components for fields in data for values,components,uniform in fields.values() if not uniform}
         if len(counts)!=1:
             raise ValueError('Nonuniform fields have inconsistent or missing cell counts')
         cells = counts.pop()
-        for name in FIELDS:
+        for name in field_names:
             expanded = []
             for fields in data:
                 values, components, uniform = fields[name]

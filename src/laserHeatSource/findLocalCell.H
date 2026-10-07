@@ -14,10 +14,58 @@ Author
 #ifndef findLocalCell_H
 #define findLocalCell_H
 
+#include "DynamicList.H"
+#include "HashSet.H"
+#include "SLList.H"
+#include "polyMesh.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
+    // Reuse FIFO storage while preserving the legacy traversal order,
+    // duplicate queue entries, containment predicates and search limit.
+    struct localCellSearchWorkspace
+    {
+        DynamicList<label> queue;
+        labelHashSet checked;
+    };
+
+    label findLocalCellCached
+    (
+        const point& p,
+        const label seedCellID,
+        const polyMesh& mesh,
+        const label maxLocalSearch,
+        const Switch debug,
+        localCellSearchWorkspace& workspace
+    )
+    {
+        if (seedCellID < 0 || seedCellID >= mesh.nCells())
+            return mesh.findCell(p);
+        if (mesh.primitiveMesh::pointInCell(p, seedCellID))
+            return seedCellID;
+
+        workspace.queue.clear();
+        workspace.checked.clear();
+        const labelListList& cellCells=mesh.cellCells();
+        const labelList& seedNeighbours=cellCells[seedCellID];
+        forAll(seedNeighbours, i) workspace.queue.append(seedNeighbours[i]);
+        label head=0, localSearchI=0;
+        while (head < workspace.queue.size())
+        {
+            const label cellID=workspace.queue[head++];
+            if (mesh.pointInCell(p, cellID)) return cellID;
+            workspace.checked.insert(cellID);
+            const labelList& neighbours=cellCells[cellID];
+            forAll(neighbours, i)
+                if (!workspace.checked.found(neighbours[i]))
+                    workspace.queue.append(neighbours[i]);
+            if (++localSearchI > maxLocalSearch) break;
+        }
+        return mesh.findCell(p);
+    }
 
     // Find the cell containing the given point and return its cell index. The
     // local search starts from the provided seed cell. If the local search

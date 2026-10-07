@@ -17,7 +17,8 @@ def inspect_laser_library(executable, libbin):
     library=(Path(libbin)/'liblaserHeatSource.so').resolve()
     data=library.read_bytes()
     errors=[]
-    if b'LASER_PERF_DIAGNOSTICS schema=2 time=' not in data or b'LASER_RANK_DIAGNOSTICS schema=2 time=' not in data:
+    if any(marker not in data for marker in (b'LASER_PERF_DIAGNOSTICS schema=2 time=',
+            b'LASER_RANK_DIAGNOSTICS schema=2 time=',b'RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached=')):
         errors.append('Old laser library: missing internal profiling marker')
     result=subprocess.run(['ldd',str(Path(executable).resolve())],capture_output=True,text=True,check=True)
     match=re.search(r'liblaserHeatSource\.so\s+=>\s+(\S+)',result.stdout)

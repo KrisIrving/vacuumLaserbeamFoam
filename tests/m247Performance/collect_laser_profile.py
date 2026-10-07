@@ -101,9 +101,10 @@ def validate_rank_rows(rows, records, ranks):
     return [dict(rank=rank,**{k:sum(group[rank][k] for group in groups)
                 for k in required if k not in ('schema','time','rank')}) for rank in range(ranks)]
 
-def collect(work):
+def collect(work, traversal=False):
     work=Path(work)
-    cases=[work/v for v in ('laserProfileOff','laserProfileOn')]
+    names=('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
+    cases=[work/v for v in names]
     probes=[read_probe(c) for c in cases]
     comparison,diagnostics=compare(*probes)
     runs=[json.loads((c/'run.json').read_text()) for c in cases]
@@ -111,12 +112,16 @@ def collect(work):
         if not runs[0].get(key) or runs[0][key]!=runs[1].get(key):
             raise ValueError('Unmatched solver/library provenance')
     converged=True
-    for case,probe,enabled in zip(cases,probes,(False,True)):
+    for index,(case,probe,enabled) in enumerate(zip(cases,probes,(True,True) if traversal else (False,True))):
         meta=probe[0]
         if (meta.get('laser_performance_diagnostics') is not enabled
             or meta.get('phase_temperature_blend_half_width')!=0
             or meta.get('epsilon_tolerance')!=1e-5 or meta.get('phase_temperature_tolerance_K')!=0.001):
             raise ValueError('Laser probe requires matched tight controls, width zero and expected profile switch')
+        if traversal:
+            mode=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'RAY_TRAVERSAL_DIAGNOSTICS')
+            if meta.get('cached_ray_traversal') is not bool(index) or len(mode)!=1 or mode[0].get('schema')!=1 or mode[0].get('cached')!=index:
+                raise ValueError('Missing/mismatched runtime cached traversal mode')
         if (case/'constant/dynamicMeshDict').exists(): raise ValueError('Only fixed M247 mesh supported')
         for rank in range(meta['ranks']):
             for folder in (case/f'processor{rank}').iterdir():
@@ -129,7 +134,7 @@ def collect(work):
         if any('phaseBlendHalfWidth' not in r or abs(r['phaseBlendHalfWidth'])>1e-12 for r in thermal):
             raise ValueError('Laser profiling requires runtime phase width zero')
     off_text=(cases[0]/'log.vacuumLaserbeamFoam').read_text()
-    if any(parse_records(off_text,prefix) for prefix in ('LASER_PERF_DIAGNOSTICS','LASER_RANK_DIAGNOSTICS')):
+    if not traversal and any(parse_records(off_text,prefix) for prefix in ('LASER_PERF_DIAGNOSTICS','LASER_RANK_DIAGNOSTICS')):
         raise ValueError('Profiling-off case emitted laser profiling records')
     text=(cases[1]/'log.vacuumLaserbeamFoam').read_text()
     records=parse_records(text,'LASER_PERF_DIAGNOSTICS')
@@ -137,19 +142,36 @@ def collect(work):
                       [r['time'] for r in probes[1][2]],probes[1][0]['ranks'],probes[1][1]['steps'])
     rank_rows=validate_rank_rows(parse_records(text,'LASER_RANK_DIAGNOSTICS'),records,probes[1][0]['ranks'])
     profile['rank_totals']=rank_rows
-    fields=field_differences(*cases,probes[0][0]['ranks'],probes[0][0]['end_s'])
+    extra={}
+    work_gate=True
+    if traversal:
+        parity=parse_records((work/'cachedSearchTest.log').read_text(),'CACHED_SEARCH_TEST')
+        if len(parity)!=1 or parity[0].get('checks',0)<=0 or parity[0].get('mismatches',-1)!=0:
+            raise ValueError('Cached search parity test missing or failed')
+        ref_records=parse_records(off_text,'LASER_PERF_DIAGNOSTICS')
+        reference_profile=summarize(ref_records,[r['time'] for r in probes[0][2]],probes[0][0]['ranks'],probes[0][1]['steps'])
+        reference_profile['rank_totals']=validate_rank_rows(parse_records(off_text,'LASER_RANK_DIAGNOSTICS'),ref_records,probes[0][0]['ranks'])
+        work_gate=(len(ref_records)==len(records) and all(a['time']==b['time'] and all(a[k]==b[k] for k in COUNTS) for a,b in zip(ref_records,records))
+                   and all(all(a[k]==b[k] for k in RANK_COUNTS) for a,b in zip(reference_profile['rank_totals'],rank_rows)))
+        extra=dict(reference_laser_profile=reference_profile,work_counter_gate=work_gate,search_parity_test=parity[0])
+    selected_fields=('T','epsilon1','alpha.metal','U','p_rgh','Deposition','rayQ','rayNumber') if traversal else ('T','epsilon1','alpha.metal','U','p_rgh')
+    fields=field_differences(*cases,probes[0][0]['ranks'],probes[0][0]['end_s'],field_names=selected_fields)
     for row in fields:
         row['allowed_difference']=1e-12+1e-8*row['reference_max_abs']
         row['passed']=row['max_abs_difference']<=row['allowed_difference']
     result=dict(schema=1,regression_gate=converged and comparison['thermal_limit_gate']
-                and comparison['diagnostic_pass'] and all(f['passed'] for f in fields),
+                and comparison['diagnostic_pass'] and work_gate and all(f['passed'] for f in fields),
                 production_approved=False,comparison=comparison,laser_profile=profile,fields=fields,
                 profiling_job_overhead_ratio=runs[1]['elapsed_wall_s']/runs[0]['elapsed_wall_s'],
                 note='Instrumentation equivalence only; no speedup or physical closure approval is implied.')
+    result.update(extra)
+    if traversal:
+        result['performance_gate']=(result['regression_gate'] and comparison['solver_loop_speedup']>=1.05 and comparison['job_wall_speedup']>=1.05)
+        result['note']='Cached traversal candidate: require identical ray work, field/diagnostic regression and measured speedup. One short pair does not establish long-track performance or physical approval.'
     output=work/'comparison'
     if output.exists(): raise ValueError('Comparison directory already exists')
     output.mkdir()
-    (output/'laserProfileReview.json').write_text(json.dumps(result,indent=2)+'\n')
+    (output/('rayTraversalReview.json' if traversal else 'laserProfileReview.json')).write_text(json.dumps(result,indent=2)+'\n')
     for name,rows in (('laserProfileStages.csv',profile['stages']),('laserExchangeDetails.csv',profile['exchange_details']),
                       ('laserRankWork.csv',rank_rows),('laserProfileFields.csv',fields),('diagnosticComparison.csv',diagnostics)):
         with (output/name).open('x',newline='') as stream:
@@ -159,11 +181,15 @@ def collect(work):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work',type=Path,required=True)
+    parser.add_argument('--ray-traversal',action='store_true')
     args=parser.parse_args()
-    try: result=collect(args.work)
+    try: result=collect(args.work,args.ray_traversal)
     except (ValueError,OSError,KeyError) as error: parser.exit(1,f'Laser profile collection failed: {error}\n')
     print(f"Profiling equivalence gate: {result['regression_gate']}")
-    print(f"Profiling job overhead ratio: {result['profiling_job_overhead_ratio']:.3f}")
+    if args.ray_traversal:
+        print(f"Loop/job speedup: {result['comparison']['solver_loop_speedup']:.3f}/{result['comparison']['job_wall_speedup']:.3f}")
+        print(f"Matched ray work: {result['work_counter_gate']}; performance gate (>=5%): {result['performance_gate']}")
+    else: print(f"Profiling job overhead ratio: {result['profiling_job_overhead_ratio']:.3f}")
     for row in sorted(result['laser_profile']['stages'],key=lambda r:r['mean_s'],reverse=True):
         print(f"  {row['stage']}: {row['mean_s']:.3f} s, {100*row['mean_fraction']:.2f}%")
     for row in result['laser_profile']['exchange_details']:

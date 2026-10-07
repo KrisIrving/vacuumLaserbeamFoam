@@ -36,7 +36,7 @@ def main():
         (case/'solverCheck.json').write_text(json.dumps(check, indent=2)+'\n')
         if not check['passed']:
             parser.error('; '.join(check['errors']))
-    if metadata.get('variant') in ('laserProfileOff','laserProfileOn'):
+    if metadata.get('variant') in ('laserProfileOff','laserProfileOn','rayTraversalReference','rayTraversalCached'):
         check=inspect_laser_library(executable,os.environ.get('FOAM_USER_LIBBIN'))
         (case/'solverCheck.json').write_text(json.dumps(check,indent=2)+'\n')
         if not check['passed']: parser.error('; '.join(check['errors']))
