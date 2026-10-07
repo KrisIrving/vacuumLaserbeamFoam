@@ -1,7 +1,13 @@
 #!/bin/bash
+set -e
 cd ${0%/*} || exit 1    # run from this directory
 
 # Parse arguments for library compilation
-. $WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments
+. "$WM_PROJECT_DIR/wmake/scripts/AllwmakeParseArguments"
+
+# Existing lnInclude directories can miss newly added headers. Refresh them
+# before building either this library or a consumer of laserHeatSource.H.
+wmakeLnInclude -u .
+test -r lnInclude/laserPerformance.H
 
 wmake libso

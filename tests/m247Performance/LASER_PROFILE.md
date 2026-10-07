@@ -8,7 +8,10 @@ Run from the Ubuntu repository root after pulling feat/m247-material-port:
 
 This command builds liblaserHeatSource and cleanly recompiles vacuumLaserbeamFoam
 because the laser class layout changed. Build failures stop the pipeline before
-CFD; logs/environment are automatically packaged. Static preflight verifies
+CFD. The laser lnInclude directory is explicitly refreshed and the new
+laserPerformance.H link checked before compilation, including on incremental
+builds with an existing lnInclude directory. Build failures and
+logs/environment are automatically packaged. Static preflight verifies
 solver markers, the library profiling marker, and ldd's resolved laser library
 against FOAM_USER_LIBBIN. The source case is copied and never edited.
 

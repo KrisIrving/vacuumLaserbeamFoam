@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Build repair for laser-profile-185645
+
+The solver cannot find the new laserPerformance.H through an existing lnInclude directory. Both RunLaserProfile and the library Allwmake now refresh it explicitly with wmakeLnInclude -u and check the header before compilation. Pull and rerun `./tests/m247Performance/RunLaserProfile`; send its new timestamped archive whether build succeeds or fails. No manual cleanup is needed. No new CFD or cost result exists yet. See entries/2026-10-07-m247-laser-lninclude-fix.md.
+
 ## Immediate Ubuntu action: measured laser substage costs
 
 Pull and run `./tests/m247Performance/RunLaserProfile`. It builds the laser library and clean solver object, preflights the loaded library, runs profiling off/on independent 180–180.2-us tight bounded cases with phase width zero, and auto-packages one archive. Each solver job has a 15-minute budget; build/copy time is additional. Send the printed M247_laser-profile-..._review.tar.gz. Profiling overhead and unchanged diagnostic/field results must pass before selecting an equivalent optimization. No speedup claim or new physical acceptance. See tests/m247Performance/LASER_PROFILE.md. Older actions below are superseded.

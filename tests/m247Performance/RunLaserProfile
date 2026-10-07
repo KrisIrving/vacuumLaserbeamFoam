@@ -25,7 +25,9 @@ trap bundle_on_exit EXIT
     command -v vacuumLaserbeamFoam || true
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
-( cd src/laserHeatSource && wmake -j "$JOBS" libso ) 2>&1 | tee "$WORK/build.log"
+( cd src/laserHeatSource && wmakeLnInclude -u . \
+    && test -r lnInclude/laserPerformance.H \
+    && wmake -j "$JOBS" libso ) 2>&1 | tee "$WORK/build.log"
 # The class layout changed: rebuild the solver object even if old dependency
 # scanning missed a nested include. Each pipeline must fail before the next.
 ( cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake -j "$JOBS" ) \

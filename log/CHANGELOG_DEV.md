@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Refresh laser lnInclude on incremental builds
+
+User compilation exposed a missing new laserPerformance.H link in existing lnInclude. Added explicit refresh/header check in direct profiling build and library Allwmake; failures stop build dispatch. No ray/solver physics changes. Ubuntu rebuild pending. See `entries/2026-10-07-m247-laser-lninclude-fix.md`.
+
 ## 2026-10-07 — Default-off laser internal profiler
 
 Added write-time MPI substage means/maxima, work counters and stride128 trace-search sampling without changing ray physics. RunLaserProfile builds/preflights library and solver, compares off/on tight width-zero restarts and packages build/results. Collector gates on unchanged diagnostics/final fields and convergence.42 local Python checks pass; actual OpenFOAM build and measured costs remain pending. See `tests/m247Performance/LASER_PROFILE.md`.
