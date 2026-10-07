@@ -14,7 +14,7 @@ from collect_thermal_validation import read_field, collect as collect_validation
 from localize_field_differences import localize, region
 from collect_phase_blend import collect as collect_blend
 from check_solver import inspect_solver, inspect_laser_library, MARKERS
-from collect_laser_profile import collect as collect_laser, summarize as summarize_laser, STAGES
+from collect_laser_profile import collect as collect_laser, summarize as summarize_laser, validate_rank_rows, RANK_COUNTS, STAGES
 from localize_phase_blend import inspect as inspect_blend
 
 class SolverPreflightTests(unittest.TestCase):
@@ -53,13 +53,14 @@ class SolverPreflightTests(unittest.TestCase):
     def test_loader_shadow_and_old_laser_library_are_rejected(self):
         import subprocess
         library=self.root/'liblaserHeatSource.so'
-        library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
+        markers=b'LASER_PERF_DIAGNOSTICS schema=2 time=\x00LASER_RANK_DIAGNOSTICS schema=2 time='
+        library.write_bytes(markers)
         resolved=str(library.resolve())
         with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => '+resolved,'')):
             self.assertTrue(inspect_laser_library(self.binary,self.root)['passed'])
-            library.write_bytes(b'old library')
+            library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
             self.assertFalse(inspect_laser_library(self.binary,self.root)['passed'])
-        library.write_bytes(b'LASER_PERF_DIAGNOSTICS schema=1 time=')
+        library.write_bytes(markers)
         with patch('check_solver.subprocess.run',return_value=subprocess.CompletedProcess([],0,'liblaserHeatSource.so => /different/liblaserHeatSource.so','')):
             self.assertFalse(inspect_laser_library(self.binary,self.root)['passed'])
 
@@ -192,11 +193,13 @@ class ThermalValidationTests(unittest.TestCase):
         import shutil
         rows=[]
         for time in (0.000181,0.000182):
-            row=dict(schema=1,time=time,ranks=1,total_s=0.4,totalMax_s=0.4,
+            row=dict(schema=2,time=time,ranks=1,total_s=0.4,totalMax_s=0.4,
                 traceSearchSampleSum_s=0.001,traceSearchSamplesSum=1,searchSampleStride=128,
                 callsMean=80,initialRaysMean=80,exchangeRoundsMean=80,ownershipChecksSum=80,
-                localSegmentsSum=80,advancesSum=80,traceSearchCallsSum=160,interfaceEventsSum=10,bulkEventsSum=2)
+                localSegmentsSum=80,advancesSum=80,traceSearchCallsSum=160,interfaceEventsSum=10,bulkEventsSum=2,
+                mergeCallsSum=1,mergeXRaysSum=40,mergeYRaysSum=40,mergeAppendsSum=20)
             row.update({k+s:0.05 for k in STAGES for s in ('_s','Max_s')})
+            row.update({k+s:v for k,v in (('exchangeCopy',0.01),('gather',0.03),('broadcast',0.005),('merge',0.02)) for s in ('_s','Max_s')})
             rows.append(row)
         for variant,enabled in (('laserProfileOff',False),('laserProfileOn',True)):
             folder=self.root/variant
@@ -208,7 +211,13 @@ class ThermalValidationTests(unittest.TestCase):
             p=folder/'log.vacuumLaserbeamFoam'
             text=p.read_text().replace('boundedEnthalpy=1','boundedEnthalpy=1 phaseBlendHalfWidth=0')
             if enabled:
-                records=['LASER_PERF_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in row.items()) for row in rows]
+                records=[]
+                for row in rows:
+                    rank=dict(schema=2,time=row['time'],rank=0,calls=80,rounds=80)
+                    rank.update({k:row[k] for k in ('trace_s','ownership_s','exchange_s','exchangeCopy_s','gather_s','broadcast_s','merge_s')})
+                    rank.update({k:row[aggregate] for k,aggregate in RANK_COUNTS.items()})
+                    records.extend(prefix+' '+' '.join(f'{k}={v}' for k,v in data.items())
+                                   for prefix,data in (('LASER_PERF_DIAGNOSTICS',row),('LASER_RANK_DIAGNOSTICS',rank)))
                 text=text.replace('End','\n'.join(records)+'\nEnd')
             p.write_text(text)
         return rows
@@ -218,10 +227,14 @@ class ThermalValidationTests(unittest.TestCase):
         self.assertTrue(result['regression_gate'])
         self.assertFalse(result['production_approved'])
         self.assertEqual(result['laser_profile']['counts']['traceSearchCallsSum'],320)
+        self.assertEqual(result['laser_profile']['rank_totals'][0]['searches'],320)
+        self.assertAlmostEqual(sum(r['mean_s'] for r in result['laser_profile']['exchange_details']),0.13)
         self.assertAlmostEqual(sum(r['mean_fraction'] for r in result['laser_profile']['stages']),1)
         archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'),0)
         try:
             self.assertTrue(any(x['source']=='comparison/laserProfileReview.json' for x in manifest['files']))
+            for name in ('laserRankWork.csv','laserExchangeDetails.csv'):
+                self.assertTrue(any(x['source']=='comparison/'+name for x in manifest['files']))
         finally: archive.unlink()
     def test_profile_field_change_fails_equivalence(self):
         self.make_laser_pair()
@@ -230,11 +243,36 @@ class ThermalValidationTests(unittest.TestCase):
         self.assertFalse(result['regression_gate'])
     def test_incomplete_or_nonadditive_laser_records_rejected(self):
         rows=self.make_laser_pair()
-        for change in ({'trace_s':0.5},{'totalMax_s':0.1},{'traceSearchCallsSum':159},{'schema':0}):
+        for change in ({'trace_s':0.5},{'totalMax_s':0.1},{'traceSearchCallsSum':159},{'schema':1},
+                       {'gather_s':0.06},{'merge_s':0.04},{'mergeMax_s':0.001},{'mergeAppendsSum':41}):
             edited=copy.deepcopy(rows);edited[0].update(change)
             with self.assertRaises(ValueError): summarize_laser(edited,[0.000181,0.000182],1,160)
         with self.assertRaisesRegex(ValueError,'cover'): summarize_laser(rows[:1],[0.000181,0.000182],1,160)
         with self.assertRaisesRegex(ValueError,'all solver steps'): summarize_laser(rows,[0.000181,0.000182],1,161)
+    def test_missing_rank_records_rejected_before_output(self):
+        self.make_laser_pair()
+        log=self.root/'laserProfileOn/log.vacuumLaserbeamFoam'
+        log.write_text('\n'.join(line for line in log.read_text().splitlines() if not line.startswith('LASER_RANK_DIAGNOSTICS')))
+        with self.assertRaisesRegex(ValueError,'Incomplete laser rank'): collect_laser(self.root)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_rank_counter_mismatch_rejected_before_output(self):
+        self.make_laser_pair()
+        log=self.root/'laserProfileOn/log.vacuumLaserbeamFoam'
+        log.write_text(log.read_text().replace('mergeXRays=40','mergeXRays=41'))
+        with self.assertRaisesRegex(ValueError,'Rank counters disagree'): collect_laser(self.root)
+        self.assertFalse((self.root/'comparison').exists())
+    def test_rank_order_and_duplicate_ids(self):
+        rows=self.make_laser_pair()
+        from collect_probe import parse_records
+        local=parse_records((self.root/'laserProfileOn/log.vacuumLaserbeamFoam').read_text(),'LASER_RANK_DIAGNOSTICS')[:1]
+        rank0=local[0]; rank1=copy.deepcopy(rank0);rank1.update(rank=1)
+        for key in RANK_COUNTS: rank1[key]*=2
+        global_row=copy.deepcopy(rows[0]);global_row['ranks']=2
+        for key,aggregate in RANK_COUNTS.items(): global_row[aggregate]=rank0[key]+rank1[key]
+        totals=validate_rank_rows([rank1,rank0],[global_row],2)
+        self.assertEqual([r['searches'] for r in totals],[160,320])
+        with self.assertRaisesRegex(ValueError,'Duplicate/missing'):
+            validate_rank_rows([rank0,rank0],[global_row],2)
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):

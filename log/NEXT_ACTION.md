@@ -2,6 +2,18 @@
 
 Updated: 2026-10-07
 
+## Immediate Ubuntu action: exchange details and rank work
+
+Pull feat/m247-material-port and run `./tests/m247Performance/RunLaserProfile`.
+The command rebuilds the library and clean solver, rejects schema-1 libraries,
+and runs fresh matched profiling off/on 180–180.2-us cases (15-minute budget
+per job, build/copy additional). Send the printed
+`M247_laser-exchange-..._review.tar.gz`. It includes nested copy/gather/broadcast/
+merge timing and rank work CSVs. Ray algorithm and physics settings are unchanged;
+this evidence selects the next equivalent acceleration. Compilation and CFD
+remain pending Ubuntu. See entries/2026-10-07-m247-laser-exchange-profiler.md.
+Older actions below are superseded.
+
 ## Current measured target after laser-profile-190239
 
 Build/library checks and profiling equivalence pass; all five final fields differ exactly0. Job36.04/37.04 s, observed profiling overhead2.78%. Round exchange consumes94.47% of inner laser mean time, but includes blocking waits; tracing max/mean12.82 indicates strong imbalance. Next development splits copy/gather/broadcast and rank tracing/merge costs before selecting equivalent exchange/ownership acceleration. Do not infer removable94.5% or change ray counts/physics. No additional Ubuntu action is needed for this review. See entries/2026-10-07-m247-laser-profile-result.md. Older actions below are superseded.

@@ -1238,9 +1238,15 @@ void laserHeatSource::updateDeposition
         laserProfiler_.start(laserPerformance::exchange);
         // Sync all remaining local rays globally so remainingGlobalRays will
         // be the same on all processors
+        laserProfiler_.startDetail(laserPerformance::exchangeCopy);
         remainingGlobalRays = localRays;
-        Pstream::combineGather(remainingGlobalRays, combineRayLists());
+        laserProfiler_.stopDetail(laserPerformance::exchangeCopy);
+        laserProfiler_.startDetail(laserPerformance::gather);
+        Pstream::combineGather(remainingGlobalRays, combineRayLists(&laserProfiler_));
+        laserProfiler_.stopDetail(laserPerformance::gather);
+        laserProfiler_.startDetail(laserPerformance::broadcast);
         Pstream::broadcast(remainingGlobalRays);
+        laserProfiler_.stopDetail(laserPerformance::broadcast);
         laserProfiler_.stop(laserPerformance::exchange);
 
         // Record the latest ray paths

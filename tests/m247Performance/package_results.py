@@ -51,7 +51,7 @@ def package(work, output=None, exit_code=None):
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
         if (work/variant/'solverCheck.json').is_file():
             add(f'{variant}/solverCheck.json', f'{tag}_{variant}_solverCheck.json')
-    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv', 'laserProfileReview.json', 'laserProfileStages.csv', 'laserProfileFields.csv'):
+    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv', 'laserProfileReview.json', 'laserProfileStages.csv', 'laserProfileFields.csv', 'laserExchangeDetails.csv', 'laserRankWork.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')
     if not entries:

@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Schema-2 exchange and rank profiler
+
+Split outgoing copy/gather/broadcast, measure nested existing merge work, and gather rank tracing/merge counters only at output times. Strict collector reconciles groups and rejects older libraries; automatic archive includes both new CSVs under a laser-exchange tag. Ray transport, merge semantics and physics stay unchanged. 45 Python tests and Bash syntax pass; actual OpenFOAM compilation and regression remain pending Ubuntu. See entries/2026-10-07-m247-laser-exchange-profiler.md.
+
 ## 2026-10-07 — Verified laser profiling result
 
 190239 archive passes build/provenance/convergence/instrumentation regression; five saved final fields are identical. Exchange/wait path dominates mean laser time, with strong trace-rank imbalance. Recorded measured evidence and exchange/ownership optimization target; no new solver change or speedup claim in this review. See `entries/2026-10-07-m247-laser-profile-result.md`.

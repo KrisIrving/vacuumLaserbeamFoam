@@ -38,6 +38,7 @@ SourceFiles
 #include "vector.H"
 #include "DynamicList.H"
 #include "HashSet.H"
+#include "laserPerformance.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -168,27 +169,40 @@ class compactRay
 
 struct combineRayLists
 {
+    laserPerformance* profiler;
+    explicit combineRayLists(laserPerformance* p=nullptr) : profiler(p) {}
     void operator()
     (
         DynamicList<compactRay>& x,
         const DynamicList<compactRay>& y
     ) const
     {
-        // Create a hash set of existing items for O(1) lookup
-        HashSet<compactRay> existing;
-        forAll(x, i)
+        if (profiler)
         {
-            existing.insert(x[i]);
+            profiler->startDetail(laserPerformance::merge);
+            profiler->add(laserPerformance::mergeCalls);
+            profiler->add(laserPerformance::mergeXRays, x.size());
+            profiler->add(laserPerformance::mergeYRays, y.size());
         }
-
-        // Add only new items
-        forAll(y, i)
+        // Create a hash set of existing items for O(1) lookup
         {
-            if (!existing.found(y[i]))
+            HashSet<compactRay> existing;
+            forAll(x, i)
             {
-                x.append(y[i]);
+                existing.insert(x[i]);
+            }
+
+            // Add only new items
+            forAll(y, i)
+            {
+                if (!existing.found(y[i]))
+                {
+                    x.append(y[i]);
+                    if (profiler) profiler->add(laserPerformance::mergeAppends);
+                }
             }
         }
+        if (profiler) profiler->stopDetail(laserPerformance::merge);
     }
 };
 

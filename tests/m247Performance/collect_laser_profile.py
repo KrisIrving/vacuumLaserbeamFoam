@@ -9,17 +9,22 @@ from collect_thermal_validation import field_differences, residual_gate
 
 STAGES=('seedGenerate','seedExchange','seedLocate','ownership','trace','exchange','finalize','other')
 COUNTS=('callsMean','initialRaysMean','exchangeRoundsMean','ownershipChecksSum','localSegmentsSum',
-        'advancesSum','traceSearchCallsSum','interfaceEventsSum','bulkEventsSum')
+        'advancesSum','traceSearchCallsSum','interfaceEventsSum','bulkEventsSum',
+        'mergeCallsSum','mergeXRaysSum','mergeYRaysSum','mergeAppendsSum')
+DETAILS=('exchangeCopy','gather','broadcast','merge')
+RANK_COUNTS={'advances':'advancesSum','segments':'localSegmentsSum','searches':'traceSearchCallsSum',
+             'interfaceEvents':'interfaceEventsSum','bulkEvents':'bulkEventsSum','mergeCalls':'mergeCallsSum',
+             'mergeXRays':'mergeXRaysSum','mergeYRays':'mergeYRaysSum','mergeAppends':'mergeAppendsSum'}
 
 def summarize(records, times, ranks, steps):
     required=('schema','time','ranks','total_s','totalMax_s','traceSearchSampleSum_s',
-              'traceSearchSamplesSum','searchSampleStride')+COUNTS+tuple(k+s for k in STAGES for s in ('_s','Max_s'))
+              'traceSearchSamplesSum','searchSampleStride')+COUNTS+tuple(k+s for k in STAGES+DETAILS for s in ('_s','Max_s'))
     if not records or sorted(set(r.get('time',-1) for r in records)) != times:
         raise ValueError('Laser profiling samples do not cover diagnostic output times')
     if any(a['time']>b['time'] for a,b in zip(records,records[1:])):
         raise ValueError('Laser profiling records are not chronological')
     for row in records:
-        if any(k not in row for k in required) or row['schema']!=1 or row['ranks']!=ranks:
+        if any(k not in row for k in required) or row['schema']!=2 or row['ranks']!=ranks:
             raise ValueError('Incomplete/mismatched laser profiling record')
         if row['searchSampleStride']!=128 or row['total_s']<=0 or row['callsMean']<=0:
             raise ValueError('Invalid laser profiling totals')
@@ -27,7 +32,7 @@ def summarize(records, times, ranks, steps):
             raise ValueError('Negative laser profiling values')
         if abs(sum(row[k+'_s'] for k in STAGES)-row['total_s'])>max(1e-5,row['total_s']*1e-4):
             raise ValueError('Laser mean stages do not reconcile')
-        if row['totalMax_s']<row['total_s']*(1-1e-5) or any(row[k+'Max_s']<row[k+'_s']*(1-1e-5) for k in STAGES):
+        if row['totalMax_s']<row['total_s']*(1-1e-5) or any(row[k+'Max_s']<row[k+'_s']*(1-1e-5) for k in STAGES+DETAILS):
             raise ValueError('Laser rank maximum below rank mean')
         if abs(row['traceSearchCallsSum']-row['advancesSum']-row['localSegmentsSum'])>0.5:
             raise ValueError('Laser search/work counters do not reconcile')
@@ -35,6 +40,12 @@ def summarize(records, times, ranks, steps):
             raise ValueError('Too many sampled searches')
         if row['traceSearchSampleSum_s']>row['trace_s']*ranks+1e-5:
             raise ValueError('Sampled search time exceeds enclosing trace')
+        if sum(row[k+'_s'] for k in DETAILS[:3])>row['exchange_s']+max(1e-5,row['exchange_s']*1e-4):
+            raise ValueError('Exchange child times exceed parent')
+        if row['merge_s']>row['gather_s']+max(1e-5,row['gather_s']*1e-4):
+            raise ValueError('Merge time exceeds enclosing gather')
+        if row['mergeAppendsSum']>row['mergeYRaysSum']:
+            raise ValueError('Merge work counters do not reconcile')
     counts={k:sum(r[k] for r in records) for k in COUNTS}
     if counts['callsMean']<steps:
         raise ValueError('Laser profile does not cover all solver steps')
@@ -43,11 +54,52 @@ def summarize(records, times, ranks, steps):
                  mean_fraction=sum(r[k+'_s'] for r in records)/total,
                  interval_rank_max_sum_s=sum(r[k+'Max_s'] for r in records)) for k in STAGES]
     samples=sum(r['traceSearchSamplesSum'] for r in records)
+    details=[dict(detail=k,mean_s=sum(r[k+'_s'] for r in records),
+                  fraction_of_exchange=sum(r[k+'_s'] for r in records)/sum(r['exchange_s'] for r in records)
+                    if sum(r['exchange_s'] for r in records)>0 else None,
+                  interval_rank_max_sum_s=sum(r[k+'Max_s'] for r in records)) for k in DETAILS]
     return dict(mean_total_s=total,interval_rank_max_sum_s=sum(r['totalMax_s'] for r in records),
-                stages=stages,counts=counts,trace_search_sample_sum_s=sum(r['traceSearchSampleSum_s'] for r in records),
+                stages=stages,exchange_details=details,counts=counts,trace_search_sample_sum_s=sum(r['traceSearchSampleSum_s'] for r in records),
                 trace_search_samples_sum=samples,
                 sampled_search_mean_s=(sum(r['traceSearchSampleSum_s'] for r in records)/samples if samples else None),
-                note='Only MPI mean stages add. Rank maxima are not additive. Search time is a stride-128 sample inside trace, not a separate stage or an unbiased total estimate. Replicated calls/rays/rounds use means; local work uses sums. Outer field reset/dictionary work and profiling report reductions are outside this inner-call total.')
+                note='Only MPI mean stages add. Exchange copy/gather/broadcast are children of exchange; merge is nested inside gather. Blocking gather/broadcast include waiting, not pure transport. Rank maxima are not additive. Search time is a stride-128 sample inside trace, not a separate stage or an unbiased total estimate. Replicated calls/rays/rounds use means; local work uses sums. Outer field reset/dictionary work and profiling report reductions are outside this inner-call total.')
+
+def validate_rank_rows(rows, records, ranks):
+    if not records or ranks<1 or len(rows)!=len(records)*ranks:
+        raise ValueError('Incomplete laser rank records')
+    groups=[]
+    # Preserve output-group order to support multiple PIMPLE calls at one time.
+    for index,record in enumerate(records):
+        group=rows[index*ranks:(index+1)*ranks]
+        if sorted(r.get('rank',-1) for r in group)!=list(range(ranks)):
+            raise ValueError('Duplicate/missing laser rank IDs')
+        required=('schema','time','rank','calls','rounds')+tuple(k+'_s' for k in ('trace','ownership','exchange')+DETAILS)+tuple(RANK_COUNTS)
+        for row in group:
+            if any(k not in row for k in required) or row['schema']!=2 or abs(row['time']-record['time'])>1e-12:
+                raise ValueError('Mismatched laser rank record')
+            if any(row[k]<0 for k in required if k!='time'):
+                raise ValueError('Negative laser rank record')
+            if abs(row['searches']-row['segments']-row['advances'])>0.5:
+                raise ValueError('Rank search counters do not reconcile')
+            if row['mergeAppends']>row['mergeYRays']:
+                raise ValueError('Rank merge counters do not reconcile')
+            if sum(row[k+'_s'] for k in DETAILS[:3])>row['exchange_s']+max(1e-5,row['exchange_s']*1e-4) or row['merge_s']>row['gather_s']+max(1e-5,row['gather_s']*1e-4):
+                raise ValueError('Rank nested exchange times do not reconcile')
+        for k in ('trace','ownership','exchange')+DETAILS:
+            average=sum(r[k+'_s'] for r in group)/ranks
+            if abs(average-record[k+'_s'])>max(1e-5,record[k+'_s']*1e-4):
+                raise ValueError('Rank times disagree with reported mean')
+            if abs(max(r[k+'_s'] for r in group)-record[k+'Max_s'])>max(1e-5,record[k+'Max_s']*1e-4):
+                raise ValueError('Rank times disagree with reported maximum')
+        for k,aggregate in RANK_COUNTS.items():
+            if abs(sum(r[k] for r in group)-record[aggregate])>0.5:
+                raise ValueError('Rank counters disagree with sums')
+        for local,aggregate in (('calls','callsMean'),('rounds','exchangeRoundsMean')):
+            if any(abs(r[local]-record[aggregate])>0.5 for r in group):
+                raise ValueError('Replicated rank counters disagree')
+        groups.append(sorted(group,key=lambda r:r['rank']))
+    return [dict(rank=rank,**{k:sum(group[rank][k] for group in groups)
+                for k in required if k not in ('schema','time','rank')}) for rank in range(ranks)]
 
 def collect(work):
     work=Path(work)
@@ -76,10 +128,15 @@ def collect(work):
         thermal=parse_records((case/'log.vacuumLaserbeamFoam').read_text(),'THERMAL_RESIDUAL_DIAGNOSTICS')
         if any('phaseBlendHalfWidth' not in r or abs(r['phaseBlendHalfWidth'])>1e-12 for r in thermal):
             raise ValueError('Laser profiling requires runtime phase width zero')
-    if parse_records((cases[0]/'log.vacuumLaserbeamFoam').read_text(),'LASER_PERF_DIAGNOSTICS'):
+    off_text=(cases[0]/'log.vacuumLaserbeamFoam').read_text()
+    if any(parse_records(off_text,prefix) for prefix in ('LASER_PERF_DIAGNOSTICS','LASER_RANK_DIAGNOSTICS')):
         raise ValueError('Profiling-off case emitted laser profiling records')
-    profile=summarize(parse_records((cases[1]/'log.vacuumLaserbeamFoam').read_text(),'LASER_PERF_DIAGNOSTICS'),
+    text=(cases[1]/'log.vacuumLaserbeamFoam').read_text()
+    records=parse_records(text,'LASER_PERF_DIAGNOSTICS')
+    profile=summarize(records,
                       [r['time'] for r in probes[1][2]],probes[1][0]['ranks'],probes[1][1]['steps'])
+    rank_rows=validate_rank_rows(parse_records(text,'LASER_RANK_DIAGNOSTICS'),records,probes[1][0]['ranks'])
+    profile['rank_totals']=rank_rows
     fields=field_differences(*cases,probes[0][0]['ranks'],probes[0][0]['end_s'])
     for row in fields:
         row['allowed_difference']=1e-12+1e-8*row['reference_max_abs']
@@ -93,7 +150,8 @@ def collect(work):
     if output.exists(): raise ValueError('Comparison directory already exists')
     output.mkdir()
     (output/'laserProfileReview.json').write_text(json.dumps(result,indent=2)+'\n')
-    for name,rows in (('laserProfileStages.csv',profile['stages']),('laserProfileFields.csv',fields),('diagnosticComparison.csv',diagnostics)):
+    for name,rows in (('laserProfileStages.csv',profile['stages']),('laserExchangeDetails.csv',profile['exchange_details']),
+                      ('laserRankWork.csv',rank_rows),('laserProfileFields.csv',fields),('diagnosticComparison.csv',diagnostics)):
         with (output/name).open('x',newline='') as stream:
             writer=csv.DictWriter(stream,fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows)
     return result
@@ -108,6 +166,9 @@ def main():
     print(f"Profiling job overhead ratio: {result['profiling_job_overhead_ratio']:.3f}")
     for row in sorted(result['laser_profile']['stages'],key=lambda r:r['mean_s'],reverse=True):
         print(f"  {row['stage']}: {row['mean_s']:.3f} s, {100*row['mean_fraction']:.2f}%")
+    for row in result['laser_profile']['exchange_details']:
+        print(f"  exchange/{row['detail']}: {row['mean_s']:.3f} s")
+    print('Merge is nested inside gather; blocking gather/broadcast include waiting.')
     if not result['regression_gate']: parser.exit(2,'Instrumentation regression gate failed.\n')
 
 if __name__=='__main__': main()

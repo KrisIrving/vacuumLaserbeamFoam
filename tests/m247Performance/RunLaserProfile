@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
-WORK=${2:-tests/m247Performance/runs/laser-profile-$(date +%Y%m%d-%H%M%S)}
+WORK=${2:-tests/m247Performance/runs/laser-exchange-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
 [[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
