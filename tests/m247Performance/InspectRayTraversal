@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+WORK=${1:?Usage: InspectRayTraversal tests/m247Performance/runs/ray-traversal-TIMESTAMP}
+[[ -d "$WORK" ]] || { echo "Run directory missing: $WORK" >&2; exit 1; }
+WORK=$(cd "$WORK" && pwd)
+OUTPUT="$(dirname "$WORK")/M247_$(basename "$WORK")_collection-$(date +%Y%m%d-%H%M%S)_review.tar.gz"
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --output "$OUTPUT" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+python3 tests/m247Performance/collect_laser_profile.py --ray-traversal --work "$WORK" \
+    2>&1 | tee "$WORK/collection.log"

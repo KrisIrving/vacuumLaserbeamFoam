@@ -17,7 +17,7 @@ FILES = {
     'constant/LaserProperties': 'LaserProperties',
     'constant/transportProperties': 'transportProperties',
 }
-BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log')
+BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log')
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()

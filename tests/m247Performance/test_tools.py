@@ -287,6 +287,19 @@ class ThermalValidationTests(unittest.TestCase):
         p.write_text(p.read_text().replace('cached=1','cached=0'))
         with self.assertRaisesRegex(ValueError,'runtime cached traversal'): collect_laser(self.root,traversal=True)
         self.assertFalse((self.root/'comparison').exists())
+    def test_non_debug_ray_number_is_optional_with_explicit_report(self):
+        self.make_traversal_pair()
+        for name in ('rayTraversalReference','rayTraversalCached'):
+            (self.root/name/'processor0/0.000182/rayNumber').unlink()
+        result=collect_laser(self.root,traversal=True)
+        self.assertTrue(result['regression_gate'])
+        self.assertEqual(len(result['fields']),7)
+        self.assertEqual(result['ray_number_comparison']['status'],'not_written')
+    def test_partial_ray_number_output_rejected(self):
+        self.make_traversal_pair()
+        (self.root/'rayTraversalCached/processor0/0.000182/rayNumber').unlink()
+        with self.assertRaisesRegex(ValueError,'Partially available rayNumber'): collect_laser(self.root,traversal=True)
+        self.assertFalse((self.root/'comparison').exists())
     def test_traversal_deposition_field_change_fails(self):
         self.make_traversal_pair()
         (self.root/'rayTraversalCached/processor0/0.000182/Deposition').write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 2);')

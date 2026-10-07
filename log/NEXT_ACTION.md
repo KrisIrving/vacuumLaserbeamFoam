@@ -2,6 +2,19 @@
 
 Updated: 2026-10-07
 
+## Immediate action: collect existing 195231 fields, no CFD rerun
+
+The cached candidate builds, passes 50688 search parity checks and completes
+both jobs. Job36.0399/32.0343 s, speedup1.125; loop1.1385; logged physics and
+ray work match, thermal convergence passes. Field collection was incompatible
+with inherited non-debug rayNumber NO_WRITE. It now requires seven physical/
+deposition fields and explicitly reports absent optional rayNumber. Pull and
+run `./tests/m247Performance/InspectRayTraversal tests/m247Performance/runs/ray-traversal-20261007-195231`.
+Send its printed collection review archive. No rebuild or CFD is needed.
+Candidate remains default off; saved-field regression is pending. See
+entries/2026-10-07-m247-traversal-195231-collection-fix.md. Older actions below
+are superseded.
+
 ## Immediate action: equivalent cached ray traversal
 
 Official V3.0 compactRay and V3.1 particle-tracing sources reviewed. Added a

@@ -5,7 +5,7 @@ import csv
 import json
 from pathlib import Path
 from collect_probe import read_probe, compare, parse_records
-from collect_thermal_validation import field_differences, residual_gate
+from collect_thermal_validation import field_differences, residual_gate, final_state
 
 STAGES=('seedGenerate','seedExchange','seedLocate','ownership','trace','exchange','finalize','other')
 COUNTS=('callsMean','initialRaysMean','exchangeRoundsMean','ownershipChecksSum','localSegmentsSum',
@@ -154,7 +154,20 @@ def collect(work, traversal=False):
         work_gate=(len(ref_records)==len(records) and all(a['time']==b['time'] and all(a[k]==b[k] for k in COUNTS) for a,b in zip(ref_records,records))
                    and all(all(a[k]==b[k] for k in RANK_COUNTS) for a,b in zip(reference_profile['rank_totals'],rank_rows)))
         extra=dict(reference_laser_profile=reference_profile,work_counter_gate=work_gate,search_parity_test=parity[0])
-    selected_fields=('T','epsilon1','alpha.metal','U','p_rgh','Deposition','rayQ','rayNumber') if traversal else ('T','epsilon1','alpha.metal','U','p_rgh')
+    selected_fields=('T','epsilon1','alpha.metal','U','p_rgh','Deposition','rayQ') if traversal else ('T','epsilon1','alpha.metal','U','p_rgh')
+    if traversal:
+        # The inherited rayNumber visualisation is NO_WRITE unless debug is on.
+        # Never enable debug here: it changes the candidate lookup path.
+        present=[]
+        for case in cases:
+            for rank in range(probes[0][0]['ranks']):
+                state=final_state(case,rank,probes[0][0]['end_s'])
+                present.append((state/'rayNumber').is_file() or (state/'rayNumber.gz').is_file())
+        if any(present) and not all(present):
+            raise ValueError('Partially available rayNumber outputs: require both cases and all ranks')
+        if all(present): selected_fields+=('rayNumber',)
+        extra['ray_number_comparison']=dict(status='compared' if all(present) else 'not_written',
+            reason='Optional visual ray ID field; inherited solver uses NO_WRITE without debug. Seven physical/deposition fields remain mandatory.')
     fields=field_differences(*cases,probes[0][0]['ranks'],probes[0][0]['end_s'],field_names=selected_fields)
     for row in fields:
         row['allowed_difference']=1e-12+1e-8*row['reference_max_abs']

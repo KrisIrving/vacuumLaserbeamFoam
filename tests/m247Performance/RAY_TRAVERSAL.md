@@ -33,8 +33,12 @@ the same. This is an experimental equivalent optimization, not a V3.1 port.
 The collector requires successful search parity, expected runtime mode, matched
 source/binary controls and profiles, identical global interval and rank work
 counters, per-step thermal convergence and common-time physical diagnostics.
-Final all-rank fields compared are T, epsilon1, alpha.metal, U, p_rgh, Deposition,
-rayQ and rayNumber. The norm tolerance is 1e-12 + 1e-8 times the reference field
+Final mandatory all-rank fields are T, epsilon1, alpha.metal, U, p_rgh, Deposition
+and rayQ. The inherited rayNumber visual ID is NO_WRITE without debug; compare
+it only when both cases and all ranks have saved it, otherwise explicitly report
+not_written. Partially present rayNumber outputs are rejected. Do not turn on
+debug to obtain it: debug selects the original lookup path. The norm tolerance
+is 1e-12 + 1e-8 times the reference field
 maximum. The separate performance gate requires at least 5% improvement in
 both loop and job times; a single short pair cannot establish statistical or
 full-track speedup. Failure of equivalence stops collection with a failure
@@ -46,6 +50,19 @@ includes build and real-mesh test logs, both variant logs/dictionaries/provenanc
 rayTraversalReview.json, field comparison, stage/exchange and rank reports.
 The large saved fields remain on Ubuntu. No source-case modification occurs.
 
-Local validation: 51 Python harness tests and Bash syntax checks pass.
-OpenFOAM compilation, real-mesh parity, CFD equivalence and measured speed are
-pending Ubuntu; the Windows host has no OpenFOAM compiler environment.
+Local validation: 53 Python harness tests and Bash syntax checks pass.
+The 195231 archive verifies compilation, 50688 real-mesh parity checks with zero
+mismatches, identical logged diagnostics/work and shorter cached runtime.
+Its initial collector failed because rayNumber was incorrectly mandatory.
+Saved physical/deposition field regression remains pending offline collection.
+
+Recover this completed run without rebuilding or rerunning CFD:
+
+```bash
+./tests/m247Performance/InspectRayTraversal tests/m247Performance/runs/ray-traversal-20261007-195231
+```
+
+This reads existing fields, creates comparison reports and a fresh
+M247_ray-traversal-20261007-195231_collection-TIMESTAMP_review.tar.gz. Collection
+stdout/stderr is archived as collection.log, including errors. Existing
+comparison reports are never overwritten.

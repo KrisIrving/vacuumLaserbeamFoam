@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Recover cached-traversal field collection
+
+195231 build/parity and both jobs pass; logged physics/work agree, job speedup1.125, loop1.1385. Archive has no comparison report. Fix inherited non-debug rayNumber NO_WRITE incompatibility: seven physical/deposition fields mandatory, visual ID optional with explicit absence/partial checks. Added offline InspectRayTraversal and collection stderr packaging; 53 harness tests pass. No solver change or physical approval. See entries/2026-10-07-m247-traversal-195231-collection-fix.md.
+
 ## 2026-10-07 — Official ray review and cached traversal candidate
 
 Reviewed tagged upstream V3.0/V3.1 and merged particle-tracing PR113. Added default-off cached step lengths and reusable FIFO search storage with legacy containment/order/limit/fallback semantics. RunRayTraversal builds a real-mesh old/new search test before matched short CFD, checks eight fields and identical ray work, and packages a single named archive. 51 Python tests and Bash syntax pass; actual C++/CFD and speed remain pending Ubuntu. See entries/2026-10-07-m247-official-ray-traversal-candidate.md.

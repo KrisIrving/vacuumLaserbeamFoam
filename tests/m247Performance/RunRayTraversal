@@ -46,4 +46,5 @@ for VARIANT in rayTraversalReference rayTraversalCached; do
     echo "Running $VARIANT; live log: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
     python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.25
 done
-python3 tests/m247Performance/collect_laser_profile.py --ray-traversal --work "$WORK"
+python3 tests/m247Performance/collect_laser_profile.py --ray-traversal --work "$WORK" \
+    2>&1 | tee "$WORK/collection.log"
