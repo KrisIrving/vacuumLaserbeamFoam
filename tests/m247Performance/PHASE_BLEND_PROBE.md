@@ -41,3 +41,12 @@ The collector checks matching snapshots/binary hashes, fixed mesh, complete inte
 Send the single printed archive `runs/M247_phase-blend-<timestamp>_review.tar.gz`. It contains named logs, probe/run metadata, exact dictionaries and phaseBlendReview.json/phaseBlendFields.csv/phaseBlendDiagnostics.csv. Full processor fields remain on Ubuntu for later localization.
 
 Local checks: 31 Python harness/model/collector tests and shell syntax/diff checks. Mathematical tests cover endpoint matching, threshold continuity, positive phase span, and isolated enthalpy iteration; they do not compile or execute OpenFOAM. Ubuntu compilation, closure response, width sensitivity, energy accounting and CFD accuracy remain pending.
+# Build gate after the 170639 review
+
+The uploaded run used the previous binary; missing phase-blend diagnostics
+correctly caused collection failure. First run `./tests/m247Performance/BuildPhaseBlend`
+and send its single review archive. It captures direct solver build output,
+selected OpenFOAM paths, executable hash and compiled diagnostic markers.
+Failures are packaged too. The phase wrapper now checks markers and rejects
+PATH shadowing before CFD. Runtime width/weight validation remains necessary.
+Do not rerun the three cases until the build archive is reviewed.

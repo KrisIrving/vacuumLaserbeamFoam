@@ -21,6 +21,8 @@ bundle_on_exit() {
     exit "$run_status"
 }
 trap bundle_on_exit EXIT
+mkdir -p "$WORK"
+python3 tests/m247Performance/check_solver.py --output "$WORK/solverCheck.json"
 for VARIANT in enthalpyTight phaseBlendNarrow phaseBlendWide; do
     echo "Preparing $VARIANT at $WORK/$VARIANT"
     python3 tests/m247Performance/prepare_probe.py \

@@ -10,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import time
+from check_solver import inspect_solver
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -29,12 +30,17 @@ def main():
     for command in ('mpirun', 'vacuumLaserbeamFoam', 'foamDictionary'):
         if not shutil.which(command):
             parser.error(f'{command} missing; source OpenFOAM and rebuild first')
-    executable = Path(shutil.which('vacuumLaserbeamFoam'))
+    executable = Path(shutil.which('vacuumLaserbeamFoam')).resolve()
+    if metadata.get('variant') in ('phaseBlendNarrow', 'phaseBlendWide'):
+        check = inspect_solver(executable, os.environ.get('FOAM_USER_APPBIN'))
+        (case/'solverCheck.json').write_text(json.dumps(check, indent=2)+'\n')
+        if not check['passed']:
+            parser.error('; '.join(check['errors']))
     provenance = dict(solver=str(executable), solver_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())
     library = Path(os.environ.get('FOAM_USER_LIBBIN', '/nonexistent'))/'liblaserHeatSource.so'
     if library.is_file():
         provenance['laser_library_sha256'] = hashlib.sha256(library.read_bytes()).hexdigest()
-    command = ['mpirun', '-np', str(metadata['ranks']), 'vacuumLaserbeamFoam', '-parallel']
+    command = ['mpirun', '-np', str(metadata['ranks']), str(executable), '-parallel']
     started = time.monotonic()
     stopped = None
     forced = False

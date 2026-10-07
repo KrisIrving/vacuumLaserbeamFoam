@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+WORK=${1:-tests/m247Performance/runs/build-phase-blend-$(date +%Y%m%d-%H%M%S)}
+JOBS=${2:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "FOAM_USER_LIBBIN=${FOAM_USER_LIBBIN:-unset}"
+    command -v wmake || true
+    command -v vacuumLaserbeamFoam || true
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+# A direct solver build avoids recursive dispatch hiding solver errors.
+(
+    cd applications/solvers/vacuumLaserbeamFoam
+    wmake -j "$JOBS"
+) 2>&1 | tee "$WORK/build.log"
+python3 tests/m247Performance/check_solver.py --output "$WORK/solverCheck.json"
+echo "Build and static feature check passed. Send this build archive before repeating CFD."

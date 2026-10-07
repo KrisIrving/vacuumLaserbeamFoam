@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Reject stale phase-probe executables
+
+The 170639 archive used the prior binary and failed runtime mode checks. Fixed application build error propagation and argument-parser path; added a direct build/log/archive command and static binary/PATH preflight before phase CFD. MPI launches the verified absolute path. Thirty-five Python tests, Bash syntax and a mocked solver-build failure check pass. Ubuntu build diagnosis pending; no new CFD evidence or closure approval. See `entries/2026-10-07-m247-phase-blend-build-gate.md`.
+
 ## 2026-10-07 — Opt-in continuous phase-temperature candidate
 
 Added default-off smooth alpha-phase override, coupled phase/enthalpy diagnostics and a three-way width-sensitivity short probe. Preserves legacy branches outside the transition; numerical closure and restart energy response require validation. Thirty-one local tests pass; Ubuntu compilation/CFD pending. See `entries/2026-10-07-m247-continuous-phase-candidate.md` and `tests/m247Performance/PHASE_BLEND_PROBE.md`.

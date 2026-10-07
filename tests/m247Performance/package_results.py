@@ -17,6 +17,7 @@ FILES = {
     'constant/LaserProperties': 'LaserProperties',
     'constant/transportProperties': 'transportProperties',
 }
+BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json')
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
@@ -40,11 +41,16 @@ def package(work, output=None, exit_code=None):
         found.append(dict(source=relative, archive_name=archive_name,
                           bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
     variants = [v for v in VARIANTS if (work/v).is_dir()]
-    if not variants:
-        raise ValueError('No recognised probe variant directories')
+    if not variants and not any((work/name).is_file() for name in BUILD_FILES):
+        raise ValueError('No recognised probe variant directories or build/preflight files')
+    for name in BUILD_FILES:
+        if (work/name).is_file():
+            add(name, f'{tag}_{name}')
     for variant in variants:
         for relative, suffix in FILES.items():
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
+        if (work/variant/'solverCheck.json').is_file():
+            add(f'{variant}/solverCheck.json', f'{tag}_{variant}_solverCheck.json')
     for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')

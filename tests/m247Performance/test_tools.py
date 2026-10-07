@@ -13,6 +13,41 @@ from package_results import package
 from collect_thermal_validation import read_field, collect as collect_validation
 from localize_field_differences import localize, region
 from collect_phase_blend import collect as collect_blend
+from check_solver import inspect_solver, MARKERS
+
+class SolverPreflightTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.binary = self.root/'vacuumLaserbeamFoam'
+    def tearDown(self):
+        self.temp.cleanup()
+    def test_old_solver_rejected(self):
+        self.binary.write_bytes(b'old executable')
+        result = inspect_solver(self.binary, self.root)
+        self.assertFalse(result['passed'])
+        self.assertEqual(len(result['missing_markers']), 2)
+    def test_new_solver_markers_and_build_target(self):
+        self.binary.write_bytes(b'\x00'.join(MARKERS))
+        result = inspect_solver(self.binary, self.root)
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['solver'], str(self.binary.resolve()))
+    def test_shadowed_solver_and_missing_environment_rejected(self):
+        self.binary.write_bytes(b'\x00'.join(MARKERS))
+        self.assertFalse(inspect_solver(self.binary, self.root/'other')['passed'])
+        self.assertFalse(inspect_solver(self.binary, None)['passed'])
+    def test_failed_preflight_packaged_without_any_cfd(self):
+        self.binary.write_bytes(b'old executable')
+        (self.root/'solverCheck.json').write_text(json.dumps(inspect_solver(self.binary,self.root)))
+        output, manifest = package(self.root, self.root.parent/(self.root.name+'.tar.gz'), 1)
+        try:
+            self.assertEqual(manifest['variants'], [])
+            self.assertEqual(manifest['wrapper_exit_code'], 1)
+            with tarfile.open(output) as archive:
+                result = json.load(archive.extractfile(self.root.name+'_solverCheck.json'))
+                self.assertFalse(result['passed'])
+        finally:
+            output.unlink()
 
 class ThermalValidationTests(unittest.TestCase):
     def setUp(self):
