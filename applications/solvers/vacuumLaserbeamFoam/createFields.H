@@ -819,6 +819,15 @@ autoPtr<transportModelType> turbulence
 // Create laser heat source
 laserHeatSource laser(mesh);
 
+// updateProps is used here before the time loop, including in postProcess.
+// Keep the phase-closure setting in this field scope and initialise it from
+// fvSolution before the first property/pressure calculation.
+scalar phaseTemperatureBlendHalfWidth = 0;
+{
+    const dictionary& meltingDict = mesh.solutionDict().subDict("MELTING");
+    #include "readPhaseBlendControls.H"
+}
+
 #include "updateProps.H"
 
 // volScalarField depositionTemp

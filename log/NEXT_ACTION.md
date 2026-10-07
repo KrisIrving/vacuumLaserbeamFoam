@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Current build repair: initialise phase controls before properties
+
+The 172208 build archive confirms a C++ scope error: createFields.H calls updateProps.H before the old time-loop-only declaration of phaseTemperatureBlendHalfWidth. The setting is now owned and initialised by createFields.H, with shared startup/runtime validation, covering normal and postProcess inclusion. Pull and run `./tests/m247Performance/BuildPhaseBlend` again and send its automatic archive. Actual Ubuntu compilation remains pending. No CFD repeat until build verification. See entries/2026-10-07-m247-phase-blend-initialisation-fix.md. Older actions below are superseded.
+
 ## Immediate action: establish the rebuilt solver before more CFD
 
 The 170639 phase-blend archive used the prior binary and lacks both new mode diagnostics in all three cases. Collection correctly failed; these results do not test smoothing. Pull the branch and run `./tests/m247Performance/BuildPhaseBlend`. Send its automatic build review archive. This builds the solver directly and captures build errors, environment, executable path/hash and static feature checks. Do not repeat CFD yet. RunPhaseBlendProbe now rejects old or shadowed solvers before starting cases. See entries/2026-10-07-m247-phase-blend-build-gate.md. Older immediate actions below are superseded.

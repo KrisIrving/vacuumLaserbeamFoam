@@ -35,20 +35,7 @@ const bool thermalResidualDiagnostics =
     meltingDict.lookupOrDefault<bool>("thermalResidualDiagnostics", false);
 const scalar phaseTemperatureTolerance =
     meltingDict.lookupOrDefault<scalar>("phaseTemperatureTolerance", 0.01);
-const scalar phaseTemperatureBlendHalfWidth =
-    meltingDict.lookupOrDefault<scalar>("phaseTemperatureBlendHalfWidth", 0);
-if (!(phaseTemperatureBlendHalfWidth >= 0 && phaseTemperatureBlendHalfWidth < 0.04))
-{
-    FatalErrorInFunction
-        << "phaseTemperatureBlendHalfWidth must satisfy 0 <= width < 0.04"
-        << exit(FatalError);
-}
-if (phaseTemperatureBlendHalfWidth > 0 && !boundedEnthalpyCorrection)
-{
-    FatalErrorInFunction
-        << "Experimental phase blending requires boundedEnthalpyCorrection"
-        << exit(FatalError);
-}
+#include "readPhaseBlendControls.H"
 
 if
 (

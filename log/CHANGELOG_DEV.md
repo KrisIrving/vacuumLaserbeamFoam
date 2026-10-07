@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Initialise blend control before createFields property update
+
+Ubuntu build log confirms a missing declaration in both normal and postProcess createFields inclusion. Moved width ownership/initialisation before the first updateProps call; share validation with runtime reload and avoid a shadowed time-loop width. Existing 35 Python checks pass; actual OpenFOAM rebuild remains pending. See `entries/2026-10-07-m247-phase-blend-initialisation-fix.md`.
+
 ## 2026-10-07 — Reject stale phase-probe executables
 
 The 170639 archive used the prior binary and failed runtime mode checks. Fixed application build error propagation and argument-parser path; added a direct build/log/archive command and static binary/PATH preflight before phase CFD. MPI launches the verified absolute path. Thirty-five Python tests, Bash syntax and a mocked solver-build failure check pass. Ubuntu build diagnosis pending; no new CFD evidence or closure approval. See `entries/2026-10-07-m247-phase-blend-build-gate.md`.
