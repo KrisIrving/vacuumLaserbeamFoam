@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Exchange profile result and tracing target
+
+193145 archive integrity/build/regression pass; 756k saved cells have identical five-field results. Independent log checks reconcile 96 rank rows. Merge is negligible; tracing strongly concentrated in two ranks, and blocking broadcast includes waits. Recorded evidence and selected equivalent tracing/search optimization before partitioning comparison. No additional CFD request or numerical change in this review. See entries/2026-10-07-m247-exchange-profile-result.md.
+
 ## 2026-10-07 — Correct precision target in exchange profiler
 
 Ubuntu compilation exposed precision() being called on messageStream Info. Obtain the underlying Ostream with Info(), then set/restore precision there. This repairs logging only; profiling stages and ray/physics behavior are unchanged. The supplied compiler output is sufficient to identify the failure; its archive was not inspected. Full OpenFOAM compilation remains pending Ubuntu. See entries/2026-10-07-m247-exchange-stream-fix.md.

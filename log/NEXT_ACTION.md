@@ -2,6 +2,18 @@
 
 Updated: 2026-10-07
 
+## Decision after exchange-profile-193145
+
+Compilation, schema-2 statistics and instrumentation regression pass. Five
+saved-field norms are exactly zero; all 16 thermal steps converge, no caps.
+Jobs 36.0385/36.0376 s. Exchange mean 17.9614 s, dominated by blocking broadcast
+but nested merge only 0.00177 s. Tracing max/mean 12.91; two ranks carry 59.20%
+of searches and 21 ranks carry none. Prioritize equivalent tracing/cell-search
+optimization and then tracing-aware partitioning, rather than merge tuning or
+assuming broadcast time is pure transport. Existing evidence is sufficient;
+no additional Ubuntu run/upload is needed now. See
+entries/2026-10-07-m247-exchange-profile-result.md. Older actions are superseded.
+
 ## Build repair: exchange-profiler logging precision
 
 The 192743 compiler output identifies an invalid precision() call on Info,
