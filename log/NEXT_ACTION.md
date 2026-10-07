@@ -2,6 +2,18 @@
 
 Updated: 2026-10-07
 
+## Decision after210403recovery: stop seed shortcut, target tracing distribution
+
+Recovery complete:27hashes verified,both full logs/provenance present. Independent
+timing/thermal/physics/global and rank-work checks pass. Seven Ubuntu field norms
+zero; raw fields not archived. Job0.984922x/loop0.985554x,so seed switch remains
+off; validated cache retained. No more Ubuntu runs or collection for204122.
+21/48ranks search nothing;44/46carry58.314% of searches;trace max/mean13.32.
+Next development: tracing-aware partition/backend comparison,with appropriate
+global physics/ownership checks rather than identical per-rank work after a
+partition change. Continue fixed local fine mesh/thermal-fluid coupling roadmap.
+See entries/2026-10-07-m247-seed-recovery-verified.md. Older actions superseded.
+
 ## Immediate action: recover204122logs; stop seed shortcut experiments
 
 Seed candidate report passes regression but fails performance:327.3→332.3s.

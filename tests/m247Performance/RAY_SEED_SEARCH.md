@@ -1,5 +1,13 @@
 # Cartesian seed-cell shortcut
 
+210403recovery is complete:27hashes verified,both logs/provenance restored and
+independently checked. Runtime modes,physical diagnostics,thermal convergence
+and ray work match; performance gate remains false. Keep seed switch off and
+validated cache enabled. Do not repeat this candidate or recovery commands.
+21/48ranks perform zero searches;44/46carry58.314% of total searches. Next
+development targets work distribution/backend and local-domain reduction.
+The instructions below are historical.
+
 ## Result: do not promote; recover packaging only
 
 204122completed pair reports zero seven-field differences and matched work,but

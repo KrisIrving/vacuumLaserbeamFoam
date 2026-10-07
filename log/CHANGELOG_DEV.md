@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-07 — Seed recovery complete; tracing distribution target
+
+210403recovery27hashes verified; full logs independently confirm matched
+180–182-us physics/work and thermal convergence. Seed performance still fails,
+switch remains off; validated cache retained.21ranks search nothing;44/46carry
+58.314% of searches. Record next tracing distribution/backend and local-domain
+targets. No code change or additional Ubuntu action. See
+entries/2026-10-07-m247-seed-recovery-verified.md.
+
 ## 2026-10-07 — Seed performance FAIL; repair review packaging
 
 204122report:seven fields equal/work matched,no thermal caps,but job0.98492x
