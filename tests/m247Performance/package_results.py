@@ -12,13 +12,14 @@ from prepare_probe import VARIANTS
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
     'probe.json': 'probe.json', 'run.json': 'run.json',
+    'capture.log': 'capture.log', 'captureRun.json': 'captureRun.json',
     'system/fvSolution': 'fvSolution', 'system/controlDict': 'controlDict',
     'system/decomposeParDict': 'decomposeParDict',
     'constant/vacuumProperties': 'vacuumProperties',
     'constant/LaserProperties': 'LaserProperties',
     'constant/transportProperties': 'transportProperties',
 }
-BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log', 'partition.log', 'partitionWeight.json', 'initialPartitionCheck.json')
+BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log', 'partition.log', 'partitionWeight.json', 'initialPartitionCheck.json', 'frozenInputCheck.json')
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
@@ -49,10 +50,12 @@ def package(work, output=None, exit_code=None):
             add(name, f'{tag}_{name}')
     for variant in variants:
         for relative, suffix in FILES.items():
+            if relative in ('capture.log','captureRun.json') and not (work/variant/relative).is_file():
+                continue
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
         if (work/variant/'solverCheck.json').is_file():
             add(f'{variant}/solverCheck.json', f'{tag}_{variant}_solverCheck.json')
-    for name in ('rayPartitionReview.json', 'comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv', 'rayTraversalReview.json', 'laserProfileReview.json', 'laserProfileStages.csv', 'laserProfileFields.csv', 'laserExchangeDetails.csv', 'laserRankWork.csv'):
+    for name in ('frozenLaserReview.json', 'rayPartitionReview.json', 'comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv', 'phaseBlendReview.json', 'phaseBlendFields.csv', 'phaseBlendDiagnostics.csv', 'phaseBlendLocalization.json', 'phaseBlendRegions.csv', 'phaseBlendWorstCells.csv', 'rayTraversalReview.json', 'laserProfileReview.json', 'laserProfileStages.csv', 'laserProfileFields.csv', 'laserExchangeDetails.csv', 'laserRankWork.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')
     if not entries:

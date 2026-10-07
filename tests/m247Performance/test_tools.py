@@ -394,6 +394,63 @@ class ThermalValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'initial fields'): require_initial_equal(*cases)
         p.write_text(original);(cases[1]/'constant/polyMesh/points').write_text('changed order')
         with self.assertRaisesRegex(ValueError,'mesh/order'): require_initial_equal(*cases)
+    def make_frozen_pair(self):
+        import shutil
+        from frozen_laser import NAMES, INPUTS, check_inputs
+        from collect_probe import parse_records
+        self.make_partition_pair()
+        for old,new in zip(('rayPartitionReference','rayPartitionWeighted'),NAMES):
+            case=self.root/old;case.rename(self.root/new);case=self.root/new
+            p=case/'probe.json';meta=json.loads(p.read_text());meta.update(variant=new,frozen_optics=True,frozen_time_s=.00018)
+            p.write_text(json.dumps(meta))
+            for name,original in zip(INPUTS,('alpha.metal','U','T')):
+                shutil.copyfile(case/'0.00018'/original,case/'0.00018'/name)
+            p=case/'log.vacuumLaserbeamFoam';text=p.read_text()
+            record=parse_records(text,'LASER_PERF_DIAGNOSTICS')[0]
+            record.update(time=.00018,callsMean=1,initialRaysMean=1536)
+            lines=['RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached=1','CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled=0',
+                'LASER_PERF_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in record.items())]
+            for row in parse_records(text,'LASER_RANK_DIAGNOSTICS')[:48]:
+                row.update(time=.00018,calls=1)
+                lines.append('LASER_RANK_DIAGNOSTICS '+' '.join(f'{k}={v}' for k,v in row.items()))
+            lines+=['FROZEN_LASER_DIAGNOSTICS schema=1 time=0.00018 calls=1 advancedTime=0 Tchange=0 alphaChange=0 epsilonChange=0 Uchange=0 depositedPower=327','End']
+            p.write_text('\n'.join(lines)+'\n')
+        (self.root/'frozenInputCheck.json').write_text(json.dumps(check_inputs(*(self.root/n for n in NAMES))))
+        reference=self.root/NAMES[0]
+        (reference/'capture.log').write_text('FROZEN_LASER_CAPTURE schema=1 time=0.00018 calls=0\nEnd\n')
+        shutil.copyfile(reference/'run.json',reference/'captureRun.json')
+    def test_frozen_optics_accepts_shared_inputs_and_packages_distinct_evidence(self):
+        from frozen_laser import collect
+        self.make_frozen_pair();result=collect(self.root)
+        self.assertTrue(result['optical_partition_gate'])
+        self.assertEqual(result['transient_steps'],0)
+        archive,manifest=package(self.root,self.root.parent/(self.root.name+'.tar.gz'))
+        try:
+            self.assertIn('frozenLaserWeighted',manifest['variants'])
+            self.assertTrue(any(e['source']=='comparison/frozenLaserReview.json' for e in manifest['files']))
+        finally: archive.unlink()
+    def test_frozen_optics_rejects_field_evolution(self):
+        from frozen_laser import collect
+        self.make_frozen_pair();p=self.root/'frozenLaserWeighted/log.vacuumLaserbeamFoam'
+        p.write_text(p.read_text().replace('Tchange=0','Tchange=1'))
+        with self.assertRaisesRegex(ValueError,'state evolved'): collect(self.root)
+    def test_frozen_optics_rejects_unequal_inputs_before_interpreting_outputs(self):
+        from frozen_laser import collect
+        self.make_frozen_pair();p=self.root/'frozenLaserWeighted/0.00018/frozenAlphaInput'
+        p.write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 2);')
+        with self.assertRaisesRegex(ValueError,'inputs changed'): collect(self.root)
+    def test_frozen_optics_reports_spatial_failure_even_with_equal_power(self):
+        from frozen_laser import collect
+        self.make_frozen_pair();p=self.root/'frozenLaserWeighted/0.00018/rayQ'
+        p.write_text('FoamFile { format ascii; } internalField nonuniform List<scalar> 2 (0 2);')
+        result=collect(self.root)
+        self.assertEqual(result['power_absolute_difference_W'],0)
+        self.assertFalse(result['optical_partition_gate'])
+    def test_frozen_optics_rejects_capture_that_advanced_time(self):
+        from frozen_laser import collect
+        self.make_frozen_pair();p=self.root/'frozenLaserReference/capture.log'
+        p.write_text(p.read_text()+'Time = 0.000181\n')
+        with self.assertRaisesRegex(ValueError,'input capture'): collect(self.root)
     def test_non_debug_ray_number_is_optional_with_explicit_report(self):
         self.make_traversal_pair()
         for name in ('rayTraversalReference','rayTraversalCached'):

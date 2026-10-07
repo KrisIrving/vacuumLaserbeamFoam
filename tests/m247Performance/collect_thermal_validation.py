@@ -49,9 +49,9 @@ def final_state(case, rank, time):
         raise ValueError(f'Missing or ambiguous final field state: {case}, rank {rank}')
     return candidates[0]
 
-def field_differences(reference, candidate, ranks, time, field_names=FIELDS):
+def field_differences(reference, candidate, ranks, time, field_names=FIELDS, vector_fields=('U',)):
     totals = {name:dict(cells=0,max_abs_difference=0.0,sum_squared_difference=0.0,
-        reference_max_abs=0.0,components=3 if name=='U' else 1) for name in field_names}
+        reference_max_abs=0.0,components=3 if name in vector_fields else 1) for name in field_names}
     for rank in ((None,) if ranks is None else range(ranks)):
         folders = [final_state(p,rank,time) for p in (reference,candidate)]
         data = [{name:read_field(folder/name) for name in field_names} for folder in folders]

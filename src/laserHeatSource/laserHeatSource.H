@@ -209,6 +209,21 @@ public:
             const volScalarField& resistivity_in
         );
 
+        //- Diagnostic overload; retain the original three-argument API.
+        void updateDeposition
+        (
+            const volScalarField& alphaFiltered,
+            const volVectorField& nFiltered,
+            const volScalarField& resistivity_in,
+            const bool reportAtWriteTime
+        );
+
+        //- Explicit report for a fixed-time optical diagnostic.
+        void reportPerformance()
+        {
+            laserProfiler_.report(deposition_.time().value());
+        }
+
         //- Update the deposition for the given laser parameters
         //  This adds to the existing deposition field and does not reset it to
         //  zero first

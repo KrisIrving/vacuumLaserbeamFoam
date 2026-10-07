@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Shared-input fixed-state optical probe
+
+Added default-off solver capture/trace diagnostics and RunFrozenLaser. Generates one shared set of filtered alpha/normal/resistivity, checks exact initial internal fields and optical inputs across decompositions, then traces once per partition at 180 us without flow/thermal/time advancement. Checks frozen state, capture/trace provenance, 1536-ray sampling, rank/global profiles, deposition/rayQ spatial norms and absorbed power. Normal update/report path retained. Automatic rebuild, preflight, budgets and archive packaging. Actual OpenFOAM build/execution pending Ubuntu; no speedup or production approval claim.
+
 ## 2026-10-07 — Weighted partition rejected; isolate optical sensitivity
 
 Verified all 25 archive hashes and independently checked both complete logs, binary/input provenance, thermal convergence, sampling and global/rank profiles. Weighted repartition improves tracing balance but increases job time by 39.63%, exchange rounds by 2.27x and thermal cost by 74.7%. Seven final field norms and physical diagnostics fail; initial internal field checks report zero differences. Retain original partition. Next development is fixed-state optical comparison across decompositions; no additional Ubuntu run requested in this review. Raw field norms were generated on Ubuntu, not recomputed from this archive.

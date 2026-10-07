@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run fixed-state optical comparison
+
+Pull feat/m247-material-port and run `./tests/m247Performance/RunFrozenLaser`. It automatically rebuilds the laser library and solver, captures shared optical inputs from the original partition, then executes one fixed-time laser update per partition at 180 us. No flow/thermal/time advancement. Exact input gates precede tracing; reconstructed spatial outputs and total power are checked separately. Five-minute budget per solver launch plus utility/build/shutdown time. Send the single `M247_frozen-laser-..._review.tar.gz`, including failures. This implements the next diagnostic; it is not another transient partition pair. See tests/m247Performance/FROZEN_LASER.md. Earlier instructions below are retained checkpoint history.
+
 ## Decision after 213305 partition review
 
 The weighted partition is rejected: job 323.333 to 451.468 s (0.71618x), seven final fields and physical diagnostics fail. Tracing becomes more balanced but exchange rounds rise 2.27x and thermal cost rises 74.7%; cell counts range 155–31568/rank. Keep the original partition, validated traversal cache and seed off. No repeat pair or user CFD run is needed now. Next implement a fixed-state optical comparison across decompositions to isolate ray transport sensitivity before exchanging backends or sweeping weights. See log/entries/2026-10-07-m247-ray-partition-result.md. The instructions below describe the completed experiment, not the next requested run.

@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/frozen-laser-$(date +%Y%m%d-%H%M%S)}
+JOBS=${3:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be a positive integer" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{ git rev-parse HEAD; command -v reconstructPar; command -v decomposePar; } > "$WORK/buildEnvironment.txt"
+( cd src/laserHeatSource && wmakeLnInclude -u . \
+    && test -r lnInclude/laserPerformance.H && wmake -j "$JOBS" libso ) 2>&1 | tee "$WORK/build.log"
+( cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake -j "$JOBS" ) \
+    2>&1 | tee -a "$WORK/build.log"
+python3 tests/m247Performance/check_solver.py --laser-profile --seed-search --frozen-optics --output "$WORK/solverCheck.json"
+python3 tests/m247Performance/frozen_laser.py --source "$SOURCE" --work "$WORK" \
+    2>&1 | tee "$WORK/collection.log"

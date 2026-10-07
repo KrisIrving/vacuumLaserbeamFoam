@@ -51,12 +51,16 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--laser-profile', action='store_true')
     parser.add_argument('--seed-search', action='store_true')
+    parser.add_argument('--frozen-optics', action='store_true')
     args = parser.parse_args()
     executable = shutil.which('vacuumLaserbeamFoam')
     try:
         if not executable:
             raise ValueError('vacuumLaserbeamFoam missing from PATH')
         result = inspect_solver(executable, os.environ.get('FOAM_USER_APPBIN'))
+        if args.frozen_optics and b'FROZEN_LASER_DIAGNOSTICS schema=1 time=' not in Path(executable).read_bytes():
+            result['errors'].append('Old solver: missing fixed-state optical diagnostic')
+            result['passed']=False
         if args.laser_profile or args.seed_search:
             library=inspect_laser_library(executable,os.environ.get('FOAM_USER_LIBBIN'),args.seed_search)
             result['laser_library_check']=library

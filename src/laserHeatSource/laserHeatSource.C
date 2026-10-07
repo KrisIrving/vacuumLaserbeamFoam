@@ -598,6 +598,17 @@ void laserHeatSource::updateDeposition
     const volScalarField& resistivity_in
 )
 {
+    updateDeposition(alphaFiltered, nFiltered, resistivity_in, true);
+}
+
+void laserHeatSource::updateDeposition
+(
+    const volScalarField& alphaFiltered,
+    const volVectorField& nFiltered,
+    const volScalarField& resistivity_in,
+    const bool reportAtWriteTime
+)
+{
     // Reset fields
     deposition_ *= 0.0;
     laserBoundary_ *= 0.0;
@@ -785,7 +796,7 @@ void laserHeatSource::updateDeposition
             globalBB_
         );
     }
-    if (deposition_.time().writeTime()) laserProfiler_.report(time);
+    if (reportAtWriteTime && deposition_.time().writeTime()) laserProfiler_.report(time);
 }
 
 

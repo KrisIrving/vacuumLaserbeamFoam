@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached', 'rayPartitionReference', 'rayPartitionWeighted')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded', 'enthalpyStandard', 'enthalpyTight', 'phaseBlendNarrow', 'phaseBlendWide', 'laserProfileOff', 'laserProfileOn', 'rayTraversalReference', 'rayTraversalCached', 'raySeedReference', 'raySeedCached', 'rayPartitionReference', 'rayPartitionWeighted', 'frozenLaserReference', 'frozenLaserWeighted')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -105,7 +105,7 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
     seed_variant = variant in ('raySeedReference','raySeedCached')
-    partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted')
+    partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted','frozenLaserReference','frozenLaserWeighted')
     traversal_variant = partition_variant or seed_variant or variant in ('rayTraversalReference','rayTraversalCached')
     laser_variant = traversal_variant or variant in ('laserProfileOff','laserProfileOn')
     tight_variant = blend_variant or laser_variant or variant=='enthalpyTight'
