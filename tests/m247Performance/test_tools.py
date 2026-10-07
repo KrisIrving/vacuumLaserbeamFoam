@@ -461,6 +461,18 @@ class ThermalValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'handoff work'): read_trace(case,'frozenLaserReference')
         log.write_text(base+'RAY_HANDOFF_WORK schema=1 time=0.00018 crossings=10 resumed=9\n')
         read_trace(case,'frozenLaserReference')
+    def test_termination_probe_checks_mode_and_discarded_power_bound(self):
+        from frozen_laser import read_trace
+        self.make_frozen_pair();case=self.root/'frozenLaserReference'
+        p=case/'probe.json';meta=json.loads(p.read_text());meta.update(preserve_ray_handoff_sample=True,consistent_ray_termination=True);p.write_text(json.dumps(meta))
+        log=case/'log.vacuumLaserbeamFoam';base=log.read_text()+'RAY_HANDOFF_DIAGNOSTICS schema=1 enabled=1\nRAY_HANDOFF_WORK schema=1 time=0.00018 crossings=10 resumed=9\n'
+        log.write_text(base)
+        with self.assertRaisesRegex(ValueError,'termination mode'): read_trace(case,'frozenLaserReference')
+        base+='RAY_TERMINATION_DIAGNOSTICS schema=1 enabled=1\n'
+        log.write_text(base+'RAY_TERMINATION_WORK schema=1 time=0.00018 threshold=1e-6 cutoffRays=10 discardedPower=1\n')
+        with self.assertRaisesRegex(ValueError,'power accounting'): read_trace(case,'frozenLaserReference')
+        log.write_text(base+'RAY_TERMINATION_WORK schema=1 time=0.00018 threshold=1e-6 cutoffRays=10 discardedPower=5e-6\n')
+        read_trace(case,'frozenLaserReference')
     def test_non_debug_ray_number_is_optional_with_explicit_report(self):
         self.make_traversal_pair()
         for name in ('rayTraversalReference','rayTraversalCached'):

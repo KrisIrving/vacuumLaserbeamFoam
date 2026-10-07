@@ -381,6 +381,7 @@ laserHeatSource::laserHeatSource
     cachedRayTraversal_(lookupOrDefault<Switch>("cachedRayTraversal", false)),
     cartesianRaySeedSearch_(lookupOrDefault<Switch>("cartesianRaySeedSearch", false)),
     preserveRayHandoffSample_(lookupOrDefault<Switch>("preserveRayHandoffSample", false)),
+    consistentRayTermination_(lookupOrDefault<Switch>("consistentRayTermination", false)),
     laserProfiler_(lookupOrDefault<bool>("laserPerformanceDiagnostics", false)),
     laserNames_(0),
     laserDicts_(0),
@@ -397,6 +398,11 @@ laserHeatSource::laserHeatSource
         << label(cartesianRaySeedSearch_) << endl;
     Info<< "RAY_HANDOFF_DIAGNOSTICS schema=1 enabled="
         << label(preserveRayHandoffSample_) << endl;
+    Info<< "RAY_TERMINATION_DIAGNOSTICS schema=1 enabled="
+        << label(consistentRayTermination_) << endl;
+    if (consistentRayTermination_ && !preserveRayHandoffSample_)
+        FatalErrorInFunction << "consistentRayTermination requires preserveRayHandoffSample"
+            << exit(FatalError);
     if (cartesianRaySeedSearch_ && !cachedRayTraversal_)
         FatalErrorInFunction << "cartesianRaySeedSearch requires cachedRayTraversal"
             << exit(FatalError);
@@ -940,6 +946,8 @@ void laserHeatSource::updateDeposition
     }
 
     label crossingSamples=0, resumedSamples=0;
+    label cutoffRays=0;
+    scalar cutoffPower=0;
     // Propagate the rays through the domain
     while (remainingGlobalRays.size() > 0)
     {
@@ -987,7 +995,8 @@ void laserHeatSource::updateDeposition
                 laserProfiler_.search([&]() { return locateCell
                 (curRay.position_, curRay.currentCell_); });
 
-            while (myCellID != -1)
+            while (myCellID != -1
+                && (!consistentRayTermination_ || curRay.power_ > rayPowerAbsTol))
             {
                 if (!preserveRayHandoffSample_ || !curRay.pendingSample_)
                 {
@@ -1273,6 +1282,12 @@ void laserHeatSource::updateDeposition
                 // Update the ray's path
                 if (recordRayPaths_) curRay.path_.append(curRay.position_);
             }
+            if (consistentRayTermination_ && myCellID != -1
+                && curRay.power_ <= rayPowerAbsTol)
+            {
+                ++cutoffRays;
+                cutoffPower += curRay.power_;
+            }
         }
 
         laserProfiler_.stop(laserPerformance::trace);
@@ -1311,6 +1326,18 @@ void laserHeatSource::updateDeposition
          Info<< "RAY_HANDOFF_WORK schema=1 time=" << runTime.value()
              << " crossings=" << crossingSamples << " resumed=" << resumedSamples
              << endl;
+     }
+     if (consistentRayTermination_)
+     {
+         reduce(cutoffRays, sumOp<label>());
+         reduce(cutoffPower, sumOp<scalar>());
+         Ostream& terminationInfo=Info();
+         const auto oldPrecision=terminationInfo.precision();
+         terminationInfo.precision(17);
+         terminationInfo<< "RAY_TERMINATION_WORK schema=1 time=" << runTime.value()
+             << " threshold=" << rayPowerAbsTol << " cutoffRays=" << cutoffRays
+             << " discardedPower=" << cutoffPower << endl;
+         terminationInfo.precision(oldPrecision);
      }
      laserProfiler_.start(laserPerformance::finalize);
      const scalar TotalQ = fvc::domainIntegrate(deposition_).value();

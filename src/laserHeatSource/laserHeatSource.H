@@ -98,6 +98,7 @@ class laserHeatSource
         const Switch cachedRayTraversal_;
         const Switch cartesianRaySeedSearch_;
         const Switch preserveRayHandoffSample_;
+        const Switch consistentRayTermination_;
         laserPerformance laserProfiler_;
 
         //- List of the laser names

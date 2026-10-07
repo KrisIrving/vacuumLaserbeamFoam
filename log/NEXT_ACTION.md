@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run consistent-cutoff optical candidate
+
+223500 handoff review passes packet/input checks and greatly reduces partition differences, but strict optical gates still fail (power delta 2.563e-5 W). Local weak rays currently continue until rank exits, making threshold application partition-dependent. Added default-off consistentRayTermination, requiring the sample fix, with discarded-power accounting. Pull and run `./tests/m247Performance/RunFrozenLaser --termination`; send `M247_frozen-termination-..._review.tar.gz`. Same frozen inputs and strict gates; no transient or full-track test yet. See log/entries/2026-10-07-m247-handoff-result-termination.md. Earlier instructions are checkpoint history.
+
 ## Run pending-sample optical candidate
 
 221754 frozen review verifies identical optical inputs but optical regression fails (2.346 W absorbed-power difference; spatial outputs fail). A moved-to ray sample is skipped on transfer by the current loop. Added a default-off pending-sample correction candidate and MPI packet check. Pull and run `./tests/m247Performance/RunFrozenLaser --handoff`; send `M247_frozen-handoff-..._review.tar.gz`. Only copied diagnostic cases enable the candidate. No transient/full-track test or promotion yet. See log/entries/2026-10-07-m247-frozen-result-handoff.md and tests/m247Performance/FROZEN_LASER.md. Earlier instructions below are checkpoint history.

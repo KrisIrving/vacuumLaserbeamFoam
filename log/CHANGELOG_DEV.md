@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Handoff sensitivity reduced; consistent cutoff candidate
+
+Verified 29 archive hashes, MPI packet/search checks, frozen profiles, binary provenance and zero reported shared-input differences. Handoff correction reduces power delta from 2.346 W to 2.563e-5 W, but strict power/spatial gates still fail. Added default-off consistentRayTermination to apply the existing ray-power cutoff every local iteration, with stopped-ray/discarded-power accounting and collector bounds. RunFrozenLaser --termination enables both candidates only in copied frozen cases and produces a distinct archive.71 local Python tests and Bash syntax pass; OpenFOAM compilation/optical regression pending Ubuntu. No promotion or speedup claim.
+
 ## 2026-10-07 — Frozen optical sensitivity; pending-sample candidate
 
 Verified all 29 archive hashes and independently reparsed one-call/1536-ray frozen profiles. Shared input norms zero; absorbed power differs 2.346 W and spatial fields fail. Added default-off preserveRayHandoffSample to process the sender's moved-to point on receipt before another step; ray state is serialized/reset/compared. Added real MPI packet checks and RunFrozenLaser --handoff with mode/work/packet gates and distinct archive. No equivalence, speedup, unique-cause or production approval claim; actual OpenFOAM build and regression pending Ubuntu.

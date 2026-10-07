@@ -1,5 +1,18 @@
 # Fixed-state optical partition diagnostic
 
+## Consistent cutoff candidate after the handoff result
+
+The handoff fix reduces absorbed-power partition difference from 2.346 W to 2.563e-5 W, but the strict gate still fails. Next run:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RunFrozenLaser --termination
+```
+
+This enables both default-off candidates in the two copied frozen cases. `consistentRayTermination` applies the existing `rayPowerRelTol * maximum initial ray power` threshold before every local sampling iteration, instead of allowing low-power rays to continue until a rank exit. It requires `preserveRayHandoffSample`. No ray count, optical model or tolerance is changed. Runtime reports include the absolute threshold, cutoff-ray count and total discarded power; the collector checks their finite values and the discarded-power bound. It retains the same strict power and spatial gates. The ignored tail and altered termination policy remain subject to validation, so this is not production approval.
+
+The automatic build, MPI packet check, shared input capture and five-minute job/native budgets remain. Send `M247_frozen-termination-..._review.tar.gz`, including failures. Without this option the new cutoff candidate is explicitly off; `--handoff` enables only the prior sample fix. Results from a single optical update do not establish full-track speedup.
+
 ## Pending-sample candidate after the first frozen result
 
 The first frozen pair failed even with identical optical inputs: absorbed power differed by 2.346 W (0.718%) and spatial fields failed. The next diagnostic is:

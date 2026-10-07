@@ -62,6 +62,20 @@ def read_trace(case,expected):
             or abs(handoffs[0].get('time',-1)-TIME)>1e-12
             or not 0<handoffs[0].get('resumed',-1)<=handoffs[0].get('crossings',-1)):
             raise ValueError('Missing/invalid handoff work')
+    if meta.get('consistent_ray_termination'):
+        if not meta.get('preserve_ray_handoff_sample'):
+            raise ValueError('Consistent termination requires handoff correction')
+        if parse_records(text,'RAY_TERMINATION_DIAGNOSTICS')!=[dict(schema=1,enabled=1)]:
+            raise ValueError('Missing consistent termination mode')
+        termination=parse_records(text,'RAY_TERMINATION_WORK')
+        if len(termination)!=1: raise ValueError('Exactly one termination record required')
+        term=termination[0];threshold=term.get('threshold',float('nan'))
+        power=term.get('discardedPower',float('nan'));count=term.get('cutoffRays',-1)
+        if (term.get('schema')!=1 or abs(term.get('time',-1)-TIME)>1e-12
+            or not math.isfinite(threshold) or threshold<=0
+            or count!=int(count) or not 0<count<=1536
+            or not math.isfinite(power) or not 0<=power<=count*threshold+1e-12):
+            raise ValueError('Invalid discarded ray power accounting')
     rows=parse_records(text,'FROZEN_LASER_DIAGNOSTICS')
     if len(rows)!=1: raise ValueError('Exactly one frozen update required')
     row=rows[0]
@@ -98,6 +112,8 @@ def collect(work):
     if modes[0]!=modes[1]: raise ValueError('Handoff controls differ')
     if modes[0] and parse_records((work/'partition.log').read_text(),'RAY_PACKET_TEST')!=[dict(schema=1,failures=0)]:
         raise ValueError('Missing MPI ray packet check')
+    termination_modes=[bool(d[0].get('consistent_ray_termination')) for d in data]
+    if termination_modes[0]!=termination_modes[1]: raise ValueError('Termination controls differ')
     for key in ('solver_sha256','laser_library_sha256'):
         if not data[0][1].get(key) or data[0][1][key]!=data[1][1].get(key): raise ValueError('Binary mismatch')
         if capture.get(key)!=data[0][1][key]: raise ValueError('Capture binary mismatch')
@@ -113,6 +129,8 @@ def collect(work):
     delta=abs(powers[1]-powers[0]);allowed=1e-12+1e-8*abs(powers[0])
     result=dict(schema=1,frozen_time_s=TIME,transient_steps=0,production_approved=False,
         preserve_ray_handoff_sample=modes[0],
+        consistent_ray_termination=termination_modes[0],
+        termination_work=[parse_records((c/'log.vacuumLaserbeamFoam').read_text(),'RAY_TERMINATION_WORK') for c in cases],
         handoff_work=[parse_records((c/'log.vacuumLaserbeamFoam').read_text(),'RAY_HANDOFF_WORK') for c in cases],
         optical_partition_gate=all(f['passed'] for f in fields) and delta<=allowed,
         fields=fields,deposited_power_W=powers,power_absolute_difference_W=delta,
@@ -131,8 +149,9 @@ def job(case,mode):
     subprocess.run([sys.executable,str(Path(__file__).with_name('run_probe.py')),
         '--case',str(case),'--wall-hours',str(5/60)],check=True)
 
-def run(work,source,preserve_samples=False):
+def run(work,source,preserve_samples=False,consistent_termination=False):
     if os.name!='posix': raise ValueError('Run on Ubuntu OpenFOAM host')
+    if consistent_termination and not preserve_samples: raise ValueError('Termination requires handoff correction')
     cases=[]
     for name in NAMES:
         case=work/name;meta=prepare(source,case,180,2,name)
@@ -140,6 +159,7 @@ def run(work,source,preserve_samples=False):
             raise ValueError('Original fixed mesh and 48 ranks required')
         meta.update(frozen_optics=True,frozen_time_s=TIME,
             preserve_ray_handoff_sample=preserve_samples,
+            consistent_ray_termination=consistent_termination,
             purpose='Fixed-state optical comparison; duration/end metadata are copy-helper bounds, not simulated interval')
         (case/'probe.json').write_text(json.dumps(meta,indent=2)+'\n')
         set_entry(case/'system/controlDict','writePrecision',17)
@@ -152,6 +172,7 @@ def run(work,source,preserve_samples=False):
             '-parallel','-case',str(cases[0])])
     for case in cases:
         set_entry(case/'constant/LaserProperties','preserveRayHandoffSample','true' if preserve_samples else 'false')
+        set_entry(case/'constant/LaserProperties','consistentRayTermination','true' if consistent_termination else 'false')
     # Use the checkpoint rayQ before overwriting any optical outputs.
     stats=write_weights(cases[1],TIME)
     (work/'partitionWeight.json').write_text(json.dumps(stats,indent=2)+'\n')
@@ -178,8 +199,9 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source',type=Path,required=True);parser.add_argument('--work',type=Path,required=True)
     parser.add_argument('--preserve-samples',action='store_true')
+    parser.add_argument('--consistent-termination',action='store_true')
     args=parser.parse_args()
-    try: run(args.work.resolve(),args.source.resolve(),args.preserve_samples)
+    try: run(args.work.resolve(),args.source.resolve(),args.preserve_samples,args.consistent_termination)
     except (ValueError,OSError,KeyError,OverflowError,subprocess.SubprocessError) as error:
         parser.exit(1,f'Frozen optical diagnostic failed: {error}\n')
 if __name__=='__main__': main()
