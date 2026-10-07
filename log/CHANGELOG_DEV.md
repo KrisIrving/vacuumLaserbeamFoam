@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Two-us result and offline field localization
+
+Both candidate tolerances converge over 2 us, but local field maxima remain unresolved. Added offline region/worst-cell localization and one-archive delivery using saved fields, with no extra CFD. Twenty-seven local tests pass. See `entries/2026-10-07-m247-validation-result-localization.md` and `tests/m247Performance/FIELD_LOCALIZATION.md`.
+
 ## 2026-10-07 — Longer candidate convergence validation
 
 Added a 180–182-us standard/tighter candidate test with per-step convergence checks, final all-rank internal-field differences, and automatic review archives. Uses the existing candidate binary; physical production approval remains pending. Twenty-five local tests pass. See `entries/2026-10-07-m247-tolerance-validation-tooling.md` and `tests/m247Performance/THERMAL_VALIDATION.md`.

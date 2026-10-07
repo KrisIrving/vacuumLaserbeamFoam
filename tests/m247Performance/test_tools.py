@@ -10,6 +10,7 @@ from collect_probe import SECTIONS, METRICS, compare, read_probe
 from prepare_probe import prepare, snapshot_digest
 from package_results import package
 from collect_thermal_validation import read_field, collect as collect_validation
+from localize_field_differences import localize, region
 
 class ThermalValidationTests(unittest.TestCase):
     def setUp(self):
@@ -67,6 +68,22 @@ class ThermalValidationTests(unittest.TestCase):
         with self.assertRaises(OSError):
             collect_validation(self.root)
         self.assertFalse((self.root/'comparison').exists())
+    def test_localization_preserves_cell_identity_and_region(self):
+        self.make_pair()
+        result=localize(self.root,top=1)
+        self.assertTrue(result['convergence_gate'])
+        self.assertFalse(result['production_approved'])
+        worst=next(r for r in result['worst_cells'] if r['field']=='T')
+        self.assertEqual((worst['rank'],worst['local_cell'],worst['region']),(0,0,'gasBoth'))
+        self.assertAlmostEqual(worst['absolute_difference'],0.1)
+        self.assertEqual(result['cells'],2)
+        counts=next(r for r in result['regions'] if r['region']=='gasBoth' and r['field']=='T')
+        self.assertEqual(counts['threshold_counts']['1'],0)
+    def test_changed_interface_not_misclassified_as_gas_or_metal(self):
+        self.assertEqual(region(0.0,0.02),'interfaceOrChanged')
+        self.assertEqual(region(1.0,0.98),'interfaceOrChanged')
+        self.assertEqual(region(0.0,0.01),'gasBoth')
+        self.assertEqual(region(0.99,1.0),'metalBoth')
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):

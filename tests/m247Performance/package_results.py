@@ -45,7 +45,7 @@ def package(work, output=None, exit_code=None):
     for variant in variants:
         for relative, suffix in FILES.items():
             add(f'{variant}/{relative}', f'{tag}_{variant}_{suffix}')
-    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv'):
+    for name in ('comparison.json', 'diagnosticComparison.csv', 'thermalValidation.json', 'fieldComparison.csv', 'fieldLocalization.json', 'fieldRegions.csv', 'worstCells.csv'):
         if (work/'comparison'/name).is_file():
             add(f'comparison/{name}', f'{tag}_comparison_{name}')
     if not entries:

@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Latest gate: convergence passed, local field acceptance unresolved
+
+User archive validation-20261007-161510 verified. Both 166-step candidates converge, 5.71/6.32 min, no cap hits. But final max differences are T 316.08 K, U 10.59 m/s, epsilon 1, alpha 0.01193. Low RMS does not establish local accuracy. Before more CFD, pull and run `./tests/m247Performance/InspectThermalValidation tests/m247Performance/runs/validation-20261007-161510`; send its new localization archive. It only reads existing fields and reports alpha regions, worst cell state and counts including alpha=0.05 crossings. See tests/m247Performance/FIELD_LOCALIZATION.md. Earlier next actions below are historical and superseded.
+
 ## Immediate action: candidate convergence-tolerance validation
 
 Pull and run `./tests/m247Performance/RunThermalValidation` on Ubuntu using the previous candidate solver binary. This compares enthalpyStandard (1e-4 / 0.01 K) with enthalpyTight (1e-5 / 0.001 K) over 180–182 us, with equal ASCII output, independent original checkpoints and 30-minute budgets per job. Send the automatically generated review archive. The collector checks convergence and reports all-rank final internal-field sensitivity; it does not grant physical production approval. Details: tests/m247Performance/THERMAL_VALIDATION.md. After review, plan longer 10–20-us field/keyhole/energy validation before 4-um refinement. Earlier next-action entries below are historical.

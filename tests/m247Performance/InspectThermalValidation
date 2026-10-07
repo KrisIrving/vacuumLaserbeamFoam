@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 tests/m247Performance/runs/validation-YYYYMMDD-HHMMSS" >&2
+    exit 1
+fi
+WORK=$1
+ARCHIVE="${WORK%/}_localization-$(date +%Y%m%d-%H%M%S).tar.gz"
+python3 tests/m247Performance/localize_field_differences.py --work "$WORK"
+python3 tests/m247Performance/package_results.py --work "$WORK" --output "$ARCHIVE"
