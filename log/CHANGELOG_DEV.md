@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Frozen optical partition regression passes
+
+Verified 29 archive hashes and complete fixed-state profiles/provenance. Both corrections reduce power partition delta to 1.7e-13 W and spatial relative differences to about 1e-14, with equal advances/interface/bulk/cutoff counts and discarded power. Added RunRayTraversal --corrected for original-partition cache off/on coupled 180–182-us validation, both corrections enabled. Preparation explicitly disables frozen mode and corrections in ordinary probes. Collector verifies per-call correction coverage/bounds and equal work alongside existing strict physics/thermal/field/performance gates.74 Python tests and Bash syntax pass; coupled Ubuntu test pending. No production or weighted-partition approval.
+
 ## 2026-10-07 — Handoff sensitivity reduced; consistent cutoff candidate
 
 Verified 29 archive hashes, MPI packet/search checks, frozen profiles, binary provenance and zero reported shared-input differences. Handoff correction reduces power delta from 2.346 W to 2.563e-5 W, but strict power/spatial gates still fail. Added default-off consistentRayTermination to apply the existing ray-power cutoff every local iteration, with stopped-ray/discarded-power accounting and collector bounds. RunFrozenLaser --termination enables both candidates only in copied frozen cases and produces a distinct archive.71 local Python tests and Bash syntax pass; OpenFOAM compilation/optical regression pending Ubuntu. No promotion or speedup claim.

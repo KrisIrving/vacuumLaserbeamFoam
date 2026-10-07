@@ -42,7 +42,9 @@ def checkpoint(rank, time):
         raise ValueError(f'{rank}: expected one checkpoint at {time:g} s')
     return candidates[0]
 
-def prepare(source, output, start_us, duration_us, variant):
+def prepare(source, output, start_us, duration_us, variant, corrected_rays=False):
+    if corrected_rays and variant not in ('rayTraversalReference','rayTraversalCached'):
+        raise ValueError('Corrected transient pair requires traversal variants')
     source, output = source.resolve(), output.resolve()
     if not all(math.isfinite(x) for x in (start_us, duration_us)):
         raise ValueError('Times must be finite')
@@ -93,6 +95,7 @@ def prepare(source, output, start_us, duration_us, variant):
         shutil.copytree(state, destination/state.name)
     source_snapshot_sha256 = snapshot_digest(output)
     control = output/'system/controlDict'
+    set_entry(control, 'frozenLaserProbe', 'off')
     for key, value in {
         'startFrom':'startTime', 'startTime':f'{start:.12g}',
         'stopAt':'endTime', 'endTime':f'{end:.12g}',
@@ -103,6 +106,11 @@ def prepare(source, output, start_us, duration_us, variant):
         set_entry(control, key, value)
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
+    for key in ('preserveRayHandoffSample','consistentRayTermination'):
+        set_entry(output/'constant/LaserProperties',key,'true' if corrected_rays else 'false')
+    if corrected_rays:
+        set_entry(control,'writePrecision',17)
+        set_entry(control,'writeCompression','off')
     blend_variant = variant in ('phaseBlendNarrow','phaseBlendWide')
     seed_variant = variant in ('raySeedReference','raySeedCached')
     partition_variant = variant in ('rayPartitionReference','rayPartitionWeighted','frozenLaserReference','frozenLaserWeighted')
@@ -143,6 +151,8 @@ def prepare(source, output, start_us, duration_us, variant):
                     laser_performance_diagnostics=traversal_variant or variant=='laserProfileOn',
                     cached_ray_traversal=partition_variant or seed_variant or variant=='rayTraversalCached',
                     cartesian_ray_seed_search=variant=='raySeedCached',
+                    preserve_ray_handoff_sample=corrected_rays,
+                    consistent_ray_termination=corrected_rays,
                     phase_temperature_blend_half_width=blend_width,
                     purpose='mature-state performance and matched physics regression')
     (output/'probe.json').write_text(json.dumps(metadata, indent=2)+'\n')
@@ -155,10 +165,11 @@ def main():
     parser.add_argument('--start-us', type=float, default=180)
     parser.add_argument('--duration-us', type=float, default=2)
     parser.add_argument('--variant', choices=VARIANTS, default='baseline')
+    parser.add_argument('--corrected-rays',action='store_true')
     args = parser.parse_args()
     try:
         print(json.dumps(prepare(args.source, args.output, args.start_us,
-                                 args.duration_us, args.variant), indent=2))
+                                 args.duration_us, args.variant,args.corrected_rays), indent=2))
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Preparation failed: {error}\n')
 

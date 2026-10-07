@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Run corrected transient cache validation
+
+225102 frozen optical regression passes strict gates (power delta 1.7e-13 W, relative spatial differences about 1e-14; matching physical ray events and cutoff tail). Pull and run `./tests/m247Performance/RunRayTraversal --corrected`. Two 48-rank original-partition cases solve 180–182 us with both corrections enabled; only traversal caching differs. Each job has a 30-minute budget. Send the automatic `M247_ray-corrected-validation-..._review.tar.gz`. Collector checks full coupled physics/convergence, fields, cache work and per-step correction accounting. No weighted partition or legacy-physics/full-track approval implied. See tests/m247Performance/CORRECTED_RAYS.md. Earlier sections are checkpoint history.
+
 ## Run consistent-cutoff optical candidate
 
 223500 handoff review passes packet/input checks and greatly reduces partition differences, but strict optical gates still fail (power delta 2.563e-5 W). Local weak rays currently continue until rank exits, making threshold application partition-dependent. Added default-off consistentRayTermination, requiring the sample fix, with discarded-power accounting. Pull and run `./tests/m247Performance/RunFrozenLaser --termination`; send `M247_frozen-termination-..._review.tar.gz`. Same frozen inputs and strict gates; no transient or full-track test yet. See log/entries/2026-10-07-m247-handoff-result-termination.md. Earlier instructions are checkpoint history.

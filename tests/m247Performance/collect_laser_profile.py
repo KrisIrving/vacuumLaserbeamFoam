@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import math
 from pathlib import Path
 from collect_probe import read_probe, compare, parse_records
 from collect_thermal_validation import field_differences, residual_gate, final_state
@@ -101,7 +102,32 @@ def validate_rank_rows(rows, records, ranks):
     return [dict(rank=rank,**{k:sum(group[rank][k] for group in groups)
                 for k in required if k not in ('schema','time','rank')}) for rank in range(ranks)]
 
-def collect(work, traversal=False, validation=False, seed_search=False):
+def corrected_work(text,meta,calls):
+    if any(meta.get(k) is not True for k in ('preserve_ray_handoff_sample','consistent_ray_termination')):
+        raise ValueError('Corrected ray metadata missing')
+    for prefix in ('RAY_HANDOFF_DIAGNOSTICS','RAY_TERMINATION_DIAGNOSTICS'):
+        if parse_records(text,prefix)!=[dict(schema=1,enabled=1)]:
+            raise ValueError('Corrected ray runtime mode missing')
+    handoff=parse_records(text,'RAY_HANDOFF_WORK');termination=parse_records(text,'RAY_TERMINATION_WORK')
+    if len(handoff)!=calls or len(termination)!=calls or calls<=0:
+        raise ValueError('Corrected ray work does not cover all laser calls')
+    for index,(h,t) in enumerate(zip(handoff,termination)):
+        if (h.get('schema')!=1 or t.get('schema')!=1 or h.get('time')!=t.get('time')
+            or not meta['start_s']<h.get('time',-1)<=meta['end_s']+1e-12
+            or (index and h['time']<=handoff[index-1]['time'])
+            or not 0<=h.get('resumed',-1)<=h.get('crossings',-1)):
+            raise ValueError('Invalid corrected work time or handoff counts')
+        threshold=t.get('threshold',float('nan'));count=t.get('cutoffRays',float('nan'));power=t.get('discardedPower',float('nan'))
+        if (not all(math.isfinite(v) for v in (threshold,count,power)) or threshold<=0
+            or count!=int(count) or not 0<=count<=1536 or not 0<=power<=count*threshold+1e-12):
+            raise ValueError('Invalid corrected discarded-power accounting')
+    if abs(handoff[-1]['time']-meta['end_s'])>1e-12 or sum(h['resumed'] for h in handoff)<=0:
+        raise ValueError('Corrected work interval incomplete')
+    return dict(handoff=handoff,termination=termination)
+
+def collect(work, traversal=False, validation=False, seed_search=False, corrected_rays=False):
+    if corrected_rays and (not traversal or not validation or seed_search):
+        raise ValueError('Corrected ray pair requires broader traversal validation')
     if seed_search and not traversal:
         raise ValueError('Seed search requires paired traversal collection')
     if validation and not traversal:
@@ -110,6 +136,8 @@ def collect(work, traversal=False, validation=False, seed_search=False):
     names=('raySeedReference','raySeedCached') if seed_search else ('rayTraversalReference','rayTraversalCached') if traversal else ('laserProfileOff','laserProfileOn')
     cases=[work/v for v in names]
     probes=[read_probe(c) for c in cases]
+    if corrected_rays and any(p[0]['ranks']!=48 for p in probes):
+        raise ValueError('Corrected transient validation requires 48 ranks')
     if validation:
         for meta,_,_ in probes:
             if (abs(meta['start_s']-0.00018)>1e-12 or abs(meta['end_s']-0.000182)>1e-12
@@ -197,11 +225,28 @@ def collect(work, traversal=False, validation=False, seed_search=False):
                 profiling_job_overhead_ratio=runs[1]['elapsed_wall_s']/runs[0]['elapsed_wall_s'],
                 note='Instrumentation equivalence only; no speedup or physical closure approval is implied.')
     result.update(extra)
+    if corrected_rays:
+        packet=parse_records((work/'cachedSearchTest.log').read_text(),'RAY_PACKET_TEST')
+        if packet!=[dict(schema=1,failures=0)]: raise ValueError('MPI ray packet check missing or failed')
+        corrected=[]
+        for case,probe in zip(cases,probes):
+            txt=(case/'log.vacuumLaserbeamFoam').read_text()
+            rows=parse_records(txt,'LASER_PERF_DIAGNOSTICS')
+            if any(r['initialRaysMean']!=1536*r['callsMean'] for r in rows): raise ValueError('Corrected ray sampling changed')
+            calls=sum(r['callsMean'] for r in rows)
+            if calls!=probe[1]['steps']: raise ValueError('Requires one laser call per step')
+            corrected.append(corrected_work(txt,probe[0],calls))
+        result['corrected_ray_work']=corrected
+        result['corrected_ray_work_gate']=corrected[0]==corrected[1]
+        result['regression_gate']=result['regression_gate'] and result['corrected_ray_work_gate']
+        result['corrected_rays']=True
     if traversal:
         result['validation_scope']='180-182us' if validation else 'paired traversal'
         result['optimization']='cartesian seed interior' if seed_search else 'cached traversal'
         result['performance_gate']=(result['regression_gate'] and comparison['solver_loop_speedup']>=1.05 and comparison['job_wall_speedup']>=1.05)
         result['note']='Cached traversal candidate: require identical ray work, field/diagnostic regression and measured speedup. One short pair does not establish long-track performance or physical approval.'
+        if corrected_rays:
+            result['note']+=' Both cases enable sample handoff and consistent termination on the original partition. This compares cache off/on within corrected physics; it does not validate the correction against legacy physics or promote weighted partitioning.'
     output=work/'comparison'
     if output.exists(): raise ValueError('Comparison directory already exists')
     output.mkdir()
@@ -218,8 +263,9 @@ def main():
     parser.add_argument('--ray-traversal',action='store_true')
     parser.add_argument('--validation',action='store_true',help='Require the broader 180–182-us traversal pair')
     parser.add_argument('--seed-search',action='store_true')
+    parser.add_argument('--corrected-rays',action='store_true')
     args=parser.parse_args()
-    try: result=collect(args.work,args.ray_traversal,args.validation,args.seed_search)
+    try: result=collect(args.work,args.ray_traversal,args.validation,args.seed_search,args.corrected_rays)
     except (ValueError,OSError,KeyError) as error: parser.exit(1,f'Laser profile collection failed: {error}\n')
     print(f"Profiling equivalence gate: {result['regression_gate']}")
     if args.ray_traversal:

@@ -7,12 +7,20 @@ RUN_TAG=ray-traversal
 COLLECT_ARGS=(--ray-traversal)
 PREFLIGHT_ARGS=(--laser-profile)
 VARIANTS=(rayTraversalReference rayTraversalCached)
+PREPARE_ARGS=()
 if [[ "${1:-}" == --validation ]]; then
     shift
     DURATION_US=2
     WALL_HOURS=0.5
     RUN_TAG=ray-traversal-validation
     COLLECT_ARGS+=(--validation)
+elif [[ "${1:-}" == --corrected ]]; then
+    shift
+    DURATION_US=2
+    WALL_HOURS=0.5
+    RUN_TAG=ray-corrected-validation
+    COLLECT_ARGS+=(--validation --corrected-rays)
+    PREPARE_ARGS+=(--corrected-rays)
 elif [[ "${1:-}" == --seed-search ]]; then
     shift
     DURATION_US=2
@@ -59,7 +67,7 @@ trap bundle_on_exit EXIT
 python3 tests/m247Performance/check_solver.py "${PREFLIGHT_ARGS[@]}" --output "$WORK/solverCheck.json"
 for VARIANT in "${VARIANTS[@]}"; do
     python3 tests/m247Performance/prepare_probe.py --source "$SOURCE" --output "$WORK/$VARIANT" \
-        --start-us 180 --duration-us "$DURATION_US" --variant "$VARIANT"
+        --start-us 180 --duration-us "$DURATION_US" --variant "$VARIANT" "${PREPARE_ARGS[@]}"
     if [[ "$VARIANT" == "${VARIANTS[0]}" ]]; then
         RANKS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ranks"])' "$WORK/$VARIANT/probe.json")
         timeout 120s mpirun -np "$RANKS" "$FOAM_USER_APPBIN/m247CachedSearchTest" \
