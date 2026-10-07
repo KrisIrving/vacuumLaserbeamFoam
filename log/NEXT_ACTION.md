@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Current measured target after laser-profile-190239
+
+Build/library checks and profiling equivalence pass; all five final fields differ exactly0. Job36.04/37.04 s, observed profiling overhead2.78%. Round exchange consumes94.47% of inner laser mean time, but includes blocking waits; tracing max/mean12.82 indicates strong imbalance. Next development splits copy/gather/broadcast and rank tracing/merge costs before selecting equivalent exchange/ownership acceleration. Do not infer removable94.5% or change ray counts/physics. No additional Ubuntu action is needed for this review. See entries/2026-10-07-m247-laser-profile-result.md. Older actions below are superseded.
+
 ## Build repair for laser-profile-185645
 
 The solver cannot find the new laserPerformance.H through an existing lnInclude directory. Both RunLaserProfile and the library Allwmake now refresh it explicitly with wmakeLnInclude -u and check the header before compilation. Pull and rerun `./tests/m247Performance/RunLaserProfile`; send its new timestamped archive whether build succeeds or fails. No manual cleanup is needed. No new CFD or cost result exists yet. See entries/2026-10-07-m247-laser-lninclude-fix.md.

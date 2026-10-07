@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Verified laser profiling result
+
+190239 archive passes build/provenance/convergence/instrumentation regression; five saved final fields are identical. Exchange/wait path dominates mean laser time, with strong trace-rank imbalance. Recorded measured evidence and exchange/ownership optimization target; no new solver change or speedup claim in this review. See `entries/2026-10-07-m247-laser-profile-result.md`.
+
 ## 2026-10-07 — Refresh laser lnInclude on incremental builds
 
 User compilation exposed a missing new laserPerformance.H link in existing lnInclude. Added explicit refresh/header check in direct profiling build and library Allwmake; failures stop build dispatch. No ray/solver physics changes. Ubuntu rebuild pending. See `entries/2026-10-07-m247-laser-lninclude-fix.md`.
