@@ -35,7 +35,25 @@ The planned 4-um validation is:
 - run approximately 20-30 us;
 - compare against the corresponding 8-um history.
 
-## Immediate next gate — performance profile
+## Immediate next gate — mature-state performance pair
+
+The 2026-10-07 phase-1 development provides an optional ray-history optimization
+and MPI-aware schema-2 timers, including field/ray I/O and thermal cap hits.
+Start with `tests/m247Performance/README.md` and the independent180–182 us pair:
+
+    ./Allwmake -j 48
+    ./tests/m247Performance/RunPair
+
+The pair copies the completed reference case state and preserves the original.
+It tests default ray history versus `recordRayPaths false`; no measured speedup
+or completed Ubuntu validation is claimed yet. Send comparison JSON/CSV and
+both solver logs. Expected first-pair cost is around an hour plus preparation,
+with a2-hour budget per job. Details and failure rules are in the test README.
+
+Do not run the older initial-state10-us probe as the first gate when the mature
+180-us checkpoint is available. The existing probes below remain alternatives.
+
+## Existing performance probes
 
 The solver has optional PERF_DIAGNOSTICS instrumentation. It preserves the
 original operation order and is disabled unless requested by vacuumProperties.

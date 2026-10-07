@@ -258,7 +258,7 @@ void laserHeatSource::createInitialRays
         );
         rays[i].globalRayIndex_ = i;
         rays[i].currentCell_ = mesh.findCell(rayCoords[i]);
-        rays[i].path_.append(rayCoords[i]);
+        if (recordRayPaths_) rays[i].path_.append(rayCoords[i]);
     }
 }
 
@@ -368,6 +368,7 @@ laserHeatSource::laserHeatSource
       ? Switch(lookup("radialPolarHeatSource"))
       : lookupOrDefault<Switch>("Radial_Polar_HS", true)
     ),
+    recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
     laserNames_(0),
     laserDicts_(0),
     timeVsLaserPosition_(0),
@@ -863,8 +864,8 @@ void laserHeatSource::updateDeposition
     // the domain or deposit all of their power
     DynamicList<compactRay> remainingGlobalRays(rays);
 
-    // Reset the ray paths list
-    if (Pstream::master())
+    // Reset the optional visual ray trajectories.
+    if (recordRayPaths_ && Pstream::master())
     {
         rayPaths_[laserID].clear();
         rayPaths_[laserID].setSize(rays.size());
@@ -1207,7 +1208,7 @@ void laserHeatSource::updateDeposition
                 }
 
                 // Update the ray's path
-                curRay.path_.append(curRay.position_);
+                if (recordRayPaths_) curRay.path_.append(curRay.position_);
             }
         }
 
@@ -1220,7 +1221,7 @@ void laserHeatSource::updateDeposition
         // Record the latest ray paths
         // Note that once a ray has left the domain then its global path is no
         // longer updated so its path will be the final full path
-        if (Pstream::master())
+        if (recordRayPaths_ && Pstream::master())
         {
             forAll(remainingGlobalRays, rI)
             {
@@ -1238,6 +1239,7 @@ void laserHeatSource::updateDeposition
 
 void laserHeatSource::writeRayPathsToVTK()
 {
+    if (!recordRayPaths_) return;
     const Time& runTime = deposition_.time();
     if (Pstream::master())
     {
@@ -1344,6 +1346,7 @@ void laserHeatSource::writeRayPathsToVTK
 
 void laserHeatSource::writeRayPathVTKSeriesFile() const
 {
+    if (!recordRayPaths_) return;
     const Time& runTime = deposition_.time();
     if (Pstream::master())
     {

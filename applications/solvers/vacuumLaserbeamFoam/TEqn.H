@@ -130,9 +130,11 @@
 
         //ddte1 = fvc::ddt(epsilon1);
 
-        Info<< "Correcting epsilon1, mean residual = " << meanResidual
-            << ", max residual = " << maxResidual
-            << endl;
+        if (thermalCorrectorLogging)
+        {
+            Info<< "Correcting epsilon1, mean residual = " << meanResidual
+                << ", max residual = " << maxResidual << endl;
+        }
     }
     while
     (
@@ -144,6 +146,9 @@
      && iter <= maxTCorr
     );
 
-    perfThermalCorrectorsStep += iter;
+    performance.addThermalCorrectors
+    (
+        iter, iter > maxTCorr && maxResidual > epsilonTol.value()
+    );
     gradT = fvc::grad(T);
 }

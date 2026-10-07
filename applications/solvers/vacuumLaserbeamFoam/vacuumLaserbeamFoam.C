@@ -70,7 +70,7 @@ Authors
 #include "vacuumEvaporationModel.H"
 #include "vacuumRadiationModel.H"
 
-#include <chrono>
+#include "vacuumPerformance.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -97,17 +97,7 @@ int main(int argc, char *argv[])
     #include "initCorrectPhi.H"
     #include "createUfIfPresent.H"
 
-    typedef std::chrono::steady_clock perfClock;
-
-    scalar perfAlphaTotal = 0.0;
-    scalar perfPropsTotal = 0.0;
-    scalar perfLaserTotal = 0.0;
-    scalar perfMomentumTotal = 0.0;
-    scalar perfThermalTotal = 0.0;
-    scalar perfPressureTotal = 0.0;
-    scalar perfStepTotal = 0.0;
-    label perfStepCount = 0;
-    label perfThermalCorrectorsTotal = 0;
+    vacuumPerformance performance(performanceDiagnostics, runTime.value());
 
     if (interfaceTrackingScheme == "MULES")
     {
@@ -128,6 +118,8 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
+        performance.beginStep();
+        performance.start(vacuumPerformance::controls);
         #include "readControls.H"
         #include "readDyMControls.H"
 
@@ -155,20 +147,13 @@ int main(int argc, char *argv[])
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
-        const perfClock::time_point perfStepStart = perfClock::now();
-        scalar perfAlphaStep = 0.0;
-        scalar perfPropsStep = 0.0;
-        scalar perfLaserStep = 0.0;
-        scalar perfMomentumStep = 0.0;
-        scalar perfThermalStep = 0.0;
-        scalar perfPressureStep = 0.0;
-        label perfThermalCorrectorsStep = 0;
+        performance.stop(vacuumPerformance::controls);
 
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
 
-            const perfClock::time_point perfAlphaStart = perfClock::now();
+            performance.start(vacuumPerformance::alpha);
 
             if (interfaceTrackingScheme == "MULES")
             {
@@ -183,65 +168,44 @@ int main(int argc, char *argv[])
                 #include "isoAdvector/alphaEqnSubCycle.H"
             }
 
-            perfAlphaStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfAlphaStart
-            ).count();
+            performance.stop(vacuumPerformance::alpha);
 
-            const perfClock::time_point perfPropsStart = perfClock::now();
+            performance.start(vacuumPerformance::props);
             #include "updateProps.H"
-            perfPropsStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfPropsStart
-            ).count();
+            performance.stop(vacuumPerformance::props);
 
             // Update the laser deposition field
-            const perfClock::time_point perfLaserStart = perfClock::now();
+            performance.start(vacuumPerformance::laser);
             laser.updateDeposition
             (
                 alpha_filtered, n_filtered, electrical_resistivity
             );
-            perfLaserStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfLaserStart
-            ).count();
+            performance.stop(vacuumPerformance::laser);
 
-            const perfClock::time_point perfMixtureStart = perfClock::now();
+            performance.start(vacuumPerformance::props);
             mixture.correct();
-            perfPropsStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfMixtureStart
-            ).count();
+            performance.stop(vacuumPerformance::props);
 
             if (pimple.frozenFlow())
             {
                 continue;
             }
 
-            const perfClock::time_point perfMomentumStart = perfClock::now();
+            performance.start(vacuumPerformance::momentum);
             #include "UEqn.H"
-            perfMomentumStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfMomentumStart
-            ).count();
+            performance.stop(vacuumPerformance::momentum);
 
-            const perfClock::time_point perfThermalStart = perfClock::now();
+            performance.start(vacuumPerformance::thermal);
             #include "TEqn.H"
-            perfThermalStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfThermalStart
-            ).count();
+            performance.stop(vacuumPerformance::thermal);
 
             // --- Pressure corrector loop
-            const perfClock::time_point perfPressureStart = perfClock::now();
+            performance.start(vacuumPerformance::pressure);
             while (pimple.correct())
             {
                 #include "pEqn.H"
             }
-            perfPressureStep += std::chrono::duration<scalar>
-            (
-                perfClock::now() - perfPressureStart
-            ).count();
+            performance.stop(vacuumPerformance::pressure);
 
             if (pimple.turbCorr())
             {
@@ -249,67 +213,19 @@ int main(int argc, char *argv[])
             }
         }
 
-        const scalar perfThisStep = std::chrono::duration<scalar>
-        (
-            perfClock::now() - perfStepStart
-        ).count();
-
-        if (performanceDiagnostics)
-        {
-            perfAlphaTotal += perfAlphaStep;
-            perfPropsTotal += perfPropsStep;
-            perfLaserTotal += perfLaserStep;
-            perfMomentumTotal += perfMomentumStep;
-            perfThermalTotal += perfThermalStep;
-            perfPressureTotal += perfPressureStep;
-            perfStepTotal += perfThisStep;
-            perfThermalCorrectorsTotal += perfThermalCorrectorsStep;
-            ++perfStepCount;
-        }
-
+        performance.start(vacuumPerformance::history);
         // Update the melt history
         const volScalarField& alphaMetal = 
             mesh.lookupObject<volScalarField>("alpha.metal");
         condition = pos(alphaMetal - 0.5) * pos(epsilon1 - 0.5);
         meltHistory += condition;
+        performance.stop(vacuumPerformance::history);
 
+        performance.start(vacuumPerformance::fieldWrite);
         runTime.write();
+        performance.stop(vacuumPerformance::fieldWrite);
 
-        if (performanceDiagnostics && runTime.outputTime())
-        {
-            const scalar accounted =
-                perfAlphaTotal
-              + perfPropsTotal
-              + perfLaserTotal
-              + perfMomentumTotal
-              + perfThermalTotal
-              + perfPressureTotal;
-
-            Info<< "PERF_DIAGNOSTICS"
-                << " time=" << runTime.value()
-                << " steps=" << perfStepCount
-                << " thermalCorrectors=" << perfThermalCorrectorsTotal
-                << " stepWall_s=" << perfStepTotal
-                << " alpha_s=" << perfAlphaTotal
-                << " props_s=" << perfPropsTotal
-                << " laser_s=" << perfLaserTotal
-                << " momentum_s=" << perfMomentumTotal
-                << " thermal_s=" << perfThermalTotal
-                << " pressure_s=" << perfPressureTotal
-                << " other_s=" << max(perfStepTotal - accounted, scalar(0))
-                << endl;
-
-            perfAlphaTotal = 0.0;
-            perfPropsTotal = 0.0;
-            perfLaserTotal = 0.0;
-            perfMomentumTotal = 0.0;
-            perfThermalTotal = 0.0;
-            perfPressureTotal = 0.0;
-            perfStepTotal = 0.0;
-            perfStepCount = 0;
-            perfThermalCorrectorsTotal = 0;
-        }
-
+        performance.start(vacuumPerformance::diagnostics);
         if (writeVacuumDiagnostics && runTime.outputTime())
         {
             const scalar depositedPower =
@@ -367,13 +283,22 @@ int main(int argc, char *argv[])
                 << endl;
         }
 
+        performance.stop(vacuumPerformance::diagnostics);
+
+        performance.start(vacuumPerformance::rayIO);
         // Write ray paths to VTK files
         if (runTime.outputTime())
         {
             laser.writeRayPathsToVTK();
         }
 
+        performance.stop(vacuumPerformance::rayIO);
+
+        performance.start(vacuumPerformance::executionLog);
         runTime.printExecutionTime(Info);
+        performance.stop(vacuumPerformance::executionLog);
+        performance.endStep();
+        if (runTime.outputTime()) performance.report(runTime.value());
     }
 
     // Write a VTK series file for easy-opening of the ray files

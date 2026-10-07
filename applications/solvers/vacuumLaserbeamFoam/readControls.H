@@ -25,5 +25,8 @@ const dimensionedScalar epsilonRel
     readScalar(meltingDict.lookup("epsilonRelaxation"))
 );
 
+const bool thermalCorrectorLogging =
+    meltingDict.lookupOrDefault<bool>("thermalCorrectorLogging", true);
+
 const bool damperSwitch =
     meltingDict.lookupOrDefault<bool>("damperSwitch", false);

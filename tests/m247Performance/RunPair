@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/$(date +%Y%m%d-%H%M%S)}
+START_US=${3:-180}
+DURATION_US=${4:-2}
+
+for VARIANT in baseline noRayPaths; do
+    python3 tests/m247Performance/prepare_probe.py \
+        --source "$SOURCE" --output "$WORK/$VARIANT" \
+        --start-us "$START_US" --duration-us "$DURATION_US" --variant "$VARIANT"
+    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 2
+done
+python3 tests/m247Performance/collect_probe.py \
+    --reference "$WORK/baseline" --candidate "$WORK/noRayPaths" --output "$WORK/comparison"
+echo "Results retained at $WORK. Send comparison/comparison.json and both solver logs."

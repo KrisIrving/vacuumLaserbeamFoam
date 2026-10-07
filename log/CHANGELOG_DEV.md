@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-07 — M247 performance phase 1
+
+Added opt-in no-ray-history mode, MPI-aware/I/O-inclusive profiling and an
+independent180–182-us comparison harness with a wall budget. Defaults preserve
+ray history and thermal residual logging. Local tool tests pass; Ubuntu build,
+physical comparison and actual speedup remain pending. See
+`entries/2026-10-07-m247-performance-phase1.md` and
+`tests/m247Performance/README.md`.
+
 ## 2026-09-28 — Phase 0/1 bootstrap
 
 Branch: `dev/vacuum-solver`

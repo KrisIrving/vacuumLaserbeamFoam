@@ -91,6 +91,10 @@ class laserHeatSource
         //  laserbeamfoam way or in radial and polar coordinates
         const Switch radialPolarHeatSource_;
 
+        //- Keep visual ray trajectories (also carried in MPI ray messages).
+        //  Disable only after a matched deposition/CFD comparison.
+        const Switch recordRayPaths_;
+
         //- List of the laser names
         wordList laserNames_;
 
