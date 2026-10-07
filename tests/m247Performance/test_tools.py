@@ -881,5 +881,96 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'outside'):
             prepare(self.source,self.source/'probe',180,2,'baseline')
 
+class RegionAuditTests(unittest.TestCase):
+    def fixture(self,times=(0.0001,)):
+        lines=['M247_REGION_CONFIG schema=1 liquidus=1631 solidus=1537 alphaMin=0.01 metalMin=0.5 epsilonMin=0.01 fastSpeed=1 thermalThreshold=1368.15']
+        for t in times:
+            lines.append(f'M247_REGION_STATE schema=1 time={t} ranks=48 invalid=0 alphaBounds=0 epsilonBounds=0 metalTmax=4200 Tmax=4500 Umax=80 liquidVolume=1e-12')
+            for r in range(6):
+                lines.append(f'M247_REGION schema=1 time={t} region={r} cells={756000 if r==0 else 20} volume={5.16096e-10 if r==0 else 1e-12} xmin=-0.00052 xmax=0.00032 ymin=0 ymax=0.00096 zmin=-0.00032 zmax=0.00032')
+        return '\n'.join(lines+['End'])
+    def test_complete_snapshots_require_ordered_six_regions(self):
+        from region_audit import read_regions
+        self.assertEqual(len(read_regions(self.fixture(),[0.0001])),1)
+        with self.assertRaisesRegex(ValueError,'ordering'):
+            read_regions(self.fixture().replace('region=5','region=4'),[0.0001])
+        with self.assertRaisesRegex(ValueError,'Missing'):
+            read_regions('\n'.join(l for l in self.fixture().splitlines() if 'region=5' not in l),[0.0001])
+    def test_wrong_times_ranks_material_and_incomplete_logs_rejected(self):
+        from region_audit import read_regions
+        for text in (self.fixture().replace('ranks=48','ranks=24'),self.fixture().replace('solidus=1537','solidus=1587'),self.fixture().replace('\nEnd','')):
+            with self.assertRaises(ValueError): read_regions(text,[0.0001])
+        with self.assertRaises(ValueError):read_regions(self.fixture(),[0.00012])
+    def test_region_escape_nonfinite_and_invalid_mesh_rejected(self):
+        from region_audit import read_regions
+        for text in (self.fixture().replace('cells=756000','cells=755000'),self.fixture().replace('invalid=0','invalid=1'),self.fixture().replace('Tmax=4500','Tmax=1e999'),self.fixture().replace('region=5 cells=20 volume=1e-12 xmin=-0.00052','region=5 cells=20 volume=1e-12 xmin=-0.001')):
+            with self.assertRaises(ValueError):read_regions(text,[0.0001])
+    def test_empty_region_requires_zero_volume(self):
+        from region_audit import read_regions
+        text=self.fixture().replace('region=5 cells=20 volume=1e-12','region=5 cells=0 volume=1e-12')
+        with self.assertRaisesRegex(ValueError,'Empty'):read_regions(text,[0.0001])
+    def test_cost_reserves_time_and_distinguishes_assumptions(self):
+        from region_audit import cost_scenarios
+        summary=dict(job_wall_s=340,duration_us=2,ranks=48,sections={k:dict(mean_fraction=v) for k,v in (('alpha',.03),('momentum',.03),('pressure',.10),('laser',.50))})
+        r=cost_scenarios(summary)
+        four=r['central_spacing_scenarios'][1]
+        self.assertEqual(four['assumed_work_multiplier'],16)
+        self.assertAlmostEqual(four['pilot_2us_hours'],340*16/3600)
+        self.assertAlmostEqual(four['max_us_in_19p2_hours']*170*16,19.2*3600)
+        self.assertAlmostEqual(r['flow_only_elimination_ceiling'],1/.84)
+    def test_keyhole_slope_uses_supported_every_10us_series(self):
+        from region_audit import trend
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'depth.csv'
+            header='time_s,keyhole_depth_um,surface_connected,bottom_support_vertices\n'
+            data=''.join(f'{u*1e-6},{u*1.2},yes,20\n' for u in range(100,201,10))
+            path.write_text(header+data)
+            self.assertAlmostEqual(trend(path)['ols_150_200_um_per_us'],1.2)
+            self.assertFalse(trend(path)['plateau_approved'])
+            path.write_text((header+data).replace('yes','fallback',1))
+            with self.assertRaisesRegex(ValueError,'Disconnected'):trend(path)
+    def test_audit_reports_and_partial_build_packaged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'region-budget';work.mkdir()
+            for name in ('build.log','auditInputs.json','sourceRegionAudit.log','regionAuditReview.json','regionEnvelopes.csv'):
+                (work/name).write_text('data')
+            output,m=package(work,exit_code=1)
+            self.assertEqual(m['variants'],[])
+            self.assertEqual(len(m['files']),5)
+            self.assertEqual(m['wrapper_exit_code'],1)
+            with tarfile.open(output) as archive:
+                self.assertIn('region-budget_regionEnvelopes.csv',archive.getnames())
+    def test_collection_preserves_failed_boundary_gate_and_checks_hashes(self):
+        from region_audit import collect,sha,SOURCE_TIMES,PAIR_TIMES
+        from package_results import FILES
+        with tempfile.TemporaryDirectory() as directory:
+            w=Path(directory);hashes={}
+            for variant in ('rayImpactLegacy','rayImpactCorrected'):
+                for relative in FILES:
+                    if relative in ('capture.log','captureRun.json'):continue
+                    p=w/variant/relative;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('data')
+                    hashes[f'{variant}/{relative}']=sha(p)
+            (w/'sourceKeyholeDepth.csv').write_text('time_s,keyhole_depth_um,surface_connected,bottom_support_vertices\n'+''.join(f'{u*1e-6},{u},yes,20\n' for u in range(100,201,10)))
+            (w/'sourceMoltenExtent.csv').write_text('reference')
+            for name in ('sourceKeyholeDepth.csv','sourceMoltenExtent.csv'):hashes[name]=sha(w/name)
+            (w/'auditInputs.json').write_text(json.dumps(dict(schema=1,read_only=True,source_times_s=SOURCE_TIMES,pair_times_s=PAIR_TIMES,reference_sha256=hashes)))
+            for log,times in (('sourceRegionAudit.log',SOURCE_TIMES),('legacyRegionAudit.log',PAIR_TIMES),('correctedRegionAudit.log',PAIR_TIMES)):
+                (w/log).write_text(self.fixture(times))
+            summary=dict(job_wall_s=340,duration_us=2,ranks=48,sections={k:dict(mean_fraction=v) for k,v in (('alpha',.03),('momentum',.03),('pressure',.10),('laser',.50))})
+            with patch('region_audit.read_pair',return_value=[({},summary,[]),({},summary,[])]):r=collect(w)
+            self.assertTrue(r['execution_gate'])
+            self.assertFalse(r['molten_snapshot_boundary_gate_80um'])
+            self.assertFalse(r['production_approved'])
+            self.assertEqual(r['fine_box_candidate']['clipped_axes'],['x','y','z'])
+            self.assertTrue((w/'regionEnvelopes.csv').is_file())
+            (w/'sourceMoltenExtent.csv').write_text('changed')
+            with self.assertRaisesRegex(ValueError,'changed'):collect(w)
+    def test_wrong_impact_modes_rejected_before_reference_copies(self):
+        from region_audit import read_pair
+        p=({},dict(),[])
+        m=dict(variant='rayImpactLegacy',ranks=48,start_s=0.00018,end_s=0.000182,duration_us=2,cached_ray_traversal=False)
+        with patch('region_audit.read_probe',return_value=(m,{},[])),patch('region_audit.compare'):
+            with self.assertRaisesRegex(ValueError,'modes'):read_pair(Path('unused'))
+
 if __name__=='__main__':
     unittest.main()

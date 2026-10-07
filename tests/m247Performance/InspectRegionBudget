@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+IMPACT=${2:-$(python3 -c 'from pathlib import Path; p=sorted(p for p in Path("tests/m247Performance/runs").glob("ray-physics-impact-*") if (p/"rayImpactCorrected/run.json").is_file() and (p/"rayImpactLegacy/run.json").is_file()); print(p[-1] if p else "")')}
+WORK=${3:-tests/m247Performance/runs/region-budget-$(date +%Y%m%d-%H%M%S)}
+JOBS=${4:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
+[[ -d "$SOURCE" && -d "$IMPACT" ]] || { echo "Source/physics-impact pair missing; supply SOURCE IMPACT arguments" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "source=$SOURCE impact=$IMPACT"
+    echo "Read-only existing snapshots; no CFD solver launched"
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+python3 tests/m247Performance/region_audit.py --prepare --source "$SOURCE" --impact "$IMPACT" --work "$WORK"
+( cd tests/m247Performance/regionAudit && wmake -j "$JOBS" ) 2>&1 | tee "$WORK/build.log"
+UTILITY=${FOAM_USER_APPBIN:?Source the OpenFOAM environment}/m247RegionAudit
+sha256sum "$UTILITY" tests/m247Performance/regionAudit/regionAudit.C > "$WORK/auditBinary.txt"
+echo "Reading six original snapshots on 48 ranks; 10-minute utility budget"
+timeout --kill-after=30s 600s mpirun -np 48 "$UTILITY" -parallel -case "$SOURCE" \
+    -time '0.0001,0.00012,0.00014,0.00016,0.00018,0.0002' \
+    2>&1 | tee "$WORK/sourceRegionAudit.log"
+for POLICY in Legacy Corrected; do
+    if [[ "$POLICY" == Legacy ]]; then LABEL=legacy; else LABEL=corrected; fi
+    echo "Reading existing rayImpact$POLICY snapshots; no time advancement"
+    timeout --kill-after=30s 600s mpirun -np 48 "$UTILITY" -parallel \
+        -case "$IMPACT/rayImpact$POLICY" -time '0.00018,0.000181,0.000182' \
+        2>&1 | tee "$WORK/${LABEL}RegionAudit.log"
+done
+python3 tests/m247Performance/region_audit.py --work "$WORK" 2>&1 | tee "$WORK/collection.log"

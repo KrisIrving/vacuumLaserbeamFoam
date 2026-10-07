@@ -1,6 +1,21 @@
 # NEXT ACTION — M247 fast-track checkpoint
 
-Updated: 2026-10-07
+Updated: 2026-10-08
+
+## Read existing regional geometry/cost; no further CFD pair now
+
+233712 impact review completes successfully but strict legacy equality fails.
+Localized metal maxT50.631K/maxU0.08873m/s, alpha difference0.015813 and no0.05
+crossings; no production promotion. Laser still50% of loop; removing all flow
+stages can only yield1.19x in this window. Original late keyhole grows0.87um/us.
+Next pull and run `./tests/m247Performance/InspectRegionBudget`. It builds only
+a read-only parallel utility, reads original100–200us and existing impact fields,
+and packages material-filtered envelopes/occupancy/boundary/cost data. No CFD
+solver, reconstruction or field writes. Send M247_region-budget-..._review.tar.gz.
+This supplies sizing for fixed local fine mesh/coarse thermal coupling; actual
+4um cost starts with a bounded2us pilot after mapping is checked. See
+tests/m247Performance/REGION_BUDGET.md and entries/2026-10-08-m247-ray-impact-region-budget.md.
+Earlier sections below are checkpoint history.
 
 ## Run legacy/corrected physics-impact pair
 

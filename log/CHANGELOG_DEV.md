@@ -1,5 +1,17 @@
 # Development changelog
 
+## 2026-10-08 — Ray impact reviewed; regional/domain cost audit
+
+Verified32archivehashes,166convergedsteps/no caps and full corrected MPI/cutoff
+records. Strict legacy equality fails; metal maxT50.631K/maxU0.08873m/s, final
+absorbed-power change0.0590%; no physical promotion. Original late keyhole still
+grows0.87um/us. Added read-only48-rank field envelope/volume/mask utility and
+InspectRegionBudget with automatic provenance/archive, boundary clearances,
+keyhole trend and explicit fine-mesh/full-track cost scenarios. No CFD equations,
+source fields or defaults changed.85Python tests/Bash syntax pass; Ubuntu utility
+build/reductions pending. Regional sizing feeds local refinement and conservative
+thermal/fluid coupling development, not another legacy/corrected CFD pair.
+
 ## 2026-10-07 — Corrected transient cache pass; physical impact harness
 
 Verified31archivehashes/full interval and correction/rank records.166 converged steps/no caps, seven reported final-field differences0; strict regression/performance pass,377.372 to349.341s (1.08024x). Added cached original-partition legacy/corrected180–182us impact pair with expected policy switches, strict equality reporting, separate execution gate, per-step correction accounting and automatic regional/worst-cell localization. No new solver algorithm or physical approval.76 Python tests and Bash syntax pass; Ubuntu impact run pending.

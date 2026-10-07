@@ -19,7 +19,7 @@ FILES = {
     'constant/LaserProperties': 'LaserProperties',
     'constant/transportProperties': 'transportProperties',
 }
-BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log', 'partition.log', 'partitionWeight.json', 'initialPartitionCheck.json', 'frozenInputCheck.json')
+BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log', 'partition.log', 'partitionWeight.json', 'initialPartitionCheck.json', 'frozenInputCheck.json', 'auditInputs.json', 'auditBinary.txt', 'sourceRegionAudit.log', 'legacyRegionAudit.log', 'correctedRegionAudit.log', 'sourceKeyholeDepth.csv', 'sourceMoltenExtent.csv', 'regionAuditReview.json', 'regionEnvelopes.csv')
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
