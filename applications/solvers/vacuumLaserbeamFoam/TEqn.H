@@ -3,12 +3,34 @@
     scalarField residual(epsilon1.primitiveField().size(), 1.0);
     scalar maxResidual = 1.0;
     scalar meanResidual = 1.0;
+    scalar phaseTemperatureResidual = 0;
     //scalar Tresidual = 1.0;
 
     TRHS *= 0.0;
 
     rhoCp = rho*cp;
     rhophicp = fvc::interpolate(cp)*rhoPhi;
+
+    if (boundedEnthalpyCorrection)
+    {
+        label invalid = 0;
+        forAll(residual, celli)
+        {
+            if
+            (
+                cp[celli] <= 0 || LatentHeat[celli] <= 0
+             || TLiquidus[celli] <= TSolidus[celli]
+            ) ++invalid;
+        }
+        reduce(invalid, sumOp<label>());
+        if (invalid)
+        {
+            FatalErrorInFunction
+                << "Enthalpy correction requires positive cp, latent heat"
+                << " and melting interval in every cell"
+                << exit(FatalError);
+        }
+    }
 
     // const volTensorField gradU(fvc::grad(U));
     // volTensorField tau
@@ -106,16 +128,35 @@
 
         Tcorr = (TLiquidus - TSolidus)*epsilon1 + TSolidus;
 
-        epsilon1 =
-            max
+        if (boundedEnthalpyCorrection)
+        {
+            // Account for both latent and sensible enthalpy slopes.
+            // Do not weaken the residual tolerance or iteration cap.
+            epsilon1 = max
             (
                 min
                 (
-                    epsilon1 + (epsilonRel*cp/LatentHeat)*(T - Tcorr),
+                    epsilon1
+                  + (epsilonRel*cp
+                    /(LatentHeat + cp*(TLiquidus - TSolidus)))*(T - Tcorr),
                     scalar(1)
                 ),
                 scalar(0)
             );
+        }
+        else
+        {
+            epsilon1 =
+                max
+                (
+                    min
+                    (
+                        epsilon1 + (epsilonRel*cp/LatentHeat)*(T - Tcorr),
+                        scalar(1)
+                    ),
+                    scalar(0)
+                );
+        }
 
         residual =
             mag
@@ -126,6 +167,26 @@
 
         maxResidual = gMax(residual);
 
+        if (boundedEnthalpyCorrection)
+        {
+            // Small updates alone can hide under-relaxation. Also enforce
+            // the phase relation in kelvin, including the pure-phase bounds.
+            phaseTemperatureResidual = 0;
+            forAll(residual, celli)
+            {
+                scalar mismatch = 0;
+                if (epsilon1[celli] <= 0)
+                    mismatch = max(T[celli] - TSolidus[celli], scalar(0));
+                else if (epsilon1[celli] >= 1)
+                    mismatch = max(TLiquidus[celli] - T[celli], scalar(0));
+                else
+                    mismatch = mag(T[celli] - TSolidus[celli]
+                        - (TLiquidus[celli]-TSolidus[celli])*epsilon1[celli]);
+                phaseTemperatureResidual = max(phaseTemperatureResidual, mismatch);
+            }
+            reduce(phaseTemperatureResidual, maxOp<scalar>());
+        }
+
         meanResidual = gSum(residual*mesh.V())/gSum(mesh.V().field());
 
         //ddte1 = fvc::ddt(epsilon1);
@@ -134,6 +195,9 @@
         {
             Info<< "Correcting epsilon1, mean residual = " << meanResidual
                 << ", max residual = " << maxResidual << endl;
+            if (boundedEnthalpyCorrection)
+                Info<< "Phase temperature residual = "
+                    << phaseTemperatureResidual << " K" << endl;
         }
     }
     while
@@ -142,13 +206,22 @@
             ++iter < minTCorr
          // || (meanResidual > epsilonTol.value())
          || (maxResidual > epsilonTol.value())
+         || (boundedEnthalpyCorrection
+          && phaseTemperatureResidual > phaseTemperatureTolerance)
         )
      && iter <= maxTCorr
     );
 
     performance.addThermalCorrectors
     (
-        iter, iter > maxTCorr && maxResidual > epsilonTol.value()
+        iter, iter > maxTCorr
+           && (maxResidual > epsilonTol.value()
+            || (boundedEnthalpyCorrection
+             && phaseTemperatureResidual > phaseTemperatureTolerance))
     );
+    if (thermalResidualDiagnostics)
+    {
+        #include "thermalResidualDiagnostics.H"
+    }
     gradT = fvc::grad(T);
 }

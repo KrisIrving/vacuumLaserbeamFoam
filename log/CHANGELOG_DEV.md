@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — M247 thermal convergence investigation
+
+Reviewed both full Ubuntu logs: all 25,066 phase corrections per run have max increment 1, while T linear solves take 1–2 iterations. Added default-off residual cell diagnostics and an experimental enthalpy slope correction with an additional phase-temperature gate. Added a 0.2-us legacy/candidate probe. Sixteen local harness/model tests pass; Ubuntu build and CFD validation are pending. See `entries/2026-10-07-m247-thermal-log-review.md` and `tests/m247Performance/THERMAL_PROBE.md`.
+
 ## 2026-10-07 — M247 performance phase 1
 
 Added opt-in no-ray-history mode, MPI-aware/I/O-inclusive profiling and an

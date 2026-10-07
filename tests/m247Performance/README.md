@@ -1,5 +1,7 @@
 # M247 mature-state performance pair
 
+Ubuntu result: the first ray pair measured 1.120x job speedup, but both modes hit the thermal cap in all 166 steps. The next priority is the short nonlinear thermal investigation described in [THERMAL_PROBE.md](THERMAL_PROBE.md), using `RunThermalProbe`. The ray pair below remains available; earlier pending-execution statements describe its original delivery status.
+
 This first performance change targets optional visual ray history. In the
 original tracer every ray appends points while travelling; the entire history
 is serialized in `compactRay` and carried through MPI gather/broadcast. A

@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/thermal-$(date +%Y%m%d-%H%M%S)}
+START_US=${3:-180}
+DURATION_US=${4:-0.2}
+for VARIANT in thermalLegacy enthalpyBounded; do
+    echo "Preparing $VARIANT at $WORK/$VARIANT"
+    python3 tests/m247Performance/prepare_probe.py \
+        --source "$SOURCE" --output "$WORK/$VARIANT" \
+        --start-us "$START_US" --duration-us "$DURATION_US" --variant "$VARIANT"
+    echo "Running $VARIANT; live output: $WORK/$VARIANT/log.vacuumLaserbeamFoam"
+    python3 tests/m247Performance/run_probe.py --case "$WORK/$VARIANT" --wall-hours 0.25
+done
+echo "Send both solver logs and probe.json/run.json files from $WORK."
+echo "This is a convergence investigation; no production validation PASS is claimed."

@@ -28,5 +28,26 @@ const dimensionedScalar epsilonRel
 const bool thermalCorrectorLogging =
     meltingDict.lookupOrDefault<bool>("thermalCorrectorLogging", true);
 
+// Experimental correction: same interior fixed point, different iteration.
+const bool boundedEnthalpyCorrection =
+    meltingDict.lookupOrDefault<bool>("boundedEnthalpyCorrection", false);
+const bool thermalResidualDiagnostics =
+    meltingDict.lookupOrDefault<bool>("thermalResidualDiagnostics", false);
+const scalar phaseTemperatureTolerance =
+    meltingDict.lookupOrDefault<scalar>("phaseTemperatureTolerance", 0.01);
+
+if
+(
+    boundedEnthalpyCorrection
+ && (epsilonRel.value() <= 0 || epsilonRel.value() > 1
+     || phaseTemperatureTolerance <= 0)
+)
+{
+    FatalErrorInFunction
+        << "boundedEnthalpyCorrection requires 0 < epsilonRelaxation <= 1"
+        << " and positive phaseTemperatureTolerance (K)"
+        << exit(FatalError);
+}
+
 const bool damperSwitch =
     meltingDict.lookupOrDefault<bool>("damperSwitch", false);

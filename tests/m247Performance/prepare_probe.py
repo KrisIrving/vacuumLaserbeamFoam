@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 
-VARIANTS = ('baseline', 'noRayPaths', 'quietThermal')
+VARIANTS = ('baseline', 'noRayPaths', 'quietThermal', 'thermalLegacy', 'enthalpyBounded')
 
 def snapshot_digest(directory):
     digest = hashlib.sha256()
@@ -104,9 +104,14 @@ def prepare(source, output, start_us, duration_us, variant):
     set_entry(output/'constant/vacuumProperties', 'performanceDiagnostics', 'true')
     set_entry(output/'constant/vacuumProperties', 'writeDiagnostics', 'true')
     set_entry(output/'constant/LaserProperties', 'recordRayPaths',
-              'false' if variant == 'noRayPaths' else 'true')
+              'false' if variant in ('noRayPaths', 'thermalLegacy', 'enthalpyBounded') else 'true')
     set_entry(output/'system/fvSolution', 'MELTING/thermalCorrectorLogging',
               'false' if variant == 'quietThermal' else 'true')
+    set_entry(output/'system/fvSolution', 'MELTING/boundedEnthalpyCorrection',
+              'true' if variant == 'enthalpyBounded' else 'false')
+    set_entry(output/'system/fvSolution', 'MELTING/thermalResidualDiagnostics',
+              'true' if variant in ('thermalLegacy', 'enthalpyBounded') else 'false')
+    set_entry(output/'system/fvSolution', 'MELTING/phaseTemperatureTolerance', '0.01')
     metadata = dict(schema=1, source=str(source), variant=variant,
                     start_s=start, end_s=end, duration_us=duration_us,
                     ranks=len(ranks), checkpoint=states[0].name,

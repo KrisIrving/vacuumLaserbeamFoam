@@ -75,6 +75,22 @@ class CollectorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'physical diagnostic'):
             read_probe(self.candidate)
 
+class EnthalpyModelTests(unittest.TestCase):
+    def test_interface_scalar_model_converges_without_clipped_two_cycle(self):
+        # Analytical isolated-cell model, not a CFD regression test.
+        cp, latent, span, solidus = 540.0, 9001.0, 94.0, 1537.0
+        enthalpy = cp*solidus + 0.5*(latent + cp*span)
+        outcomes = []
+        for bounded in (False, True):
+            fraction = 0.2
+            for _ in range(151):
+                temperature = (enthalpy-latent*fraction)/cp
+                denominator = latent + cp*span if bounded else latent
+                fraction = max(0.0,min(1.0,fraction+0.5*cp/denominator*(temperature-solidus-span*fraction)))
+            outcomes.append(fraction)
+        self.assertIn(outcomes[0],(0.0,1.0))
+        self.assertAlmostEqual(outcomes[1],0.5,places=12)
+
 class PreparationTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);self.source=self.root/'source';self.source.mkdir()
@@ -109,6 +125,21 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'already exists'):
             prepare(self.source,target,180,2,'baseline')
         self.assertEqual((target/'keep').read_text(),'keep')
+    def test_thermal_probe_changes_only_candidate_correction(self):
+        calls = {}
+        digests = []
+        for variant in ('thermalLegacy', 'enthalpyBounded'):
+            entries = {}
+            with patch('prepare_probe.set_entry', side_effect=lambda path,key,value:entries.update({key:value})):
+                meta = prepare(self.source,self.root/variant,180,0.2,variant)
+            calls[variant] = entries
+            digests.append(meta['source_snapshot_sha256'])
+            self.assertEqual(entries['recordRayPaths'],'false')
+            self.assertEqual(entries['MELTING/thermalResidualDiagnostics'],'true')
+            self.assertEqual(entries['MELTING/phaseTemperatureTolerance'],'0.01')
+        self.assertEqual(digests[0],digests[1])
+        differing = [k for k in calls['thermalLegacy'] if calls['thermalLegacy'][k] != calls['enthalpyBounded'][k]]
+        self.assertEqual(differing,['MELTING/boundedEnthalpyCorrection'])
     def test_laser_clamp_rejected(self):
         with self.assertRaisesRegex(ValueError,'laser tables'):
             prepare(self.source,self.root/'probe',180,30,'baseline')
