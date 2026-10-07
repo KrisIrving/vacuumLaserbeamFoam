@@ -2,6 +2,10 @@
 
 Updated: 2026-10-07
 
+## Decision after 213305 partition review
+
+The weighted partition is rejected: job 323.333 to 451.468 s (0.71618x), seven final fields and physical diagnostics fail. Tracing becomes more balanced but exchange rounds rise 2.27x and thermal cost rises 74.7%; cell counts range 155–31568/rank. Keep the original partition, validated traversal cache and seed off. No repeat pair or user CFD run is needed now. Next implement a fixed-state optical comparison across decompositions to isolate ray transport sensitivity before exchanging backends or sweeping weights. See log/entries/2026-10-07-m247-ray-partition-result.md. The instructions below describe the completed experiment, not the next requested run.
+
 ## Run the ray-weighted partition experiment
 
 Pull feat/m247-material-port and run `./tests/m247Performance/RunRayPartition` on Ubuntu. No C++ rebuild is needed. Two copied 48-rank cases compare the original partition against checkpoint-rayQ-weighted Scotch over 180–182 us, with a 30-minute CFD budget per case. Initial global mesh/field checks precede both jobs; final fields are compared on the original global mesh after reconstruction. Send the automatically generated `M247_ray-partition-..._review.tar.gz`, including on failure. Weighting is a proxy, so speedup is unverified and strict regression gates remain unchanged. See tests/m247Performance/RAY_PARTITION.md.

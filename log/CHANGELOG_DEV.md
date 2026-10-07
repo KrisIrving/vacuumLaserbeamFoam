@@ -1,5 +1,9 @@
 # Development changelog
 
+## 2026-10-07 — Weighted partition rejected; isolate optical sensitivity
+
+Verified all 25 archive hashes and independently checked both complete logs, binary/input provenance, thermal convergence, sampling and global/rank profiles. Weighted repartition improves tracing balance but increases job time by 39.63%, exchange rounds by 2.27x and thermal cost by 74.7%. Seven final field norms and physical diagnostics fail; initial internal field checks report zero differences. Retain original partition. Next development is fixed-state optical comparison across decompositions; no additional Ubuntu run requested in this review. Raw field norms were generated on Ubuntu, not recomputed from this archive.
+
 ## 2026-10-07 — Ray-weighted partition benchmark
 
 Added a matched original/weighted Scotch benchmark using checkpoint rayQ, native reconstruction/decomposition, exact initial checks and serial global final-field comparison. Retains validated cache, sampling and thermal controls; verifies rank counters within each partition without demanding equal cross-partition work. Each CFD job is budgeted at 30 minutes. Automatic archives include native logs, initial checks, weights and distinct variant evidence. No solver code changes or measured acceleration claim; Ubuntu validation pending.
