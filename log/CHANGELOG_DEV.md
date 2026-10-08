@@ -1,3 +1,5 @@
+2026-10-08: Protected162215 smoke caught48 hot cells never refined; no large run. Replace protected-mode point-average candidate selection with exact binary-cell hook, require8 native selection witnesses; archive failure fixture and error register added. 120 local tests pass; native fix still pending.
+
 2026-10-08: 160259 moving-window native prototype passed; peak1.32048M cells,58.40s updates. Added opt-in frozen hot/molten wake retention with strict marker/coverage gates and protected small preflight; 118 tests pass, new native run pending.
 
 Reviewed moving-window154937:8archive files SHA256/size valid,exit1,no missing.

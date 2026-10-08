@@ -1309,6 +1309,10 @@ class MovingWindowTests(unittest.TestCase):
                 self.assertEqual(command.call_count,1)
             report=json.loads((work/'movingWindowSmokeReview.json').read_text())
             self.assertFalse(report['passed'])
+            self.assertEqual(report['failure_stage'],'small_mesh_preflight')
+            self.assertEqual(report['error_type'],'CalledProcessError')
+            self.assertFalse(report['large_case_started'])
+            self.assertTrue(report['error'])
             self.assertTrue((work/'movingWindowSmoke_blockMesh.log').is_file())
             _,manifest=package(work,exit_code=1)
             self.assertIn('movingWindowSmokeReview.json',{f['source'] for f in manifest['files']})
@@ -1345,7 +1349,8 @@ class MovingWindowTests(unittest.TestCase):
         for i,line in enumerate(lines):
             if line.startswith('M247_MOVING_WINDOW '):
                 step=int(line.split('step=')[1].split()[0])
-                lines[i]+=f' protectWake=1 wakeCells=100 wakeCoveredCells={0 if step==0 else 100} outsideWakeCells=40 mappedWakeVolume=1e-12'
+                lines[i]+=f' directCellSelection=1 protectWake=1 wakeCells=100 wakeCoveredCells={0 if step==0 else 100} outsideWakeCells=40 mappedWakeVolume=1e-12'
+        lines.extend(f'M247_MOVING_CANDIDATES schema=1 timeIndex={180000+step} cells={756000 if step==1 else 1200000} directCellSelection=1 requested=1000 selected=1000' for step in range(1,9))
         return '\n'.join(lines)+'\n'
 
     def test_protected_wake_requires_coverage_outside_window_and_marker_conservation(self):
@@ -1360,6 +1365,36 @@ class MovingWindowTests(unittest.TestCase):
                     text.replace('wakeCells=100','wakeCells=nan'),
                     text.replace('mappedWakeVolume=1e-12','mappedWakeVolume=nan')):
             with self.assertRaises(ValueError):collect(bad,require_wake=True)
+
+    def test_direct_selection_evidence_rejects_loss_wrong_index_and_nonbinary_mode(self):
+        from moving_window import collect
+        text=self.protected_fixture()
+        for bad in (text.replace('M247_MOVING_CANDIDATES','OLD_CANDIDATES'),
+                    text.replace('selected=1000','selected=999'),
+                    text.replace('requested=1000','requested=nan'),
+                    text.replace('timeIndex=180001','timeIndex=180002'),
+                    text.replace('directCellSelection=1','directCellSelection=0')):
+            with self.assertRaises(ValueError):collect(bad,require_wake=True)
+
+    def test_archived_sparse_hot_column_cannot_be_approved(self):
+        from moving_window import collect
+        text=(Path(__file__).parent/'fixtures/moving-window-protected-162215-failed.log').read_text()
+        report=collect(text,base_cells=2400)
+        self.assertTrue(report['linear_mapping_gate'] and report['coverage_gate'] and report['coarsening_gate'])
+        self.assertTrue(all(r['wakeCells']==48 and r['wakeCoveredCells']==0 for r in report['records']))
+        with self.assertRaises(ValueError):collect(text,base_cells=2400,require_wake=True)
+
+    def test_native_collection_failure_is_saved_before_large_case(self):
+        from moving_window import smoke
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)
+            with patch('moving_window.subprocess.run'), patch('moving_window.collect',side_effect=ValueError('Missing direct cell selection evidence')):
+                with self.assertRaisesRegex(ValueError,'Missing direct'):smoke(work,'utility',True)
+            report=json.loads((work/'movingWindowSmokeReview.json').read_text())
+            self.assertFalse(report['complete'])
+            self.assertFalse(report['passed'])
+            self.assertFalse(report['large_case_started'])
+            self.assertEqual(report['error'],'Missing direct cell selection evidence')
 
     def test_protected_smoke_uses_hot_column_and_zero_liquid_background(self):
         import subprocess

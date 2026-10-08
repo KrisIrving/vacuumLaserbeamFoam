@@ -10,7 +10,43 @@ using namespace Foam;
 // Expose the protected OpenCFD lifecycle helper in this diagnostic subclass.
 class movingWindowAuditMesh : public dynamicRefineFvMesh
 {
+    bool directCellSelection_=false;
+protected:
+    // v2512 virtual hook: retain base selectRefineCells/topology/cell budget,
+    // but do not average a sparse Boolean cell mask onto mesh points.
+    void selectRefineCandidates
+    (
+        const scalar lowerRefineLevel,
+        const scalar upperRefineLevel,
+        const scalarField& values,
+        bitSet& candidates
+    ) const override
+    {
+        if (!directCellSelection_)
+        {
+            dynamicRefineFvMesh::selectRefineCandidates
+                (lowerRefineLevel,upperRefineLevel,values,candidates);
+            return;
+        }
+        if (values.size()!=nCells() || !(lowerRefineLevel<1 && upperRefineLevel>1)
+            || lowerRefineLevel<=0)
+            FatalErrorInFunction<< "Invalid direct binary selection controls"<<exit(FatalError);
+        candidates=bitSet(nCells());
+        label requested=0;
+        forAll(values,i)
+        {
+            if (values[i]!=0 && values[i]!=1)
+                FatalErrorInFunction<< "Direct selector requires an exact binary mask"<<exit(FatalError);
+            if (values[i]==1) { candidates.set(i);++requested; }
+        }
+        if (candidates.count()!=requested)
+            FatalErrorInFunction<< "Direct selector lost marked cells"<<exit(FatalError);
+        Info<< "M247_MOVING_CANDIDATES schema=1 timeIndex="<<time().timeIndex()
+            <<" cells="<<nCells()<<" directCellSelection=1 requested="<<requested
+            <<" selected="<<candidates.count()<<endl;
+    }
 public:
+    void enableDirectCellSelection(bool enabled) { directCellSelection_=enabled; }
     explicit movingWindowAuditMesh(const IOobject& io)
     : dynamicRefineFvMesh(io, false)
     {
@@ -63,6 +99,7 @@ int main(int argc,char *argv[])
     const scalar margin=controls.get<scalar>("interiorMargin");
     const label maxCells=controls.get<label>("maxCells");
     const bool protectWake=controls.getOrDefault<bool>("protectWake",false);
+    mesh.enableDirectCellSelection(protectWake);
     const scalar hotTemperature=controls.getOrDefault<scalar>("hotTemperature",1537);
     const scalar liquidThreshold=controls.getOrDefault<scalar>("liquidThreshold",1e-4);
     const scalar metalThreshold=controls.getOrDefault<scalar>("metalThreshold",1e-6);
@@ -132,6 +169,7 @@ int main(int argc,char *argv[])
             << " centreX="<<centre<<" changed="<<label(changed)
             << " cells="<<mesh.nCells()<<" fineCells="<<fine
             << " protectedCells="<<refiner.protectedCell().count()
+            << " directCellSelection="<<label(protectWake)
             << " protectWake="<<label(protectWake)<<" wakeCells="<<wakeCells
             << " wakeCoveredCells="<<wakeCovered<<" outsideWakeCells="<<outsideWake
             << " mappedWakeVolume="<<wakeVolume

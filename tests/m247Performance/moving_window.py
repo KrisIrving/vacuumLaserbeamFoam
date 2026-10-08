@@ -39,6 +39,20 @@ dynamicRefineFvMeshCoeffs
 
 
 def smoke(work,utility,protect_wake=False):
+    """Persist failure reason even when native execution or collection raises."""
+    try:
+        return _smoke(work,utility,protect_wake)
+    except (ValueError,OSError,subprocess.SubprocessError) as error:
+        target=work/'movingWindowSmokeReview.json'
+        report=json.loads(target.read_text()) if target.exists() else dict(schema=1,complete=False)
+        report.update(passed=False,failure_stage='small_mesh_preflight',
+            error_type=type(error).__name__,error=str(error),
+            large_case_started=False)
+        target.write_text(json.dumps(report,indent=2)+'\n')
+        raise
+
+
+def _smoke(work,utility,protect_wake=False):
     """Exercise the identical native lifecycle on 2400 cells before real-case copying."""
     case=work/'movingWindowSmoke';case.mkdir()
     for name in ('constant','system','0.00018'):(case/name).mkdir()
@@ -93,7 +107,7 @@ boundaryField {{ walls {{ type zeroGradient; }} }}
     mapping=collect((work/'movingWindowSmoke_updates.log').read_text(),base_cells=2400,require_wake=protect_wake)
     report.update(complete=True,mapping=mapping,passed=all(mapping[k] for k in ('linear_mapping_gate','coverage_gate','coarsening_gate','wake_gate')))
     target.write_text(json.dumps(report,indent=2)+'\n')
-    if not report['passed']:raise ValueError('Small-mesh topology/mapping preflight failed; large case not copied')
+    if not report['passed']:raise ValueError('Small-mesh preflight gates failed: '+', '.join(k for k in ('linear_mapping_gate','coverage_gate','coarsening_gate','wake_gate') if not mapping[k])+'; large case not copied')
     return report
 
 
@@ -136,9 +150,18 @@ def collect(text,base_cells=BASE_CELLS,require_wake=False):
         if i and previous!=history[i-1]['currentIndex']:
             raise ValueError('Old-volume history indices are discontinuous')
     wake_gate=True
+    selections=parse_records(text,'M247_MOVING_CANDIDATES')
     if require_wake:
+        if len(selections)!=8:raise ValueError('Missing direct cell selection evidence')
+        for i,selection in enumerate(selections):
+            if any(selection.get(k)!=v for k,v in dict(schema=1,timeIndex=history[i]['currentIndex'],
+                cells=rows[i]['cells'],directCellSelection=1).items()):
+                raise ValueError('Direct selection index/count mismatch')
+            requested,selected=selection.get('requested'),selection.get('selected')
+            if requested is None or not math.isfinite(requested) or requested!=int(requested) or not 0<requested<=rows[i]['cells'] or selected!=requested:
+                raise ValueError('Direct selection lost marked cells')
         for row in rows:
-            if row.get('protectWake')!=1:raise ValueError('Wake protection not enabled')
+            if row.get('protectWake')!=1 or row.get('directCellSelection')!=1:raise ValueError('Direct wake protection not enabled')
             for key in ('wakeCells','wakeCoveredCells','outsideWakeCells'):
                 value=row.get(key)
                 if value is None or not math.isfinite(value) or value!=int(value) or not 0<=value<=row['cells']:
@@ -167,7 +190,7 @@ def collect(text,base_cells=BASE_CELLS,require_wake=False):
     unrefined=re.findall(r'Unrefined from\s+(\d+)\s+to\s+(\d+)\s+cells',text)
     coarsened=sum(int(a)-int(b) for a,b in unrefined if int(a)>int(b))
     return dict(records=rows,old_volume_history=history,linear_mapping=linear,nonlinear_product_drift=nonlinear,
-        wake_gate=wake_gate,wake_protection_required=require_wake,
+        wake_gate=wake_gate,wake_protection_required=require_wake,direct_cell_selections=selections,
         linear_mapping_gate=all(r['passed'] for r in linear),coverage_gate=coverage,
         coarsened_cell_reductions=coarsened,coarsening_gate=coarsened>0,
         maximum_cells=max(r['cells'] for r in rows),update_wall_s=sum(r['updateWall_s'] for r in rows))

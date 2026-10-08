@@ -155,3 +155,28 @@ historically heated cells indefinitely. This test does not certify transient wak
 length, enthalpy/momentum transfer, pressure/VOF mapping, optics or solver restart.
 After this stage, integrate state/flux transfer into the actual solver and run
 one short matched CFD pilot before increasing track length.
+
+## Sparse binary mask correction (162215)
+
+The first protected smoke failed correctly:48 hot cells were never refined,
+although all8 updates completed. Large-case copying did not start. Default point
+averaging diluted the one-cell-wide mask to the lower0.5 threshold, producing no
+positive refinement error. Protected mode now directly selects exact1-valued cell
+mask entries through the2512 virtual candidate hook. Other refinement selection,
+2:1/topology restrictions/cell budgets and all coverage checks remain enforced.
+Unprotected mode retains the base selector. Each protected update must report
+matching requested/selected candidate counts and the correct time index. Sparse
+column smoke and outside-window coverage remain mandatory, not weakened.
+
+The archived native failure is a regression fixture; Python pass count does not
+prove native behavior. New C++ build and small+real native passes remain pending.
+Run the same --protect-wake command. Errors/status are tracked in
+`log/M247_ERROR_REGISTER.md`. Freeze solver integration until this gate passes.
+
+Preflight failures now retain exception type, text and failure stage in
+movingWindowSmokeReview.json, with large_case_started=false. Native command
+completion, topology gate pass and CFD validation are distinct states. The
+archived sparse-column diagnostic records are checked by the Python regression
+suite; they must never receive protected-mode approval. See the
+[error register](../../log/M247_ERROR_REGISTER.md) for previous failures and
+required closure evidence.
