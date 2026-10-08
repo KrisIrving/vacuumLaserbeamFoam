@@ -1116,5 +1116,57 @@ class RestartAuditTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'changed during read-only'):
                     module.audit(previous,root/'changed-audit',utility)
 
+class FluxPilotTests(unittest.TestCase):
+    def test_failed_projection_never_launches_cfd(self):
+        import flux_pilot as module
+        from local_refinement import moments
+        from restart_audit import case_fingerprint,flux_record
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);preview=root/'preview';preview.mkdir();audit=root/'audit';audit.mkdir()
+            utility=root/'utility';utility.write_text('binary')
+            state='M247_MESH_MOMENTS schema=1 time=0.00018 cells=2283911 volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\n'
+            flux='M247_RESTART_FLUX schema=1 cells=2283911 divL1=88759 divRMS=516417 divMax=82984974 netFlux=0 Umax=78 velocityFluxDifference=1 velocityFluxAbs=1 alphaFluxAbs=0 internalFaces=100 zeroInternalFluxFaces=0\n'
+            source=preview/'localRefine4'
+            for part in ('constant','system','0.00018'):
+                p=source/part;p.mkdir(parents=True);(p/'field').write_text('unchanged')
+            (source/'0.00018/phi').write_text('old flux')
+            (preview/'previewInputs.json').write_text(json.dumps(dict(copied_restart=dict(ranks=48))))
+            row=dict(case='localRefine4',files_sha256=case_fingerprint(source),moments=moments(state+'End\n'),flux=flux_record(flux+'End\n'))
+            record=dict(complete=True,geometry_qualification_gate=True,production_approved=False,
+                inputs=dict(previous_work=str(preview)),cases=[row,dict(case='coarse',flux=dict(divL1=.0266,divRMS=12.45,divMax=12500))])
+            (audit/'localRestartReview.json').write_text(json.dumps(record))
+            calls=[]
+            def native(work,command,name):
+                calls.append(name);text=state+flux
+                if name=='localProjected_projection':
+                    (work/'rayTraversalCached/0.00018/phi').write_text('new but insufficient flux')
+                    text+='M247_FLUX_PROJECTION schema=1 passes=5 fixedPressurePatches=1 wrotePhi=1 wroteU=0 advancedTime=0\n'
+                (work/(name+'.log')).write_text(text+'End\n')
+                return dict(command=command,log=name+'.log',elapsed_wall_s=1)
+            with patch.object(module,'set_entry'),patch.object(module,'run',side_effect=native):
+                with self.assertRaisesRegex(ValueError,'CFD not launched'):module.execute(audit,root/'work',utility)
+            self.assertEqual(calls,['localProjected_before','localProjected_projection','localProjected_after'])
+            result=json.loads((root/'work/fluxPilotReview.json').read_text())
+            self.assertFalse(result['projection_gate']);self.assertFalse(result['complete'])
+            self.assertEqual(case_fingerprint(source),row['files_sha256'])
+
+    def test_continuity_screen_rejects_mapped_flux_amplification(self):
+        from flux_pilot import projection_gate
+        coarse=dict(divL1=.026644477,divRMS=12.4486,divMax=12498.04)
+        self.assertFalse(projection_gate(dict(divL1=88759,divRMS=516417,divMax=82984974),coarse)['passed'])
+        self.assertTrue(projection_gate(dict(divL1=.03,divRMS=13,divMax=13000),coarse)['passed'])
+        self.assertFalse(projection_gate(dict(divL1=.03,divRMS=13,divMax=15001),coarse)['passed'])
+    def test_projection_protects_velocity_material_and_mesh(self):
+        from flux_pilot import unchanged_except_phi
+        before={'0.00018/phi':'old','0.00018/U':'velocity','0.00018/alpha.metal':'material','constant/polyMesh/points':'mesh'}
+        self.assertEqual(unchanged_except_phi(before,dict(before,**{'0.00018/phi':'new'})),['0.00018/phi'])
+        for key in ('0.00018/U','0.00018/alpha.metal','constant/polyMesh/points'):
+            with self.assertRaises(ValueError):unchanged_except_phi(before,dict(before,**{key:'changed'}))
+    def test_post_pilot_snapshot_requires_expected_time(self):
+        from local_refinement import moments
+        text='M247_MESH_MOMENTS schema=1 time=0.0001802 cells=2283911 volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\nEnd\n'
+        with self.assertRaises(ValueError):moments(text)
+        self.assertEqual(moments(text,expected_time=.0001802)['cells'],2283911)
+
 if __name__=='__main__':
     unittest.main()

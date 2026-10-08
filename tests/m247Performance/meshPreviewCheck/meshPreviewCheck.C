@@ -1,4 +1,4 @@
-// Serial geometry/restart moment check; no equations or field writes.
+// Serial snapshot audit; explicit -project writes only copied-case phi.
 #include "fvCFD.H"
 #include "cellSet.H"
 #include <cmath>
@@ -9,8 +9,13 @@ int main(int argc,char *argv[])
     argList::noFunctionObjects();
     argList::addBoolOption("concavity", "Diagnose checkMesh concaveCells without waiving quality");
     argList::addBoolOption("restart", "Read velocity and mapped fluxes; report continuity without writes");
+    argList::addBoolOption("project", "Rebuild/project and write phi ONLY on an explicitly copied case");
+    argList::addOption("auditTime","scalar","Read a specified saved snapshot without advancing equations");
     #include "setRootCase.H"
     #include "createTime.H"
+    if (args.found("auditTime"))runTime.setTime(args.get<scalar>("auditTime"),0);
+    if (args.found("project")&&!args.found("restart"))
+        FatalErrorInFunction<< "-project requires -restart" << exit(FatalError);
     #include "createMesh.H"
     volScalarField T(IOobject("T",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
     volScalarField alpha(IOobject("alpha.metal",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
@@ -82,13 +87,39 @@ int main(int argc,char *argv[])
     if (args.found("restart"))
     {
         const volVectorField U(IOobject("U",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
-        const surfaceScalarField phi(IOobject("phi",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+        surfaceScalarField phi(IOobject("phi",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
         const surfaceScalarField alphaPhi(IOobject("alphaPhi0.metal",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
         if (U.dimensions()!=dimensionSet(0,1,-1,0,0,0,0)
             || phi.dimensions()!=dimensionSet(0,3,-1,0,0,0,0)
             || alphaPhi.dimensions()!=phi.dimensions())
             FatalErrorInFunction<< "Unexpected restart velocity/flux dimensions" << exit(FatalError);
         const surfaceScalarField velocityPhi(fvc::flux(U));
+        if (args.found("project"))
+        {
+            // Flux-only Hodge projection. Preserve mapped U/p/T/alpha/epsilon.
+            const volScalarField pressure(IOobject("p_rgh",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+            wordList types(mesh.boundary().size(),"zeroGradient");
+            label fixedPatches=0;
+            forAll(types,patchi)
+            {
+                if (pressure.boundaryField()[patchi].fixesValue())
+                { types[patchi]="fixedValue"; ++fixedPatches; }
+            }
+            if (!fixedPatches)FatalErrorInFunction<< "Projection requires a fixed-pressure outlet" << exit(FatalError);
+            volScalarField potential(IOobject("M247FluxPotential",runTime.timeName(),mesh,IOobject::NO_READ,IOobject::NO_WRITE),
+                mesh,dimensionedScalar("zero",dimensionSet(0,2,-1,0,0,0,0),0),types);
+            mesh.setFluxRequired(potential.name());
+            phi=velocityPhi;
+            for (label pass=0;pass<5;++pass)
+            {
+                fvScalarMatrix equation(fvm::laplacian(dimensionedScalar("one",dimless,1),potential)==fvc::div(phi));
+                equation.solve(mesh.solverDict(potential.name()));
+                if (pass==4)phi-=equation.flux();
+            }
+            if (!phi.write())FatalErrorInFunction<< "Projected phi write failed" << exit(FatalError);
+            Info<< "M247_FLUX_PROJECTION schema=1 passes=5 fixedPressurePatches=" << fixedPatches
+                << " wrotePhi=1 wroteU=0 advancedTime=0" << endl;
+        }
         const volScalarField divergence(fvc::div(phi));
         scalar divL1=0,divSquare=0,divMax=0,divSigned=0,umax=0;
         forAll(U,i)

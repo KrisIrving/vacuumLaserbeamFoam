@@ -25,12 +25,12 @@ actions
 );
 '''.replace('LAYERS',str(layers))
 
-def moments(text):
+def moments(text,expected_time=.00018):
     records=parse_records(text,'M247_MESH_MOMENTS')
     if len(records)!=1 or not re.search(r'^End\s*$',text,re.M):raise ValueError('Incomplete moment check')
     r=records[0]
     required=('schema','time','cells','volume','metalVolume','liquidVolume','metalTemperatureMoment','alphaMin','alphaMax','epsilonMin','epsilonMax','Tmin','Tmax')
-    if any(k not in r for k in required) or r['schema']!=1 or abs(r['time']-.00018)>1e-12:
+    if any(k not in r for k in required) or r['schema']!=1 or abs(r['time']-expected_time)>1e-12:
         raise ValueError('Wrong moment schema/time')
     if (r['cells']!=int(r['cells']) or r['cells']<=0 or r['volume']<=0
         or any(r[k]<0 for k in ('metalVolume','liquidVolume','metalTemperatureMoment'))

@@ -45,7 +45,7 @@ def case_fingerprint(case):
         for p in (case/relative).rglob('*'):
             if 'sets' in p.relative_to(case).parts:continue # checkMesh writes diagnostic sets only
             if p.is_symlink():raise ValueError('Case symlinks unsupported')
-            if p.is_file():files.append((str(p.relative_to(case)),sha(p)))
+            if p.is_file():files.append((p.relative_to(case).as_posix(),sha(p)))
     if not files:raise ValueError('Empty case fingerprint')
     return dict(sorted(files))
 

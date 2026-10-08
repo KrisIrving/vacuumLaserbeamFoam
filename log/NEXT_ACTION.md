@@ -2,6 +2,18 @@
 
 Updated: 2026-10-08
 
+## Project copied local flux, then gated0.2us compatibility pilot
+
+104821audit complete12hashes valid; mapped fine phi has divL1~88759/93422 per
+second versus coarse0.02664. Scalar mapping/geometry screens cannot approve
+restart. Pull and run `./tests/m247Performance/RunLocalFluxPilot`. It copies
+auditedlocalRefine4, reconstructs/projects phi only, verifies protected fields
+and rereads continuity. Only if this passes does48rank CFD run180-180.2us,
+15minute CFD budget plusstopgrace. Automatic M247_local-flux-pilot archive on
+success/failure.100Python tests/Bash pass; nativeprojection/time option pending.
+No original changes/full-track/production approval. See LOCAL_FLUX_PILOT.md;
+no need to repeat sizing or restart audit. Earlier actions below superseded.
+
 ## Audit mapped fluxes on the existing local meshes
 
 101101 both previews complete;23archive hashes verified;2.284/2.889million cells,

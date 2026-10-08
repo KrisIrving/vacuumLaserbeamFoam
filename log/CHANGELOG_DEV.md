@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-08 — Mapped phi continuity rejected; projection and gated pilot
+
+10482112archivehashesverified, nativebuild/readchecks pass; fine divL1~88759
+versuscoarse0.02664/s, restartblocked. Explicit copiedphi-only geometric
+projection withprotected-fieldhashes andrereadcontinuity; ifpassed, gated
+48rank0.2us/15minute CFD pilot plusnative finalbounds/thermalchecks. Original
+cases retained, no production/matchedspeedup claim.100Python tests/Bash pass;
+newnative projection/time option pendingUbuntu. NextRunLocalFluxPilot.
+
 ## 2026-10-08 — Coplanar transitions qualified; mapped restart flux audit
 
 10110123archive hashes valid,both variants complete2.284/2.889millioncells,

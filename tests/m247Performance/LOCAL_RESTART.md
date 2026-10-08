@@ -1,5 +1,9 @@
 # Existing local mesh restart audit
 
+104821 audit now complete: mapped fine flux has severe divergence amplification.
+Next use RunLocalFluxPilot as described in LOCAL_FLUX_PILOT.md; do not repeat
+this audit. Projection on a fresh copy must pass before a bounded CFD pilot.
+
 The 101101 sizing preview completed both alternatives. Four layers give
 2,283,911 cells; ten layers give 2,889,026. Both preserve the checked volume,
 metal volume, liquid proxy and metal-temperature moment. Native allGeometry

@@ -31,6 +31,10 @@ BUILD_FILES += ('restartAuditInputs.json','localRestartReview.json') + tuple(
     f'{case}_{suffix}' for case in ('coarse','localRefine4','localRefine10')
     for suffix in ('restart.log','restartCheckMesh.log'))
 
+BUILD_FILES += ('fluxPilotInputs.json','fluxPilotReview.json') + tuple(
+    f'localProjected_{suffix}.log' for suffix in
+    ('before','projection','after','decompose','pilot','reconstruct','final'))
+
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
     if not work.is_dir():
