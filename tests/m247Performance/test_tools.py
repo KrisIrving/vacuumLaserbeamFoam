@@ -1169,6 +1169,26 @@ class FluxPilotTests(unittest.TestCase):
         self.assertEqual(moments(text,expected_time=.0001802)['cells'],2283911)
 
 class LocalOpticsTests(unittest.TestCase):
+    def test_mapping_audit_distinguishes_renames_from_changed_bytes(self):
+        from audit_optical_mapping import differences
+        before={'0.00018/phi':'flux','0.00018/T':'temperature','constant/polyMesh/points':'mesh'}
+        after={'0.00018/phi.unmapped':'flux','0.00018/T':'changed','constant/polyMesh/points':'mesh'}
+        rows,pairs=differences(before,after)
+        self.assertEqual({r['path']:r['status'] for r in rows},
+            {'0.00018/phi':'removed','0.00018/phi.unmapped':'added','0.00018/T':'modified'})
+        self.assertEqual(pairs,[dict(source='0.00018/phi',target='0.00018/phi.unmapped',sha256='flux')])
+        after['0.00018/phi.unmapped']='different bytes'
+        self.assertEqual(differences(before,after)[1],[])
+
+    def test_mapping_audit_is_packaged_without_fake_solver_jobs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'mapping-audit';work.mkdir()
+            (work/'opticalMappingAudit.json').write_text('{"strict_mapping_gate":false}')
+            _,manifest=package(work,exit_code=0)
+            self.assertEqual(manifest['variants'],[])
+            self.assertEqual(manifest['missing_files'],[])
+            self.assertEqual(manifest['files'][0]['source'],'opticalMappingAudit.json')
+
     def test_mapping_is_restricted_to_three_frozen_inputs(self):
         from local_optics import mapping_guard
         before={'0.00018/T':'T','constant/polyMesh/points':'mesh','0.00018/frozenNormalInput':'old'}

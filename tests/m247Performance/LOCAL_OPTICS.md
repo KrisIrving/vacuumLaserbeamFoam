@@ -1,3 +1,29 @@
+# Current action after the 124829 mapping guard failure
+
+Do not rerun RunLocalOptics yet. The coarse/fine frozen traces completed with
+326.6675353833619 / 288.9990727177187 W absorbed (-11.53%), no time advance and
+zero material-field changes reported. These grid/input effects are measurable;
+the mapped-input trace is absent. The 553-second native mapping ended normally,
+but the strict non-optical file guard rejected its result. The old report omitted
+the changed paths, so the archive cannot identify the exact offending files.
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/AuditLocalOpticsMapping
+```
+
+This reads the retained 124829 cases, checks completed traces and optical hashes,
+compares the mapped case to the fine case it was copied from, and collects file
+hash differences and byte-identical rename candidates. It also checks the original
+audited source hashes. It launches no OpenFOAM utilities, performs no mapping or
+CFD, and does not modify the old cases. Hashing time depends on disk speed.
+The reconstructed baseline is explicitly labelled, not claimed to be a historical
+pre-map fingerprint. Collection completion does not mean the mapping gate passes.
+Send `tests/m247Performance/runs/M247_local-optics-mapping-audit-<timestamp>_review.tar.gz`.
+
+Future fresh runs save both mapping fingerprints before testing the guard and
+include unexpected paths in the error. No protection rule has been relaxed.
+
 # Frozen local-mesh optical comparison
 
 The110422 projected-flux pilot completes180-180.2us in22steps/133.14seconds,

@@ -27,7 +27,8 @@ def check_capture(text):
 def mapping_guard(before,after):
     allowed={'0.00018/'+n for n in INPUTS}
     changed=sorted(k for k in set(before)|set(after) if before.get(k)!=after.get(k))
-    if any(k not in allowed for k in changed):raise ValueError('Optical mapping changed non-optical fields/mesh')
+    unexpected=[k for k in changed if k not in allowed]
+    if unexpected:raise ValueError('Optical mapping changed non-optical fields/mesh: '+', '.join(unexpected))
     return changed
 
 def contrasts(powers):
@@ -79,7 +80,10 @@ def execute(audit_work,work):
             before=case_fingerprint(case)
             commands.append(run(work,['mapFieldsPar','-case',str(case),str(work/NAMES[0]),'-consistent',
                 '-sourceTime','0.00018','-mapMethod','cellVolumeWeight','-fields','('+' '.join(INPUTS)+')','-no-lagrangian'],name+'_mapping'))
-            report['mapped_changed_files']=mapping_guard(before,case_fingerprint(case))
+            after=case_fingerprint(case)
+            report['mapping_fingerprints']=dict(before=before,after=after)
+            save() # Preserve evidence even when the strict guard rejects mapping.
+            report['mapped_changed_files']=mapping_guard(before,after)
             report['mapped_inputs_changed']=bool(report['mapped_changed_files'])
             # Native fields are deliberately mapped, not claimed equal across meshes.
             commands.append(run(work,['decomposePar','-case',str(case),'-time','0.00018','-noFunctionObjects'],name+'_decompose'))

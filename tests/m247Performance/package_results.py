@@ -36,7 +36,7 @@ BUILD_FILES += ('fluxPilotInputs.json','fluxPilotReview.json') + tuple(
     ('before','projection','after','decompose','pilot','reconstruct','final'))
 
 LOCAL_OPTICS_VARIANTS=('localOpticsCoarse','localOpticsFine','localOpticsMapped')
-BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json') + tuple(
+BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json','opticalMappingAudit.json') + tuple(
     f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
     ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
 

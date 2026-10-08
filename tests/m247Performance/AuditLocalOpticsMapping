@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+PREVIOUS=${1:-tests/m247Performance/runs/local-optics-20261008-124829}
+WORK=${2:-tests/m247Performance/runs/local-optics-mapping-audit-$(date +%Y%m%d-%H%M%S)}
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{ echo "previous=$PREVIOUS"; echo "Read-only optical mapping localization; no native jobs"; git rev-parse HEAD; } > "$WORK/buildEnvironment.txt"
+python3 tests/m247Performance/audit_optical_mapping.py --previous "$PREVIOUS" --work "$WORK" \
+    2>&1 | tee "$WORK/collection.log"
