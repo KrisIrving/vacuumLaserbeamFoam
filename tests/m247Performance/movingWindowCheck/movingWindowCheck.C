@@ -62,6 +62,14 @@ int main(int argc,char *argv[])
     const scalar halfZ=controls.get<scalar>("halfZ");
     const scalar margin=controls.get<scalar>("interiorMargin");
     const label maxCells=controls.get<label>("maxCells");
+    const bool protectWake=controls.getOrDefault<bool>("protectWake",false);
+    const scalar hotTemperature=controls.getOrDefault<scalar>("hotTemperature",1537);
+    const scalar liquidThreshold=controls.getOrDefault<scalar>("liquidThreshold",1e-4);
+    const scalar metalThreshold=controls.getOrDefault<scalar>("metalThreshold",1e-6);
+    if (!std::isfinite(hotTemperature) || hotTemperature<=0
+        || !std::isfinite(liquidThreshold) || !std::isfinite(metalThreshold)
+        || liquidThreshold<=0 || liquidThreshold>1 || metalThreshold<=0 || metalThreshold>=1)
+        FatalErrorInFunction<< "Invalid wake protection thresholds"<<exit(FatalError);
     const scalarList centres(controls.lookup("centres"));
     if (halfX<=margin || halfZ<=margin || centres.size()!=4 || maxCells<mesh.nCells())
         FatalErrorInFunction<< "Invalid moving window audit controls" << exit(FatalError);
@@ -76,17 +84,32 @@ int main(int argc,char *argv[])
         IOobject::NO_READ,IOobject::NO_WRITE),alpha*epsilon);
     volScalarField mask(IOobject("movingRefineMask",runTime.timeName(),mesh,
         IOobject::NO_READ,IOobject::NO_WRITE),mesh,dimensionedScalar("zero",dimless,0),"zeroGradient");
+    // Passive frozen-state label: preserve any initially hot/molten material
+    // through averaging, even if separately mapped T/epsilon cross a threshold.
+    volScalarField wake(IOobject("mappedWakeMarker",runTime.timeName(),mesh,
+        IOobject::NO_READ,IOobject::NO_WRITE),mesh,dimensionedScalar("zero",dimless,0),"zeroGradient");
+    auto activeWake=[&](label i)
+    {
+        return protectWake && (wake[i]>0 ||
+            (alpha[i]>metalThreshold && (T[i]>=hotTemperature || epsilon[i]>=liquidThreshold)));
+    };
+    forAll(wake,i) if (protectWake && alpha[i]>metalThreshold
+        && (T[i]>=hotTemperature || epsilon[i]>=liquidThreshold)) wake[i]=1;
+    wake.correctBoundaryConditions();
     Info().precision(17);
     label step=0;
     auto report=[&](scalar centre,scalar elapsed,bool changed)
     {
         scalar volume=0,metal=0,mappedT=0,mappedLiquid=0,directT=0,directLiquid=0;
         scalar amin=GREAT,amax=-GREAT,emin=GREAT,emax=-GREAT,tmin=GREAT,tmax=-GREAT;
-        label fine=0,interior=0,covered=0;
+        label fine=0,interior=0,covered=0,wakeCells=0,wakeCovered=0,outsideWake=0;
+        scalar wakeVolume=0;
         const labelList& levels=refiner.meshCutter().cellLevel();
         forAll(T,i)
         {
             const scalar v=mesh.V()[i],a=alpha[i],e=epsilon[i],t=T[i];
+            if (!std::isfinite(wake[i]) || wake[i]<-1e-8 || wake[i]>1+1e-8)
+                FatalErrorInFunction<< "Invalid mapped wake marker"<<exit(FatalError);
             if (!std::isfinite(v)||v<=0||!std::isfinite(a)||!std::isfinite(e)||!std::isfinite(t)
                 ||!std::isfinite(metalT[i])||!std::isfinite(liquid[i]))
                 FatalErrorInFunction<< "Invalid mapped fields" << exit(FatalError);
@@ -95,6 +118,12 @@ int main(int argc,char *argv[])
             amin=min(amin,a);amax=max(amax,a);emin=min(emin,e);emax=max(emax,e);
             tmin=min(tmin,t);tmax=max(tmax,t);if (levels[i]>0)++fine;
             const vector& c=mesh.C()[i];
+            wakeVolume+=v*wake[i];
+            if (activeWake(i))
+            {
+                ++wakeCells;if (levels[i]==1)++wakeCovered;
+                if (mag(c.x()-centre)>halfX || mag(c.z())>halfZ)++outsideWake;
+            }
             if (mag(c.x()-centre)<halfX-margin && mag(c.z())<halfZ-margin)
             { ++interior;if (levels[i]==1)++covered; }
         }
@@ -103,6 +132,9 @@ int main(int argc,char *argv[])
             << " centreX="<<centre<<" changed="<<label(changed)
             << " cells="<<mesh.nCells()<<" fineCells="<<fine
             << " protectedCells="<<refiner.protectedCell().count()
+            << " protectWake="<<label(protectWake)<<" wakeCells="<<wakeCells
+            << " wakeCoveredCells="<<wakeCovered<<" outsideWakeCells="<<outsideWake
+            << " mappedWakeVolume="<<wakeVolume
             << " interiorCells="<<interior<<" coveredCells="<<covered
             << " updateWall_s="<<elapsed<<" volume="<<volume<<" metalVolume="<<metal
             << " mappedMetalTemperature="<<mappedT<<" mappedLiquidVolume="<<mappedLiquid
@@ -124,7 +156,7 @@ int main(int argc,char *argv[])
             forAll(values,i)
             {
                 const vector& c=mesh.C()[i];
-                values[i]=(mag(c.x()-centres[position])<=halfX && mag(c.z())<=halfZ) ? 1 : 0;
+                values[i]=((mag(c.x()-centres[position])<=halfX && mag(c.z())<=halfZ) || activeWake(i)) ? 1 : 0;
             }
             mask.correctBoundaryConditions();
             const auto started=std::chrono::steady_clock::now();

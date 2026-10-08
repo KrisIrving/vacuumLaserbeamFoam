@@ -1,3 +1,5 @@
+2026-10-08: 160259 moving-window native prototype passed; peak1.32048M cells,58.40s updates. Added opt-in frozen hot/molten wake retention with strict marker/coverage gates and protected small preflight; 118 tests pass, new native run pending.
+
 Reviewed moving-window154937:8archive files SHA256/size valid,exit1,no missing.
 Stagedconstructor works and step0 initialstate records756000cells; V0() still
 aborts inside prepareOldVolumes before topologyupdate. storeOldVol isconditional

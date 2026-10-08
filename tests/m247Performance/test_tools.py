@@ -1340,6 +1340,39 @@ class MovingWindowTests(unittest.TestCase):
         text=self.fixture().replace('mappedMetalTemperature=4e-07','mappedMetalTemperature=5e-07',1)
         self.assertFalse(collect(text)['linear_mapping_gate'])
 
+    def protected_fixture(self):
+        lines=self.fixture().splitlines()
+        for i,line in enumerate(lines):
+            if line.startswith('M247_MOVING_WINDOW '):
+                step=int(line.split('step=')[1].split()[0])
+                lines[i]+=f' protectWake=1 wakeCells=100 wakeCoveredCells={0 if step==0 else 100} outsideWakeCells=40 mappedWakeVolume=1e-12'
+        return '\n'.join(lines)+'\n'
+
+    def test_protected_wake_requires_coverage_outside_window_and_marker_conservation(self):
+        from moving_window import collect
+        text=self.protected_fixture()
+        self.assertTrue(collect(text,require_wake=True)['wake_gate'])
+        for bad in (text.replace('wakeCoveredCells=100','wakeCoveredCells=99'),
+                    text.replace('outsideWakeCells=40','outsideWakeCells=0'),
+                    text.replace('mappedWakeVolume=1e-12','mappedWakeVolume=2e-12',1)):
+            self.assertFalse(collect(bad,require_wake=True)['wake_gate'])
+        for bad in (self.fixture(),text.replace('protectWake=1','protectWake=0'),
+                    text.replace('wakeCells=100','wakeCells=nan'),
+                    text.replace('mappedWakeVolume=1e-12','mappedWakeVolume=nan')):
+            with self.assertRaises(ValueError):collect(bad,require_wake=True)
+
+    def test_protected_smoke_uses_hot_column_and_zero_liquid_background(self):
+        import subprocess
+        from moving_window import smoke
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)
+            with patch('moving_window.subprocess.run',side_effect=subprocess.CalledProcessError(1,['blockMesh'])):
+                with self.assertRaises(subprocess.CalledProcessError):smoke(work,'utility',True)
+            text=(work/'movingWindowSmoke/0.00018/T').read_text()
+            self.assertEqual(text.count('\n1600\n'),48)
+            self.assertIn('internalField uniform 0;', (work/'movingWindowSmoke/0.00018/epsilon1').read_text())
+            self.assertIn('protectWake true;', (work/'movingWindowSmoke/system/movingWindowAuditDict').read_text())
+
     def test_moving_prototype_archive_contains_quality_and_partial_report(self):
         with tempfile.TemporaryDirectory() as directory:
             work=Path(directory)/'moving-window';work.mkdir()

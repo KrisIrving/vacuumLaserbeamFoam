@@ -38,7 +38,7 @@ dynamicRefineFvMeshCoeffs
 '''
 
 
-def smoke(work,utility):
+def smoke(work,utility,protect_wake=False):
     """Exercise the identical native lifecycle on 2400 cells before real-case copying."""
     case=work/'movingWindowSmoke';case.mkdir()
     for name in ('constant','system','0.00018'):(case/name).mkdir()
@@ -66,13 +66,21 @@ interpolationSchemes { default linear; } snGradSchemes { default corrected; }
     (case/'system/fvSolution').write_text(dictionary('fvSolution','solvers {}\n'))
     (case/'constant/dynamicMeshDict').write_text(dynamic_dictionary())
     (case/'system/movingWindowAuditDict').write_text(dictionary('movingWindowAuditDict',
-        'halfX 96e-6; halfZ 96e-6; interiorMargin 16e-6; maxCells 2000000; centres (80e-6 160e-6 0 80e-6);\n'))
+        'halfX 96e-6; halfZ 96e-6; interiorMargin 16e-6; maxCells 2000000; centres (80e-6 160e-6 0 80e-6);\n'+wake_controls(protect_wake)))
     for name,value,dimensions in (('T',1400,'0 0 0 1 0 0 0'),('alpha.metal',.5,'0 0 0 0 0 0 0'),('epsilon1',.25,'0 0 0 0 0 0 0')):
         (case/'0.00018'/name).write_text(f'''FoamFile {{ version 2.0; format ascii; class volScalarField; object {name}; }}
 dimensions [{dimensions}]; internalField uniform {value};
 boundaryField {{ walls {{ type zeroGradient; }} }}
 ''')
-    report=dict(schema=1,complete=False,passed=False,base_cells=2400,no_cfd=True)
+    if protect_wake:
+        # blockMesh i-fastest numbering: a hot column outside every test window.
+        values=[1600 if i%20==3 and 3<=i//240<=6 else 1400 for i in range(2400)]
+        target=case/'0.00018/T';text=target.read_text()
+        target.write_text(text.replace('internalField uniform 1400;',
+            'internalField nonuniform List<scalar>\n2400\n(\n'+'\n'.join(map(str,values))+'\n);'))
+        target=case/'0.00018/epsilon1'
+        target.write_text(target.read_text().replace('internalField uniform 0.25;','internalField uniform 0;'))
+    report=dict(schema=1,complete=False,passed=False,base_cells=2400,no_cfd=True,protect_wake=protect_wake)
     target=work/'movingWindowSmokeReview.json'
     target.write_text(json.dumps(report,indent=2)+'\n')
     deadline=time.monotonic()+120
@@ -82,14 +90,19 @@ boundaryField {{ walls {{ type zeroGradient; }} }}
         if remaining<=0:raise ValueError('Small-mesh preflight budget exhausted')
         with (work/('movingWindowSmoke_'+name+'.log')).open('x') as stream:
             subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=remaining)
-    mapping=collect((work/'movingWindowSmoke_updates.log').read_text(),base_cells=2400)
-    report.update(complete=True,mapping=mapping,passed=all(mapping[k] for k in ('linear_mapping_gate','coverage_gate','coarsening_gate')))
+    mapping=collect((work/'movingWindowSmoke_updates.log').read_text(),base_cells=2400,require_wake=protect_wake)
+    report.update(complete=True,mapping=mapping,passed=all(mapping[k] for k in ('linear_mapping_gate','coverage_gate','coarsening_gate','wake_gate')))
     target.write_text(json.dumps(report,indent=2)+'\n')
     if not report['passed']:raise ValueError('Small-mesh topology/mapping preflight failed; large case not copied')
     return report
 
 
-def collect(text,base_cells=BASE_CELLS):
+def wake_controls(enabled):
+    return ('protectWake '+str(enabled).lower()+';\n'
+            'hotTemperature 1537; liquidThreshold 1e-4; metalThreshold 1e-6;\n')
+
+
+def collect(text,base_cells=BASE_CELLS,require_wake=False):
     rows=parse_records(text,'M247_MOVING_WINDOW')
     endings=parse_records(text,'M247_MOVING_WINDOW_END')
     if len(rows)!=9 or endings!=[dict(schema=1,updates=8,advancedPhysics=0)] or not re.search(r'^End\s*$',text,re.M):
@@ -122,6 +135,23 @@ def collect(text,base_cells=BASE_CELLS):
             raise ValueError('Old-volume time index did not advance')
         if i and previous!=history[i-1]['currentIndex']:
             raise ValueError('Old-volume history indices are discontinuous')
+    wake_gate=True
+    if require_wake:
+        for row in rows:
+            if row.get('protectWake')!=1:raise ValueError('Wake protection not enabled')
+            for key in ('wakeCells','wakeCoveredCells','outsideWakeCells'):
+                value=row.get(key)
+                if value is None or not math.isfinite(value) or value!=int(value) or not 0<=value<=row['cells']:
+                    raise ValueError('Missing/invalid wake coverage evidence')
+            if row['wakeCoveredCells']>row['wakeCells'] or row['outsideWakeCells']>row['wakeCells']:
+                raise ValueError('Invalid wake coverage counts')
+            value=row.get('mappedWakeVolume')
+            if value is None or not math.isfinite(value) or value<0 or value>row['volume']*(1+1e-8):
+                raise ValueError('Invalid mapped wake volume')
+        initial=rows[0]['mappedWakeVolume']
+        wake_gate=(initial>0 and all(r['wakeCells']>0 and r['wakeCoveredCells']==r['wakeCells'] for r in rows[2::2])
+            and any(r['outsideWakeCells']>0 for r in rows[2::2])
+            and all(abs(r['mappedWakeVolume']-initial)<=1e-20+1e-9*initial for r in rows[1:]))
     baseline=rows[0];linear=[];nonlinear=[]
     for row in rows[1:]:
         for key in ('volume','metalVolume','mappedMetalTemperature','mappedLiquidVolume'):
@@ -137,12 +167,13 @@ def collect(text,base_cells=BASE_CELLS):
     unrefined=re.findall(r'Unrefined from\s+(\d+)\s+to\s+(\d+)\s+cells',text)
     coarsened=sum(int(a)-int(b) for a,b in unrefined if int(a)>int(b))
     return dict(records=rows,old_volume_history=history,linear_mapping=linear,nonlinear_product_drift=nonlinear,
+        wake_gate=wake_gate,wake_protection_required=require_wake,
         linear_mapping_gate=all(r['passed'] for r in linear),coverage_gate=coverage,
         coarsened_cell_reductions=coarsened,coarsening_gate=coarsened>0,
         maximum_cells=max(r['cells'] for r in rows),update_wall_s=sum(r['updateWall_s'] for r in rows))
 
 
-def execute(audit_work,work,utility,mesh_utility):
+def execute(audit_work,work,utility,mesh_utility,protect_wake=False):
     audit_work,work,utility,mesh_utility=map(lambda p:Path(p).resolve(),(audit_work,work,utility,mesh_utility))
     audit=json.loads((audit_work/'localRestartReview.json').read_text())
     if not audit.get('complete') or not audit.get('geometry_qualification_gate'):raise ValueError('Completed original restart audit required')
@@ -151,7 +182,7 @@ def execute(audit_work,work,utility,mesh_utility):
         raise ValueError('Output overlaps original data')
     work.mkdir(parents=True,exist_ok=True)
     if (work/'movingWindowSmokeReview.json').exists():raise ValueError('Choose fresh output')
-    smoke_report=smoke(work,utility)
+    smoke_report=smoke(work,utility,protect_wake)
     expected=next(c['files_sha256'] for c in audit['cases'] if c['case']=='coarse')
     if case_fingerprint(source)!=expected:raise ValueError('Original coarse audited files changed')
     if (source/'constant/dynamicMeshDict').exists():raise ValueError('Expected static coarse source')
@@ -168,13 +199,13 @@ interiorMargin 16e-6;
 maxCells 2000000;
 centres (80e-6 160e-6 0 80e-6);
 '''
-    (case/'system/movingWindowAuditDict').write_text(dictionary)
+    (case/'system/movingWindowAuditDict').write_text(dictionary+wake_controls(protect_wake))
     for key,value in (('startFrom','startTime'),('startTime','0.00018'),('timePrecision','12')):
         set_entry(case/'system/controlDict',key,value)
     shutil.copy2(case/'constant/dynamicMeshDict',work/'movingWindow_dynamicMeshDict')
     shutil.copy2(case/'system/movingWindowAuditDict',work/'movingWindow_auditDict')
     report=dict(schema=1,complete=False,production_approved=False,no_cfd=True,
-        small_mesh_preflight=smoke_report,
+        small_mesh_preflight=smoke_report,protect_wake=protect_wake,
         source_case=str(source),source_sha256=expected,original_audit_sha256=sha(audit_work/'localRestartReview.json'),
         utility_sha256=sha(utility),commands=[],quality=[],
         note='Mechanical refinement/coarsening path on frozen180us fields; synthetic snapshot times. Only T/alpha/epsilon and two product proxies registered. Saved cases are NOT valid solver restarts. No enthalpy, flux, isoAdvector or speedup approval.')
@@ -188,7 +219,7 @@ centres (80e-6 160e-6 0 80e-6);
             subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=min(1200,remaining))
         report['commands'].append(dict(command=command,elapsed_wall_s=time.monotonic()-started,log=name+'.log'));save()
     launch([str(utility),'-case',str(case)],'movingWindow_updates')
-    report['mapping']=collect((work/'movingWindow_updates.log').read_text());save()
+    report['mapping']=collect((work/'movingWindow_updates.log').read_text(),require_wake=protect_wake);save()
     for step in range(1,9):
         slot=format(.00018+step*1e-9,'.12g');name=f'movingWindow_step{step}'
         launch(['checkMesh','-case',str(case),'-time',slot,'-allGeometry','-allTopology','-noFunctionObjects'],name+'_quality')
@@ -200,18 +231,20 @@ centres (80e-6 160e-6 0 80e-6);
     if case_fingerprint(source)!=expected:raise ValueError('Original coarse source changed')
     report.update(complete=True,source_unchanged_gate=True,prototype_gate=all((
         report['mapping']['linear_mapping_gate'],report['mapping']['coverage_gate'],
-        report['mapping']['coarsening_gate'],all(q['qualification']['qualified'] for q in report['quality']))))
+        report['mapping']['coarsening_gate'],report['mapping']['wake_gate'],all(q['qualification']['qualified'] for q in report['quality']))))
     save();return report
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for key in ('audit','work','utility','mesh-utility'):p.add_argument('--'+key,type=Path,required=True)
+    p.add_argument('--protect-wake',action='store_true')
     a=p.parse_args()
     try:
-        r=execute(a.audit,a.work,a.utility,a.mesh_utility)
+        r=execute(a.audit,a.work,a.utility,a.mesh_utility,a.protect_wake)
         print('Moving window prototype gate:',r['prototype_gate'],'maximum cells:',r['mapping']['maximum_cells'])
         print('Mesh update wall seconds:',r['mapping']['update_wall_s'],'no CFD advanced')
+        if a.protect_wake:print('Frozen hot/molten wake coverage gate:',r['mapping']['wake_gate'])
         if not r['prototype_gate']:p.exit(2,'Prototype gate failed; send review archive.\n')
     except (ValueError,KeyError,OSError,StopIteration,subprocess.SubprocessError) as e:p.exit(1,f'Moving window probe failed: {e}\n')
 

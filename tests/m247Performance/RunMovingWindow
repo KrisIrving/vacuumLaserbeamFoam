@@ -1,8 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+EXTRA=()
+TAG=moving-window
+if [[ "${1:-}" == "--protect-wake" ]]; then
+    EXTRA+=(--protect-wake)
+    TAG=moving-window-protected
+    shift
+fi
 AUDIT=${1:-tests/m247Performance/runs/local-restart-20261008-104821}
-WORK=${2:-tests/m247Performance/runs/moving-window-$(date +%Y%m%d-%H%M%S)}
+WORK=${2:-tests/m247Performance/runs/${TAG}-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
 [[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
@@ -21,6 +28,7 @@ trap bundle_on_exit EXIT
     echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
     echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
     echo "audit=$AUDIT"
+    echo "options=${EXTRA[*]}"
     echo "Moving refinement/coarsening prototype; 30 minute native budget; no CFD"
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
@@ -32,4 +40,4 @@ UTILITY=${FOAM_USER_APPBIN:?Source OpenFOAM}/m247MovingWindowCheck
 MESH_UTILITY=${FOAM_USER_APPBIN}/m247MeshPreviewCheck
 sha256sum "$UTILITY" "$MESH_UTILITY" tests/m247Performance/movingWindowCheck/movingWindowCheck.C > "$WORK/previewBinary.txt"
 python3 tests/m247Performance/moving_window.py --audit "$AUDIT" --work "$WORK" \
-    --utility "$UTILITY" --mesh-utility "$MESH_UTILITY" 2>&1 | tee "$WORK/collection.log"
+    --utility "$UTILITY" --mesh-utility "$MESH_UTILITY" "${EXTRA[@]}" 2>&1 | tee "$WORK/collection.log"

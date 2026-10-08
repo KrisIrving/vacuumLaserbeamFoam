@@ -112,3 +112,46 @@ foundation rather than disabling pressure/flow cells independently.
 Official APIs checked:
 [dynamicRefineFvMesh v2512](https://api.openfoam.com/2512/dynamicRefineFvMesh_8H_source.html)
 and [createDynamicFvMesh v2512](https://api.openfoam.com/2512/createDynamicFvMesh_8H.html).
+
+## Protected frozen hot/molten wake
+
+The 160259 baseline completed: 27 archive hashes/sizes verified, wrapper exit0,
+2400-cell smoke passed, all eight real updates completed, source unchanged.
+Real peak1320480 cells, total update58.397612s, all native stages324.091s.
+Observed coarsening removed873600 cells cumulatively (not unique cells).
+Maximum relative linear proxy drift4.24e-11; direct alpha*T drift7.87e-12,
+alpha*epsilon drift2.99e-13. Native checkMesh still reports one concavity failure
+per snapshot; all eight pass the existing scoped coplanar-roundoff qualification.
+This is a completed topology/mapping prototype, not measured CFD acceleration.
+
+Run the next bounded stage:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RunMovingWindow --protect-wake
+```
+
+The optional mask includes the moving box AND cells with metal fraction>1e-6
+and T>=1537K (this case's metal solidus) or epsilon1>=1e-4. An independently
+mapped initial hot/molten marker also retains every descendant with a positive
+marker. It prevents averaging across a threshold from silently releasing frozen
+hot material. The marker is passive; fields are not corrected or clipped.
+This uses the same one-level refiner and cell cap, not protectedCell's topology
+restriction mechanism. All settled wake cells must reach level1, including cells
+outside the moving window; initial marked volume must be conserved and cold-area
+coarsening must still occur. The collector rejects absent protection evidence.
+The graded shoulders are not uniformly4um merely because they reach level1.
+
+The 2400-cell preflight also uses protection: a48-cell1600K column outside all
+four window positions, with1400K/epsilon0 background. It checks independent wake
+coverage while the window moves and cold cells coarsen. The budget remains120s
+plus30minutes for real native stages; build/copy/hashing are extra.
+Send the single `M247_moving-window-protected-<timestamp>_review.tar.gz`.
+
+The retained initial marker is deliberately permanent ONLY for this frozen-state
+mapping audit. A production solver must release cooled/solidified material from
+protection with a justified buffer/hysteresis policy; it must not accumulate all
+historically heated cells indefinitely. This test does not certify transient wake
+length, enthalpy/momentum transfer, pressure/VOF mapping, optics or solver restart.
+After this stage, integrate state/flux transfer into the actual solver and run
+one short matched CFD pilot before increasing track length.
