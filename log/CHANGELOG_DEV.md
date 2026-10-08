@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-08 — Local refinement concavity rejection and recovery
+
+13archive hashes verified;4-layer mesh2.284million cells,all four mapped moments
+pass,15101concave cells fail native mesh quality.10-layer execution absent.
+Keep rejection. Save partial/final reports and continue independent variants;
+add hash-checked serial-only --resume and native failed-set plane-distance/bounds
+diagnostic. No CFD/quality waiver/speedup approval.92Python tests/Bash pass;
+native diagnostic pendingUbuntu. Next PreviewLocalRefinement --resume003900.
+
 ## 2026-10-08 — Region budget passes; local mesh sizing previews
 
 Verified 30 archive hashes and independently reproduced the regional report.

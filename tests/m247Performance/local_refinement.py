@@ -60,20 +60,74 @@ def mesh_ok(text):
     if not re.search(r'^\s*Mesh OK\.\s*$',text,re.M) or not re.search(r'^End\s*$',text,re.M):
         raise ValueError('checkMesh did not certify mesh quality')
 
+def mesh_summary(text):
+    if not re.search(r'^End\s*$',text,re.M):raise ValueError('Incomplete checkMesh')
+    failed=re.findall(r'^Failed (\d+) mesh checks?\.',text,re.M)
+    passed=bool(re.search(r'^\s*Mesh OK\.\s*$',text,re.M))
+    if passed == bool(failed) or len(failed)>1:raise ValueError('Ambiguous checkMesh result')
+    concave=re.findall(r'Concave cells .*?number of cells:\s*(\d+)',text)
+    return dict(passed=passed,failed_checks=int(failed[0]) if failed else 0,
+                concave_cells=int(concave[0]) if concave else 0)
+
+def concavity_summary(text,expected_count):
+    rows=parse_records(text,'M247_MESH_CONCAVITY')
+    required=('schema','count','worstPlaneDistance','maxRelativePlaneDistance','aboveRelative1e9',
+              'xmin','xmax','ymin','ymax','zmin','zmax')
+    if len(rows)!=1 or not re.search(r'^End\s*$',text,re.M):raise ValueError('Incomplete concavity diagnostic')
+    r=rows[0]
+    if any(k not in r for k in required) or r['schema']!=1 or r['count']!=expected_count:
+        raise ValueError('Concavity set/count mismatch')
+    if (r['worstPlaneDistance']<0 or r['maxRelativePlaneDistance']<0
+        or r['aboveRelative1e9']!=int(r['aboveRelative1e9']) or not 0<=r['aboveRelative1e9']<=r['count']
+        or any(r[c+'min']>r[c+'max'] for c in 'xyz')):raise ValueError('Invalid concavity diagnostic')
+    return r
+
+def copy_serial_restart(previous,work):
+    previous,work=Path(previous).resolve(),Path(work).resolve()
+    if previous==work or previous in work.parents or work in previous.parents:
+        raise ValueError('Resume output overlaps previous work')
+    inputs=json.loads((previous/'previewInputs.json').read_text())
+    meta=inputs['copied_restart']
+    if inputs.get('schema')!=1 or not inputs.get('preview_only') or meta.get('ranks')!=48 or meta.get('checkpoint')!='0.00018':
+        raise ValueError('Wrong resume preview/restart')
+    before=moments((previous/'coarseMoments.log').read_text())
+    if before['cells']!=756000:raise ValueError('Wrong resume mesh size')
+    mesh_ok((previous/'coarseCheckMesh.log').read_text())
+    coarse=work/'coarse';coarse.mkdir()
+    hashes={}
+    for relative in ('constant','system',meta['checkpoint']):
+        origin=previous/'coarse'/relative
+        for p in origin.rglob('*'):
+            if p.is_symlink():raise ValueError('Resume symlink not permitted')
+            if p.is_file():hashes[str(p.relative_to(previous/'coarse'))]=sha(p)
+        shutil.copytree(origin,coarse/relative)
+    if not hashes or any(sha(coarse/p)!=h for p,h in hashes.items()):raise ValueError('Resume copy hash mismatch')
+    for name in ('coarseMoments.log','coarseCheckMesh.log'):
+        shutil.copyfile(previous/name,work/('resume'+name[0].upper()+name[1:]))
+    evidence=dict(schema=1,previous_work=str(previous),previous_inputs=inputs,
+                  previous_inputs_sha256=sha(previous/'previewInputs.json'),copied_files_sha256=hashes,
+                  before=before,copy_hash_gate=True)
+    (work/'resumeInputs.json').write_text(json.dumps(evidence,indent=2)+'\n')
+    return meta,before
+
 def run(work,command,name):
     with (work/(name+'.log')).open('x') as log:
         started=time.monotonic()
         subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=1200)
     return dict(command=command,elapsed_wall_s=time.monotonic()-started,log=name+'.log')
 
-def preview(source,work,utility,max_cells=3000000):
+def preview(source,work,utility,max_cells=3000000,resume=None):
     source,work,utility=map(lambda p:Path(p).resolve(),(source,work,utility))
     if source==work or source in work.parents or work in source.parents:raise ValueError('Output overlaps source')
     if max_cells<756000 or max_cells>6048000:raise ValueError('Invalid preview cell budget')
     if (work/'previewInputs.json').exists():raise ValueError('Preview already prepared')
     work.mkdir(parents=True,exist_ok=True)
     coarse=work/'coarse'
-    meta=prepare(source,coarse,180,.2,'rayTraversalCached',corrected_rays=True)
+    if resume:
+        meta,resumed_before=copy_serial_restart(resume,work)
+        source=Path(meta['source']).resolve()
+    else:
+        meta=prepare(source,coarse,180,.2,'rayTraversalCached',corrected_rays=True)
     if meta['ranks']!=48:raise ValueError('Expected48ranks')
     if not (coarse/'constant/polyMesh').is_dir():raise ValueError('Original serial mesh required')
     if (coarse/'constant/dynamicMeshDict').exists():raise ValueError('Expected fixed original mesh')
@@ -82,13 +136,22 @@ def preview(source,work,utility,max_cells=3000000):
     (work/'previewInputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
     commands=[]
     # Reconstruct all native restart objects, including surface fields, on copies.
-    commands.append(run(work,['reconstructPar','-case',str(coarse),'-time','0.00018','-noFunctionObjects'],'reconstructPreview'))
+    if not resume:
+        commands.append(run(work,['reconstructPar','-case',str(coarse),'-time','0.00018','-noFunctionObjects'],'reconstructPreview'))
     commands.append(run(work,[str(utility),'-case',str(coarse)],'coarseMoments'))
     before=moments((work/'coarseMoments.log').read_text())
     if before['cells']!=756000:raise ValueError('Unexpected original serial cell count')
+    if resume and (before!=resumed_before):raise ValueError('Copied restart moments changed')
     commands.append(run(work,['checkMesh','-case',str(coarse),'-allGeometry','-allTopology','-noFunctionObjects'],'coarseCheckMesh'))
     mesh_ok((work/'coarseCheckMesh.log').read_text())
     results=[]
+    report=dict(schema=2,inputs=inputs,before=before,variants=results,commands=commands,
+        complete=False,geometry_mapping_gate=False,production_approved=False,
+        note='Static180us mesh sizing only. Quality failure is retained, never waived; both variants are evaluated. Mapping moments are not enthalpy/flux or isoAdvector reconstruction checks. Graph halos do not guarantee metric distance. No CFD, future coverage or speedup established. Cost ratios assume twice as many timesteps and equal per-cell/MPI work.')
+    def save_report():
+        report['geometry_mapping_gate']=bool(report['complete']) and len(results)==2 and all(r['geometry_mapping_gate'] for r in results)
+        (work/'localRefinementReview.json').write_text(json.dumps(report,indent=2)+'\n')
+    save_report()
     for layers in (4,10):
         name=f'localRefine{layers}';case=work/name
         case.mkdir()
@@ -105,7 +168,7 @@ def preview(source,work,utility,max_cells=3000000):
             cell_budget=max_cells,production_approved=False)
         if proposed>max_cells:
             result.update(status='skipped_cell_budget',geometry_mapping_gate=False)
-            results.append(result);continue
+            results.append(result);save_report();continue
         commands.append(run(work,['refineHexMesh','-case',str(case),'refineCells','-overwrite','-noFunctionObjects'],name+'_refinement'))
         commands.append(run(work,[str(utility),'-case',str(case)],name+'_moments'))
         after=moments((work/(name+'_moments.log')).read_text())
@@ -113,26 +176,30 @@ def preview(source,work,utility,max_cells=3000000):
         result['mapping_moments']=compare_moments(before,after)
         if after['cells']<proposed or after['cells']>max_cells:raise ValueError('Actual refinement exceeds budget or omits selected cells')
         commands.append(run(work,['checkMesh','-case',str(case),'-allGeometry','-allTopology','-noFunctionObjects'],name+'_checkMesh'))
-        mesh_ok((work/(name+'_checkMesh.log')).read_text())
-        result.update(status='completed',geometry_mapping_gate=all(r['passed'] for r in result['mapping_moments']),
+        quality=mesh_summary((work/(name+'_checkMesh.log')).read_text())
+        result.update(status='completed' if quality['passed'] else 'failed_mesh_quality',mesh_quality=quality,
+            geometry_mapping_gate=quality['passed'] and all(r['passed'] for r in result['mapping_moments']),
             cell_multiplier=after['cells']/before['cells'],
             assumed_work_vs_original=2*after['cells']/before['cells'],
             assumed_work_vs_global_edge_halving=after['cells']/(8*before['cells']))
         results.append(result)
-    report=dict(schema=1,inputs=inputs,before=before,variants=results,commands=commands,
-        geometry_mapping_gate=bool(results) and all(r['geometry_mapping_gate'] for r in results),
-        production_approved=False,
-        note='Static180us mesh sizing only. All cold powder/material interfaces and warm cells seed refinement, with graph halos; layers are not a guaranteed metric distance. One split halves local edges, not every graded shoulder cell to4um. Mapping moments are not enthalpy/flux or isoAdvector interface reconstruction validation. No CFD, optical equivalence, future-region coverage or speedup established. Work ratios assume twice as many timesteps and equal cell/MPI costs.')
-    (work/'localRefinementReview.json').write_text(json.dumps(report,indent=2)+'\n')
+        save_report()
+        if quality['concave_cells']:
+            commands.append(run(work,[str(utility),'-case',str(case),'-concavity'],name+'_concavity'))
+            result['concavity_diagnostic']=concavity_summary((work/(name+'_concavity.log')).read_text(),quality['concave_cells'])
+            save_report()
+    report['complete']=True
+    save_report()
     return report
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True)
     p.add_argument('--utility',type=Path,required=True)
+    p.add_argument('--resume',type=Path,help='Reuse verified serial coarse restart from a previous preview')
     a=p.parse_args()
     try:
-        r=preview(a.source,a.work,a.utility)
+        r=preview(a.source,a.work,a.utility,resume=a.resume)
         for v in r['variants']:print(v['variant'],v['status'],'proposed cells',v['proposed_cells'],'actual',v.get('actual_cells'))
         print('Geometry/mapping moment gate:',r['geometry_mapping_gate'],'No CFD advanced.')
         if not r['geometry_mapping_gate']:p.exit(2,'Preview skipped budget or failed mapping gates; not approved.\n')

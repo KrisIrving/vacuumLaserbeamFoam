@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+RESUME_ARGS=()
+if [[ "${1:-}" == "--resume" ]]; then
+    [[ -n "${2:-}" ]] || { echo "Usage: $0 --resume PREVIOUS_WORK" >&2; exit 1; }
+    RESUME_ARGS=(--resume "$2")
+    shift 2
+fi
 SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
 WORK=${2:-tests/m247Performance/runs/local-refinement-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
@@ -21,6 +27,7 @@ trap bundle_on_exit EXIT
     echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
     echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
     echo "source=$SOURCE"
+    printf 'resume arguments: %s\n' "${RESUME_ARGS[*]}"
     echo "Static mesh previews from copied180us fields; no CFD solver"
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
@@ -29,4 +36,4 @@ trap bundle_on_exit EXIT
 UTILITY=${FOAM_USER_APPBIN:?Source OpenFOAM}/m247MeshPreviewCheck
 sha256sum "$UTILITY" tests/m247Performance/meshPreviewCheck/meshPreviewCheck.C > "$WORK/previewBinary.txt"
 python3 tests/m247Performance/local_refinement.py --source "$SOURCE" --work "$WORK" \
-    --utility "$UTILITY" 2>&1 | tee "$WORK/collection.log"
+    --utility "$UTILITY" "${RESUME_ARGS[@]}" 2>&1 | tee "$WORK/collection.log"

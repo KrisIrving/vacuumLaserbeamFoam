@@ -22,9 +22,10 @@ FILES = {
 BUILD_FILES = ('build.log', 'buildEnvironment.txt', 'solverCheck.json', 'cachedSearchTest.log', 'collection.log', 'partition.log', 'partitionWeight.json', 'initialPartitionCheck.json', 'frozenInputCheck.json', 'auditInputs.json', 'auditBinary.txt', 'sourceRegionAudit.log', 'legacyRegionAudit.log', 'correctedRegionAudit.log', 'sourceKeyholeDepth.csv', 'sourceMoltenExtent.csv', 'regionAuditReview.json', 'regionEnvelopes.csv')
 
 BUILD_FILES += ('previewInputs.json','previewBinary.txt','localRefinementReview.json',
-    'reconstructPreview.log','coarseMoments.log','coarseCheckMesh.log') + tuple(
+    'reconstructPreview.log','coarseMoments.log','coarseCheckMesh.log',
+    'resumeInputs.json','resumeCoarseMoments.log','resumeCoarseCheckMesh.log') + tuple(
     f'localRefine{layers}_{suffix}' for layers in (4,10) for suffix in
-    ('topoSetDict','selection.log','refinement.log','moments.log','checkMesh.log'))
+    ('topoSetDict','selection.log','refinement.log','moments.log','checkMesh.log','concavity.log'))
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()

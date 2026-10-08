@@ -998,5 +998,62 @@ class LocalRefinementTests(unittest.TestCase):
             self.assertEqual(len(m['files']),5)
             self.assertIn('localRefine4_refinement.log',[e['source'] for e in m['files']])
 
+    def test_native_concavity_failure_is_not_waived(self):
+        from local_refinement import mesh_summary
+        text=' ***Concave cells (using face planes) found, number of cells: 15101\nFailed 1 mesh checks.\n\nEnd\n'
+        self.assertEqual(mesh_summary(text),dict(passed=False,failed_checks=1,concave_cells=15101))
+        self.assertTrue(mesh_summary('Mesh OK.\nEnd\n')['passed'])
+        for invalid in (text.replace('End',''),text+'Mesh OK.\n','End\n'):
+            with self.assertRaises(ValueError):mesh_summary(invalid)
+
+    def test_concavity_diagnostic_requires_matching_native_set(self):
+        from local_refinement import concavity_summary
+        text='M247_MESH_CONCAVITY schema=1 count=15101 worstPlaneDistance=1e-20 maxRelativePlaneDistance=1e-15 aboveRelative1e9=0 xmin=-0.0002 xmax=0.0002 ymin=0.0001 ymax=0.0008 zmin=-0.0001 zmax=0.0001\nEnd\n'
+        self.assertEqual(concavity_summary(text,15101)['aboveRelative1e9'],0)
+        for invalid,count in ((text,15100),(text.replace('worstPlaneDistance=1e-20','worstPlaneDistance=nan'),15101),(text.replace('End',''),15101)):
+            with self.assertRaises(ValueError):concavity_summary(invalid,count)
+
+    def test_quality_failure_saves_report_and_continues_second_variant(self):
+        import local_refinement as module
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=root/'source';source.mkdir();work=root/'work'
+            utility=root/'utility';utility.write_text('binary')
+            def prepare_copy(source,coarse,*args,**kwargs):
+                for relative in ('constant/polyMesh','system','0.00018'):(coarse/relative).mkdir(parents=True)
+                return dict(ranks=48,checkpoint='0.00018')
+            def native(work,command,name):
+                if name.endswith('Moments') or name.endswith('_moments'):
+                    cells=756000 if name=='coarseMoments' else 756700
+                    text=f'M247_MESH_MOMENTS schema=1 time=0.00018 cells={cells} volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\nEnd\n'
+                elif name.endswith('_selection'):
+                    text='\n'.join(f'cellSet refineCells now size {n}' for n in (10,50,100))+'\nEnd\n'
+                elif name=='localRefine4_checkMesh':text='Failed 1 mesh checks.\nEnd\n'
+                elif name.endswith('CheckMesh') or name.endswith('_checkMesh'):text='Mesh OK.\nEnd\n'
+                else:text='End\n'
+                (work/(name+'.log')).write_text(text)
+                return dict(command=command,elapsed_wall_s=1,log=name+'.log')
+            with patch.object(module,'prepare',side_effect=prepare_copy),patch.object(module,'run',side_effect=native):
+                result=module.preview(source,work,utility)
+            self.assertTrue(result['complete']);self.assertFalse(result['geometry_mapping_gate'])
+            self.assertEqual([v['status'] for v in result['variants']],['failed_mesh_quality','completed'])
+            self.assertEqual(json.loads((work/'localRefinementReview.json').read_text()),result)
+
+    def test_resume_copies_only_serial_restart_and_rejects_overlap(self):
+        from local_refinement import copy_serial_restart
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);old=root/'old';old.mkdir();work=root/'new';work.mkdir()
+            meta=dict(ranks=48,checkpoint='0.00018')
+            (old/'previewInputs.json').write_text(json.dumps(dict(schema=1,preview_only=True,copied_restart=meta)))
+            (old/'coarseMoments.log').write_text('M247_MESH_MOMENTS schema=1 time=0.00018 cells=756000 volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\nEnd\n')
+            (old/'coarseCheckMesh.log').write_text('Mesh OK.\nEnd\n')
+            for relative in ('constant/polyMesh','system','0.00018','processor0'):
+                p=old/'coarse'/relative;p.mkdir(parents=True);(p/'data').write_text(relative)
+            with self.assertRaises(ValueError):copy_serial_restart(old,old/'nested')
+            copied,before=copy_serial_restart(old,work)
+            self.assertEqual(copied,meta);self.assertEqual(before['cells'],756000)
+            self.assertFalse((work/'coarse/processor0').exists())
+            evidence=json.loads((work/'resumeInputs.json').read_text())
+            self.assertTrue(evidence['copy_hash_gate']);self.assertEqual(len(evidence['copied_files_sha256']),3)
+
 if __name__=='__main__':
     unittest.main()

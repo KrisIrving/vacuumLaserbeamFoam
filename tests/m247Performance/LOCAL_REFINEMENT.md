@@ -1,5 +1,33 @@
 # Static local-refinement preview
 
+## Recovery after the 003900 mesh-quality failure
+
+The four-layer preview has 2,283,911 cells and preserves all four checked
+moments, but native checkMesh finds 15,101 concave cells. It is rejected;
+the ten-layer preview did not execute. Pull the update and reuse the serial
+coarse restart from that run:
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/PreviewLocalRefinement --resume tests/m247Performance/runs/local-refinement-20261008-003900
+```
+
+Resume copies only constant/system/180 us serial data into a fresh output,
+hashes every copied file, and checks the new coarse moments against the previous
+record exactly. It skips 48-rank restart copying and reconstructPar. The native
+checker is rebuilt, and both refinement alternatives are regenerated from coarse
+data. Previous cases are not overwritten. Each completed quality failure is
+reported and the next variant is evaluated. A budget skip or quality failure
+still exits with status 2 and packages the evidence; this is expected and is
+not approval to advance CFD. Partial reports have complete=false.
+
+For failed concaveCells sets, a separate native diagnostic reads that exact
+set, checks its count, and reports vertex bounds and maximum outward signed
+distance to the cell's outward face planes, in metres and normalized by cube
+root of cell volume. The count above a relative 1e-9 is descriptive, not a new
+quality threshold. This supports investigation of geometric versus roundoff
+effects; it does not reproduce or waive the native concavity algorithm.
+
 Run from the repository root in an OpenFOAM v2512 shell:
 
 ```bash

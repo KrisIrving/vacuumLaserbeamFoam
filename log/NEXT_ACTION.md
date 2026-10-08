@@ -2,6 +2,19 @@
 
 Updated: 2026-10-08
 
+## Recover local sizing and diagnose concavity without CFD
+
+003900 four-layer refinement has2,283,911cells and preserved moments, but
+15,101concave cells fail native mesh quality. Ten layers did not run. Pull and
+run `./tests/m247Performance/PreviewLocalRefinement --resume tests/m247Performance/runs/local-refinement-20261008-003900`.
+The update saves failed-quality reports, evaluates both variants, and records
+native concavity magnitude/bounds. It hash-copies only verified serial coarse
+data, skipping48-rank copy/reconstruction; previous cases retained. No CFD.
+Send the new M247_local-refinement-..._review.tar.gz even if status2 (quality
+or budget rejection).92Python tests/Bash syntax pass; native diagnostic pending.
+See entries/2026-10-08-m247-local-refinement-concavity.md and LOCAL_REFINEMENT.md.
+This action supersedes earlier checkpoint steps below.
+
 ## Preview local fine mesh after successful region audit
 
 002346 region audit completes: 30 archive hashes valid, 12 bounded snapshots,
