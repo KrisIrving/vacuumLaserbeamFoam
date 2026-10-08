@@ -1537,5 +1537,27 @@ class MovingStepComparisonTests(unittest.TestCase):
             r['solver_sha256']='different';b.write_text(json.dumps(r))
             with self.assertRaisesRegex(ValueError,'provenance'):compare(a,b)
 
+class MovingProfileTests(unittest.TestCase):
+    def fixture(self):
+        volume=840e-6*960e-6*640e-6
+        lines=['M247_PROFILE_STATE schema=1 time=0.0001802 ranks=48 cells=1400000 invalid=0']
+        for d,(n,lo,hi) in enumerate(((53,-520e-6,320e-6),(60,0,960e-6),(40,-320e-6,320e-6))):
+            for j in range(n):
+                v=volume/n
+                row=dict(schema=1,time=.0001802,axis=d,bin=j,low=lo+(hi-lo)*j/n,high=lo+(hi-lo)*(j+1)/n,
+                    volume=v,metal=v/2,liquid=v/4,metalT=v*1000,metalUx=v,metalUy=0,metalUz=0)
+                lines.append('M247_PROFILE '+' '.join(f'{k}={x}' for k,x in row.items()))
+        return '\n'.join(lines)+'\nEnd\n'
+
+    def test_profiles_close_all_axis_integrals_and_reject_incomplete_input(self):
+        from moving_profiles import collect
+        self.assertEqual(len(collect(self.fixture())['rows']),153)
+        for bad in (self.fixture().replace('End',''),self.fixture().replace('ranks=48','ranks=1'),self.fixture().replace('invalid=0','invalid=1'),self.fixture().replace('metalUy=0','metalUy=nan')):
+            with self.assertRaises(ValueError):collect(bad)
+
+    def test_profile_output_cannot_overlap_original_run(self):
+        from moving_profiles import execute
+        with self.assertRaisesRegex(ValueError,'overlaps'):execute(Path('/case'),Path('/other'),Path('/case/audit'),Path('/utility'))
+
 if __name__=='__main__':
     unittest.main()

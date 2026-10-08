@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+REFERENCE=${1:-tests/m247Performance/runs/moving-cfd-pilot-20261008-180928}
+CANDIDATE=${2:-tests/m247Performance/runs/moving-cfd-dt10-20261008-182248}
+WORK=${3:-tests/m247Performance/runs/moving-profiles-$(date +%Y%m%d-%H%M%S)}
+[[ ! -e "$WORK" ]] || { echo "Choose fresh WORK" >&2; exit 1; }
+# Python creates WORK exclusively; build log stays outside until successful creation.
+BUILD_LOG="${WORK}_build.log"
+mkdir -p "$(dirname "$WORK")"
+( cd tests/m247Performance/movingProfiles && wmake -j 8 ) > "$BUILD_LOG" 2>&1 || {
+    mkdir "$WORK"; mv "$BUILD_LOG" "$WORK/build.log"
+    python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code 1
+    exit 1
+}
+status=0
+python3 tests/m247Performance/moving_profiles.py --reference "$REFERENCE" --candidate "$CANDIDATE" \
+    --work "$WORK" --utility "${FOAM_USER_APPBIN:?Source OpenFOAM}/m247MovingProfiles" || status=$?
+[[ -d "$WORK" ]] || mkdir "$WORK"
+mv "$BUILD_LOG" "$WORK/build.log"
+python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"
+exit "$status"

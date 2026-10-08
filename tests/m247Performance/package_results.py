@@ -44,6 +44,8 @@ BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json','opticalMappin
     f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
     ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
 
+BUILD_FILES += ('movingProfileComparison.json','referenceProfiles.log','candidateProfiles.log')
+
 BUILD_FILES += ('movingStepComparison.json','movingStepReference.json','movingStepCandidate.json')
 
 BUILD_FILES += ('movingCFDReview.json','movingCFD_dynamicMeshDict','movingCFD_windowDict','movingCFD_decompose.log','movingCFD_pilot.log')
