@@ -1,3 +1,23 @@
+# Current fix and automatic small native preflight
+
+154937 constructor succeeded and read the initial state; V0 was still absent
+because storeOldVol only acts when the current index exceeds mesh history.
+The diagnostic driver had reset synthetic indices to1..8. It now advances from
+max(initial Time index, mesh history index), logs both indices and checks that
+they increase continuously before every topology change.
+
+The same RunMovingWindow command now automatically generates a2400cell uniform
+case and runs all8 refine/coarsen updates before copying the original case.
+The small preflight has a120second budget and tests the identical compiled native
+lifecycle, linear product proxy mapping, interior coverage and positivecoarsening.
+It tests machinery, not powder/optical/enthalpy correctness. Failure stops the
+real-case launch and is automatically packaged. Native repaired small and real
+runs are still pending Ubuntu; Python unit tests do not certify native behavior.
+
+Keep the old directories. Pull and run the command below to obtain a fresh run.
+The small preflight budget is additional to the real native30minute budget;
+build/copy/hash costs remain extra. No change to real meshquality/cellbudget gates.
+
 # Fix after the 154023 constructor exit
 
 The tools compiled; the diagnostic subclass's direct constructor triggered the

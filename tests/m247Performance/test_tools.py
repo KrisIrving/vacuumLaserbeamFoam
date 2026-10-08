@@ -1280,16 +1280,38 @@ class MovingWindowTests(unittest.TestCase):
                 alphaMin=0,alphaMax=1,epsilonMin=0,epsilonMax=1,Tmin=1343,Tmax=4151)
             lines.append('M247_MOVING_WINDOW '+' '.join(f'{k}={v}' for k,v in r.items()))
         for step in range(1,9):
-            lines.append(f'M247_MOVING_V0 schema=1 step={step} cells={756000 if step==1 else 1200000} ready=1 maxDifference=0')
+            lines.append(f'M247_MOVING_V0 schema=1 step={step} cells={756000 if step==1 else 1200000} ready=1 maxDifference=0 previousIndex={180000+step-1} currentIndex={180000+step}')
         return '\n'.join(lines)+'\nUnrefined from 1300000 to 1200000 cells.\nM247_MOVING_WINDOW_END schema=1 updates=8 advancedPhysics=0\nEnd\n'
 
     def test_old_volumes_required_for_every_update_with_correct_cell_count(self):
         from moving_window import collect
         for text in (self.fixture().replace('M247_MOVING_V0','WRONG_VOLUME_PREFIX'),
                      self.fixture().replace('ready=1','ready=0'),
+                     self.fixture().replace('currentIndex=180001','currentIndex=180000'),
+                     self.fixture().replace('previousIndex=180001','previousIndex=0'),
                      self.fixture().replace('maxDifference=0','maxDifference=1e-20'),
                      self.fixture().replace('M247_MOVING_V0 schema=1 step=1 cells=756000','M247_MOVING_V0 schema=1 step=1 cells=1')):
             with self.assertRaises(ValueError):collect(text)
+
+    def test_small_mesh_preflight_uses_its_own_cell_count(self):
+        from moving_window import collect
+        text=self.fixture().replace('756000','2400').replace('1200000','4800').replace('1300000','5400').replace('fineCells=400000','fineCells=3200')
+        self.assertTrue(collect(text,base_cells=2400)['coarsening_gate'])
+        with self.assertRaises(ValueError):collect(text)
+
+    def test_small_native_failure_preserves_evidence_and_stops(self):
+        from moving_window import smoke
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)
+            with patch('moving_window.subprocess.run',side_effect=subprocess.CalledProcessError(1,['blockMesh'])) as command:
+                with self.assertRaises(subprocess.CalledProcessError):smoke(work,Path('/native/tool'))
+                self.assertEqual(command.call_count,1)
+            report=json.loads((work/'movingWindowSmokeReview.json').read_text())
+            self.assertFalse(report['passed'])
+            self.assertTrue((work/'movingWindowSmoke_blockMesh.log').is_file())
+            _,manifest=package(work,exit_code=1)
+            self.assertIn('movingWindowSmokeReview.json',{f['source'] for f in manifest['files']})
 
     def test_complete_path_requires_coarsening_and_preserves_linear_moments(self):
         from moving_window import collect

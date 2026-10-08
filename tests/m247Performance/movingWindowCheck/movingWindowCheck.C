@@ -18,8 +18,13 @@ public:
         // the most-derived refinement class can allow zero motion solvers.
         dynamicRefineFvMesh::init(true);
     }
+    label historyIndex() const { return curTimeIndex_; }
     void prepareOldVolumes(const label step)
     {
+        const label previousIndex=curTimeIndex_;
+        if (time().timeIndex()<=previousIndex)
+            FatalErrorInFunction<< "Audit time index must advance beyond mesh history: "
+                <<time().timeIndex()<<" <= "<<previousIndex<<exit(FatalError);
         storeOldVol(V());
         const scalarField& oldVolumes=V0();
         const scalarField& currentVolumes=V();
@@ -35,7 +40,8 @@ public:
         if (maxDifference!=0)
             FatalErrorInFunction<< "Old volumes differ before topology update"<<exit(FatalError);
         Info<< "M247_MOVING_V0 schema=1 step="<<step<<" cells="<<nCells()
-            <<" ready=1 maxDifference="<<maxDifference<<endl;
+            <<" ready=1 maxDifference="<<maxDifference
+            <<" previousIndex="<<previousIndex<<" currentIndex="<<time().timeIndex()<<endl;
     }
 };
 
@@ -51,6 +57,7 @@ int main(int argc,char *argv[])
     IOdictionary controls(IOobject("movingWindowAuditDict",runTime.system(),mesh,
         IOobject::MUST_READ,IOobject::NO_WRITE));
     const scalar physicalTime=runTime.value();
+    const label initialTimeIndex=max(runTime.timeIndex(),mesh.historyIndex());
     const scalar halfX=controls.get<scalar>("halfX");
     const scalar halfZ=controls.get<scalar>("halfZ");
     const scalar margin=controls.get<scalar>("interiorMargin");
@@ -112,7 +119,7 @@ int main(int argc,char *argv[])
         {
             ++step;
             // Synthetic output slots, not physical elapsed time.
-            runTime.setTime(physicalTime+step*1e-9,step);
+            runTime.setTime(physicalTime+step*1e-9,initialTimeIndex+step);
             scalarField& values=mask.primitiveFieldRef();
             forAll(values,i)
             {

@@ -38,7 +38,58 @@ dynamicRefineFvMeshCoeffs
 '''
 
 
-def collect(text):
+def smoke(work,utility):
+    """Exercise the identical native lifecycle on 2400 cells before real-case copying."""
+    case=work/'movingWindowSmoke';case.mkdir()
+    for name in ('constant','system','0.00018'):(case/name).mkdir()
+    def dictionary(name,body):
+        return f'FoamFile {{ version 2.0; format ascii; class dictionary; object {name}; }}\n'+body
+    (case/'system/blockMeshDict').write_text(dictionary('blockMeshDict','''convertToMeters 1;
+vertices
+((-320e-6 0 -160e-6) (320e-6 0 -160e-6) (320e-6 960e-6 -160e-6) (-320e-6 960e-6 -160e-6)
+ (-320e-6 0 160e-6) (320e-6 0 160e-6) (320e-6 960e-6 160e-6) (-320e-6 960e-6 160e-6));
+blocks (hex (0 1 2 3 4 5 6 7) (20 12 10) simpleGrading (1 1 1));
+edges ();
+boundary (walls { type wall; faces ((0 4 7 3) (1 2 6 5) (0 1 5 4) (3 7 6 2) (0 3 2 1) (4 5 6 7)); });
+mergePatchPairs ();
+'''))
+    (case/'system/controlDict').write_text(dictionary('controlDict','''application m247MovingWindowCheck;
+startFrom startTime; startTime 0.00018; stopAt endTime; endTime 0.000181;
+deltaT 1e-9; writeControl timeStep; writeInterval 1; timePrecision 12; writePrecision 17;
+writeFormat ascii; writeCompression off; runTimeModifiable false;
+'''))
+    (case/'system/fvSchemes').write_text(dictionary('fvSchemes','''ddtSchemes { default Euler; }
+gradSchemes { default Gauss linear; } divSchemes { default none; }
+laplacianSchemes { default Gauss linear corrected; }
+interpolationSchemes { default linear; } snGradSchemes { default corrected; }
+'''))
+    (case/'system/fvSolution').write_text(dictionary('fvSolution','solvers {}\n'))
+    (case/'constant/dynamicMeshDict').write_text(dynamic_dictionary())
+    (case/'system/movingWindowAuditDict').write_text(dictionary('movingWindowAuditDict',
+        'halfX 96e-6; halfZ 96e-6; interiorMargin 16e-6; maxCells 2000000; centres (80e-6 160e-6 0 80e-6);\n'))
+    for name,value,dimensions in (('T',1400,'0 0 0 1 0 0 0'),('alpha.metal',.5,'0 0 0 0 0 0 0'),('epsilon1',.25,'0 0 0 0 0 0 0')):
+        (case/'0.00018'/name).write_text(f'''FoamFile {{ version 2.0; format ascii; class volScalarField; object {name}; }}
+dimensions [{dimensions}]; internalField uniform {value};
+boundaryField {{ walls {{ type zeroGradient; }} }}
+''')
+    report=dict(schema=1,complete=False,passed=False,base_cells=2400,no_cfd=True)
+    target=work/'movingWindowSmokeReview.json'
+    target.write_text(json.dumps(report,indent=2)+'\n')
+    deadline=time.monotonic()+120
+    for command,name in ((['blockMesh','-case',str(case),'-noFunctionObjects'],'blockMesh'),
+                         ([str(utility),'-case',str(case)],'updates')):
+        remaining=deadline-time.monotonic()
+        if remaining<=0:raise ValueError('Small-mesh preflight budget exhausted')
+        with (work/('movingWindowSmoke_'+name+'.log')).open('x') as stream:
+            subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=remaining)
+    mapping=collect((work/'movingWindowSmoke_updates.log').read_text(),base_cells=2400)
+    report.update(complete=True,mapping=mapping,passed=all(mapping[k] for k in ('linear_mapping_gate','coverage_gate','coarsening_gate')))
+    target.write_text(json.dumps(report,indent=2)+'\n')
+    if not report['passed']:raise ValueError('Small-mesh topology/mapping preflight failed; large case not copied')
+    return report
+
+
+def collect(text,base_cells=BASE_CELLS):
     rows=parse_records(text,'M247_MOVING_WINDOW')
     endings=parse_records(text,'M247_MOVING_WINDOW_END')
     if len(rows)!=9 or endings!=[dict(schema=1,updates=8,advancedPhysics=0)] or not re.search(r'^End\s*$',text,re.M):
@@ -51,7 +102,7 @@ def collect(text):
         if any(k not in row or not math.isfinite(row[k]) for k in keys):raise ValueError('Missing/nonfinite moving record')
         if row['schema']!=1 or row['step']!=i or abs(row['physicalTime']-.00018)>1e-12 or abs(row['auditTime']-(.00018+i*1e-9))>1e-12:
             raise ValueError('Wrong moving record index/time')
-        if not BASE_CELLS<=row['cells']<=MAX_CELLS or row['cells']!=int(row['cells']):raise ValueError('Cell budget/count failed')
+        if not base_cells<=row['cells']<=MAX_CELLS or row['cells']!=int(row['cells']):raise ValueError('Cell budget/count failed')
         if any(row[k]!=int(row[k]) or row[k]<0 for k in ('fineCells','protectedCells','interiorCells','coveredCells')):
             raise ValueError('Invalid coverage counts')
         if not 0<=row['coveredCells']<=row['interiorCells']<=row['cells'] or row['updateWall_s']<0 or row['volume']<=0:
@@ -60,12 +111,17 @@ def collect(text):
             raise ValueError('Invalid mapped material bounds')
         expected=CENTRES[0] if i==0 else CENTRES[(i-1)//2]
         if abs(row['centreX']-expected)>1e-12:raise ValueError('Wrong window path')
-    if rows[0]['cells']!=BASE_CELLS or rows[0]['fineCells']!=0:raise ValueError('Expected unrefined coarse initial state')
+    if rows[0]['cells']!=base_cells or rows[0]['fineCells']!=0:raise ValueError('Expected unrefined coarse initial state')
     history=parse_records(text,'M247_MOVING_V0')
     if len(history)!=8:raise ValueError('Missing old-volume initialization evidence')
     for i,row in enumerate(history):
         if any(row.get(k)!=v for k,v in dict(schema=1,step=i+1,cells=rows[i]['cells'],ready=1,maxDifference=0).items()):
             raise ValueError('Old-volume initialization count/state failed')
+        previous,current=row.get('previousIndex'),row.get('currentIndex')
+        if previous is None or current is None or current<=previous or current!=int(current) or previous!=int(previous):
+            raise ValueError('Old-volume time index did not advance')
+        if i and previous!=history[i-1]['currentIndex']:
+            raise ValueError('Old-volume history indices are discontinuous')
     baseline=rows[0];linear=[];nonlinear=[]
     for row in rows[1:]:
         for key in ('volume','metalVolume','mappedMetalTemperature','mappedLiquidVolume'):
@@ -93,6 +149,9 @@ def execute(audit_work,work,utility,mesh_utility):
     preview=Path(audit['inputs']['previous_work']).resolve();source=preview/'coarse'
     if any(p==work or p in work.parents or work in p.parents for p in (audit_work,preview)):
         raise ValueError('Output overlaps original data')
+    work.mkdir(parents=True,exist_ok=True)
+    if (work/'movingWindowSmokeReview.json').exists():raise ValueError('Choose fresh output')
+    smoke_report=smoke(work,utility)
     expected=next(c['files_sha256'] for c in audit['cases'] if c['case']=='coarse')
     if case_fingerprint(source)!=expected:raise ValueError('Original coarse audited files changed')
     if (source/'constant/dynamicMeshDict').exists():raise ValueError('Expected static coarse source')
@@ -115,6 +174,7 @@ centres (80e-6 160e-6 0 80e-6);
     shutil.copy2(case/'constant/dynamicMeshDict',work/'movingWindow_dynamicMeshDict')
     shutil.copy2(case/'system/movingWindowAuditDict',work/'movingWindow_auditDict')
     report=dict(schema=1,complete=False,production_approved=False,no_cfd=True,
+        small_mesh_preflight=smoke_report,
         source_case=str(source),source_sha256=expected,original_audit_sha256=sha(audit_work/'localRestartReview.json'),
         utility_sha256=sha(utility),commands=[],quality=[],
         note='Mechanical refinement/coarsening path on frozen180us fields; synthetic snapshot times. Only T/alpha/epsilon and two product proxies registered. Saved cases are NOT valid solver restarts. No enthalpy, flux, isoAdvector or speedup approval.')
