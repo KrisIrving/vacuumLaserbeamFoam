@@ -147,3 +147,54 @@ This is timestep sensitivity screening, not a matched equivalence or production
 approval. Review end states/physical diagnostics against180928 and, if needed,
 full spatial fields before accepting larger steps.129 local Python tests pass;
 Ubuntu10ns run pending. No native C++ change in this update.
+
+
+## 2026-10-08 182248: timestep result and development checkpoint
+
+Both verified archives have matching source fingerprints, protected checkpoint,
+solver hash and48 ranks.5ns:40steps/380.398s;10ns:33steps/312.321s; job speedup
+1.21797 and17.90% lower job wall. All short-pilot stability screens pass; no caps.
+At180.1us Umax differs-6.82%; at180.2us-4.43%. FinalTmax+0.220%, depositedpower
+-0.0278%, pVap+0.819%. Diagnostic similarity is not spatial/temporal convergence.
+Keep5ns default and10ns experimental; no production approval.
+
+Read-only comparison tool compares existing reports, requires matching provenance
+and physical times, and packages a fresh named archive without CFD or mesh writes:
+```bash
+./tests/m247Performance/CompareMovingSteps
+```
+Send M247_moving-step-comparison-<timestamp>_review.tar.gz. Defaults select180928
+and182248.130 Python tests pass and both real reports were compared locally.
+
+Completed evidence:
+-8um200us baseline completed29.18h; keyhole deepens~189 to317um over100-200us,
+  no plateau, remaining bottom clearance~136um. Fine full-track budget unresolved.
+-Thermal bounded enthalpy iteration addressed150-corrector cap; currentpilot
+  mean15.7/max18 and no cap. Phase smoothing is not adopted as an acceleration.
+-Ray traversal cache coarse matched test~1.08x; optical handoff/termination fixes
+  tested separately; seed/partition experiments did not justify adoption.
+-Static local refinement/flux projection validated restart machinery; fine optics
+  changes deposited power, so coarse/fine optical equivalence remains unresolved.
+-Moving topology/sparse-cell selection/protected hot wake/mesh-history corrected
+  and native-tested; moving isoAdvector/CorrectPhi full CFD now completes40steps.
+-Read-only collector recovery validated onUbuntu; mesh cost measured59.66s of
+  378.64s loop; timestep10ns pilot tested but physical equivalence not approved.
+
+Next development priorities:
+1. Preserve the passing5ns reference, automate paired reporting (this change).
+2. Design spatial comparison on a common physical representation; dynamic meshes
+   cannot be compared by cell index. IncludeT/alpha/U/liquid fraction, melt/keyhole
+   geometry, material and enthalpy balances. Determine acceptance criteria before
+   promoting10ns; use longer paired windows only after short comparison is useful.
+3. Quantify and reduce thermal/laser cost; test protected update amortization if
+   measured savings justify its complexity. All active hot/liquid wake must stay
+   covered; skipping CFD equations outside a region is not implemented.
+4. Moving local flow + global coarse heat-only region is the strategic full-track
+   route, requiring conservative interface heat/material transfer and pressure/
+   flow boundary validation. No implementation or cost guarantee yet.
+5. After local-grid and timestep convergence, perform bounded4um validation with
+   measured24h wall budget; only then promote1.5-2mm melting and solidification.
+
+24h4um feasibility,2um final accuracy, full-track affordability and long-window
+energy/geometry convergence remain unproven. Existing short costs cannot be used
+as a validated full-track ETA. Do not request full production reruns now.

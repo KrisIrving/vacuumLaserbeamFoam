@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+REFERENCE=${1:-tests/m247Performance/runs/moving-cfd-pilot-20261008-180928}
+CANDIDATE=${2:-tests/m247Performance/runs/moving-cfd-dt10-20261008-182248}
+WORK=${3:-tests/m247Performance/runs/moving-step-comparison-$(date +%Y%m%d-%H%M%S)}
+[[ ! -e "$WORK" ]] || { echo "Choose fresh WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+python3 tests/m247Performance/compare_moving_steps.py --reference "$REFERENCE/movingCFDReview.json" \
+    --candidate "$CANDIDATE/movingCFDReview.json" --output "$WORK/movingStepComparison.json"
+cp "$REFERENCE/movingCFDReview.json" "$WORK/movingStepReference.json"
+cp "$CANDIDATE/movingCFDReview.json" "$WORK/movingStepCandidate.json"
+python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code 0

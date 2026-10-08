@@ -1524,5 +1524,18 @@ class MovingPilotTimeStepTests(unittest.TestCase):
         for ns in (0,1,20):
             with self.assertRaisesRegex(ValueError,'5 or 10'):execute('missing','missing','missing',ns)
 
+class MovingStepComparisonTests(unittest.TestCase):
+    def test_provenance_and_physical_times_are_required(self):
+        from compare_moving_steps import compare
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);a=root/'a.json';b=root/'b.json'
+            r=dict(complete=True,pilot_gate=True,source_case='source',source_sha256={'T':'hash'},
+                original_protected_review_sha256='hash',solver_sha256='binary',duration_us=.2,ranks=48,
+                pilot=dict(job_wall_s=2,interval_rank_max_sum_s=2,steps=40),physical_diagnostics=[dict(time=.0001802,Umax=100)])
+            a.write_text(json.dumps(r));r['pilot']=dict(job_wall_s=1,interval_rank_max_sum_s=1,steps=33)
+            b.write_text(json.dumps(r));self.assertEqual(compare(a,b)['job_speedup'],2)
+            r['solver_sha256']='different';b.write_text(json.dumps(r))
+            with self.assertRaisesRegex(ValueError,'provenance'):compare(a,b)
+
 if __name__=='__main__':
     unittest.main()
