@@ -5,6 +5,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "interpolationTable.H"
 #include <cmath>
+#include <chrono>
 namespace Foam
 {
 class m247MovingRefineFvMesh : public dynamicRefineFvMesh
@@ -78,6 +79,7 @@ public:
     {
         if (lastIndex_==time().timeIndex())return false;
         lastIndex_=time().timeIndex();
+        const auto updateStarted=std::chrono::steady_clock::now();
         IOdictionary controls(IOobject("m247MovingWindowDict",time().system(),*this,
             IOobject::MUST_READ,IOobject::NO_WRITE));
         const scalar halfX=controls.get<scalar>("halfX");
@@ -132,7 +134,9 @@ public:
         if (old.size()!=nCells())FatalErrorInFunction<<"Invalid V0 size"<<exit(FatalError);
         forAll(old,i)if (!std::isfinite(old[i]) || old[i]<=0)
             FatalErrorInFunction<<"Invalid pre-update old volume"<<exit(FatalError);
+        const auto topologyStarted=std::chrono::steady_clock::now();
         const bool changed=dynamicRefineFvMesh::update();
+        const auto topologyFinished=std::chrono::steady_clock::now();
         const auto& levels=meshCutter().cellLevel();
         label missed=0,afterWake=0;
         forAll(T,i)if ((*hold_)[i]>0)
@@ -143,7 +147,19 @@ public:
         const scalar afterThermal=fvc::domainIntegrate
             (lookupObject<volScalarField>("rho")*(lookupObject<volScalarField>("cp")*T
              +lookupObject<volScalarField>("LatentHeat")*eps)).value();
+        // Maximum across ranks is elapsed wall cost, not summed CPU time.
+        // Sample total before timing reductions/output; topology includes native mapping.
+        const auto updateFinished=std::chrono::steady_clock::now();
+        scalar topologyWall=std::chrono::duration<scalar>(topologyFinished-topologyStarted).count();
+        scalar preparationWall=std::chrono::duration<scalar>(topologyStarted-updateStarted).count();
+        scalar auditWall=std::chrono::duration<scalar>(updateFinished-topologyFinished).count();
+        scalar updateWall=std::chrono::duration<scalar>(updateFinished-updateStarted).count();
+        reduce(topologyWall,maxOp<scalar>());reduce(preparationWall,maxOp<scalar>());
+        reduce(auditWall,maxOp<scalar>());reduce(updateWall,maxOp<scalar>());
         const auto precision=Info().precision();Info().precision(17);
+        Info<<"M247_MOVING_MESH_COST schema=1 time="<<time().value()
+            <<" topologyWallMax="<<topologyWall<<" preparationWallMax="<<preparationWall
+            <<" auditWallMax="<<auditWall<<" updateWallMax="<<updateWall<<endl;
         Info<<"M247_MOVING_CFD schema=1 time="<<time().value()
             <<" cells="<<returnReduce(nCells(),sumOp<label>())<<" changed="<<label(changed)
             <<" centreX="<<centre.x()<<" centreZ="<<centre.z()

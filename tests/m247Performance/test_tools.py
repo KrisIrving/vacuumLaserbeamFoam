@@ -1508,5 +1508,15 @@ class MovingCFDCollectionRegressionTests(unittest.TestCase):
             (previous/'movingCFD/probe.json').write_text('{}')
             with self.assertRaisesRegex(ValueError,'changed'):resume(previous,root/'other')
 
+class MovingMeshCostTests(unittest.TestCase):
+    def test_cost_requires_complete_nonnegative_matched_times(self):
+        from moving_cfd import mesh_cost
+        mapping={'records':[{'time':.0001802}]}
+        line='M247_MOVING_MESH_COST schema=1 time=0.0001802 topologyWallMax=2 preparationWallMax=1 auditWallMax=0.5 updateWallMax=3.5'
+        self.assertEqual(mesh_cost(line,mapping,True)['wall_s']['topologyWallMax'],2)
+        self.assertFalse(mesh_cost('',mapping)['available'])
+        for bad in ('',line.replace('topologyWallMax=2','topologyWallMax=-1'),line.replace('updateWallMax=3.5','updateWallMax=1'),line.replace('time=0.0001802','time=0.0001801')):
+            with self.assertRaises(ValueError):mesh_cost(bad,mapping,True)
+
 if __name__=='__main__':
     unittest.main()

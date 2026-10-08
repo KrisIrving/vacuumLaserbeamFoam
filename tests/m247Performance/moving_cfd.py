@@ -47,6 +47,24 @@ def state_gate(text,mapping):
         limits=dict(divL1=.05,divMax=15000),note='Short-pilot continuity screen, not production tolerance.')
 
 
+def mesh_cost(text,mapping,required=False):
+    rows=parse_records(text,'M247_MOVING_MESH_COST')
+    if not rows:
+        if required:raise ValueError('Missing native mesh-cost records; rebuild required')
+        return dict(available=False,reason='Historical solver has no separate mesh timer')
+    if len(rows)!=len(mapping['records']):raise ValueError('Incomplete mesh-cost records')
+    keys=('topologyWallMax','preparationWallMax','auditWallMax','updateWallMax')
+    for row,step in zip(rows,mapping['records']):
+        if row.get('schema')!=1 or abs(row.get('time',float('inf'))-step['time'])>1e-12:
+            raise ValueError('Mesh-cost time/schema mismatch')
+        if any(k not in row or not math.isfinite(row[k]) or row[k]<0 for k in keys):
+            raise ValueError('Invalid mesh-cost timing')
+        if any(row[k]>row['updateWallMax']+1e-9 for k in keys[:-1]):
+            raise ValueError('Mesh stage exceeds total update time')
+    return dict(available=True,records=rows,wall_s={k:sum(r[k] for r in rows) for k in keys},
+        note='Per-call rank maxima; stage maxima need not sum to total. Excludes timing reductions/output, isoAdvector remap and external CorrectPhi.')
+
+
 def thermal_metadata(case,metadata):
     """Read explicit archived controls; never silently substitute a tolerance."""
     text=(case/'system/fvSolution').read_text()
@@ -71,7 +89,7 @@ def thermal_metadata(case,metadata):
     return result
 
 
-def collect_case(case,solver_sha):
+def collect_case(case,solver_sha,require_mesh_cost=False):
     provenance=json.loads((case/'run.json').read_text())
     if provenance.get('solver_sha256')!=solver_sha:raise ValueError('Launched solver binary differs from recorded rebuild')
     meta,summary,diagnostics=read_probe(case)
@@ -82,7 +100,7 @@ def collect_case(case,solver_sha):
     if abs(mapping['records'][-1]['time']-.0001802)>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
     if len(mapping['records'])!=summary['steps']:raise ValueError('Missing per-step mesh lifecycle records')
     return dict(complete=True,metadata_used=meta,pilot=summary,physical_diagnostics=diagnostics,
-        moving_mapping=mapping,final_step_state=state,thermal_gate=thermal,
+        moving_mapping=mapping,final_step_state=state,mesh_cost=mesh_cost(text,mapping,require_mesh_cost),thermal_gate=thermal,
         pilot_gate=all((thermal,mapping['coverage_gate'],mapping['topology_gate'],mapping['mapping_screen'],state['continuity_screen'])))
 
 
@@ -139,7 +157,7 @@ def execute(previous,work,solver):
     if (work/'movingCFDReview.json').exists():raise ValueError('Choose fresh work')
     located=shutil.which('vacuumLaserbeamFoam')
     if not located or Path(located).resolve()!=solver:raise ValueError('PATH solver differs from rebuilt binary')
-    if b'M247_MOVING_CFD' not in solver.read_bytes():raise ValueError('Solver rebuild required: missing moving-CFD marker')
+    if b'M247_MOVING_CFD' not in solver.read_bytes() or b'M247_MOVING_MESH_COST' not in solver.read_bytes():raise ValueError('Solver rebuild required: missing moving-CFD marker')
     work.mkdir(parents=True,exist_ok=True);case=work/'movingCFD';case.mkdir()
     report=dict(schema=1,complete=False,production_approved=False,pilot_gate=False,
         original_protected_review_sha256=sha(previous/'movingWindowReview.json'),source_case=str(source),
@@ -192,7 +210,7 @@ def execute(previous,work,solver):
         wall_seconds=min(900,remaining-240)
         report['solver_wall_budget_s']=wall_seconds;save()
         launch([sys.executable,str(Path(__file__).with_name('run_probe.py')),'--case',str(case),'--wall-hours',str(wall_seconds/3600)],'movingCFD_pilot')
-        collected=collect_case(case,report['solver_sha256'])
+        collected=collect_case(case,report['solver_sha256'],require_mesh_cost=True)
         if case_fingerprint(source)!=expected:raise ValueError('Original source changed')
         report.update(collected,source_unchanged_gate=True)
         save();return report
