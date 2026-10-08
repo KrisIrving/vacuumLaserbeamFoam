@@ -1,3 +1,32 @@
+# Current action after the 144301 mapping audit
+
+The audit confirms only byte-identical renames of phi and alphaPhi0.metal to
+.unmapped, plus the three intended optical input changes. No mesh/material hash
+changed. Restore names only in a fresh optical copy after validating all changes.
+The original strict optical-only difference gate is then applied again.
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/ResumeLocalOptics
+```
+
+Keep the 124829 optical run, 144301 mapping audit, and original preview cases.
+The command reuses the first two traces and the 553-second mapping result;
+it only copies/decomposes the mapped case and launches its missing frozen trace.
+No rebuild is needed. The trace has a5-minute budget plus stop grace; copying,
+hashing and decomposition take additional time. It checks original audit hashes,
+identical fine rank cell ownership, and equal solver/library digests across all
+five capture/trace jobs. Any mismatch stops acceptance. Prior coarse/fine output
+directories in the new run contain evidence only, not runnable field copies.
+The restored flux files remain unsuitable for unprojected CFD; frozen mode exits
+before those loops. This is no physical convergence or production approval.
+
+Send `tests/m247Performance/runs/M247_local-optics-resume-<timestamp>_review.tar.gz`.
+If it fails, send the partial archive. Fresh RunLocalOptics jobs also now handle
+only these exact byte-preserving renames, retaining the raw mapping fingerprints.
+
+The older action descriptions below are historical.
+
 # Current action after the 124829 mapping guard failure
 
 Do not rerun RunLocalOptics yet. The coarse/fine frozen traces completed with

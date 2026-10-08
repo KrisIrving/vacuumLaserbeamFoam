@@ -1169,6 +1169,34 @@ class FluxPilotTests(unittest.TestCase):
         self.assertEqual(moments(text,expected_time=.0001802)['cells'],2283911)
 
 class LocalOpticsTests(unittest.TestCase):
+    def test_restore_only_byte_identical_flux_names(self):
+        from local_optics import restore_unmapped_fluxes,case_fingerprint,mapping_guard
+        with tempfile.TemporaryDirectory() as directory:
+            case=Path(directory);time=case/'0.00018';time.mkdir()
+            for name in ('phi','alphaPhi0.metal','T','frozenAlphaInput'):(time/name).write_text(name)
+            before=case_fingerprint(case)
+            for name in ('phi','alphaPhi0.metal'):(time/name).rename(time/(name+'.unmapped'))
+            (time/'frozenAlphaInput').write_text('mapped optical data')
+            restored=restore_unmapped_fluxes(case,before)
+            self.assertEqual(len(restored),2)
+            self.assertEqual(mapping_guard(before,case_fingerprint(case)),['0.00018/frozenAlphaInput'])
+            self.assertEqual(restore_unmapped_fluxes(case,before),[])
+
+    def test_flux_restore_rejects_bad_bytes_and_unrelated_changes_before_mutation(self):
+        from local_optics import restore_unmapped_fluxes,case_fingerprint
+        for fault in ('bad_flux','changed_T','extra_file','collision'):
+            with tempfile.TemporaryDirectory() as directory:
+                case=Path(directory);time=case/'0.00018';time.mkdir()
+                (time/'phi').write_text('flux');(time/'T').write_text('temperature')
+                before=case_fingerprint(case);(time/'phi').rename(time/'phi.unmapped')
+                if fault=='bad_flux':(time/'phi.unmapped').write_text('changed')
+                elif fault=='changed_T':(time/'T').write_text('changed')
+                elif fault=='extra_file':(time/'unexpected').write_text('extra')
+                else:(time/'phi').write_text('collision')
+                state=case_fingerprint(case)
+                with self.assertRaises(ValueError):restore_unmapped_fluxes(case,before)
+                self.assertEqual(case_fingerprint(case),state)
+
     def test_mapping_audit_distinguishes_renames_from_changed_bytes(self):
         from audit_optical_mapping import differences
         before={'0.00018/phi':'flux','0.00018/T':'temperature','constant/polyMesh/points':'mesh'}

@@ -31,6 +31,24 @@ def mapping_guard(before,after):
     if unexpected:raise ValueError('Optical mapping changed non-optical fields/mesh: '+', '.join(unexpected))
     return changed
 
+def restore_unmapped_fluxes(case,before):
+    """Restore only byte-identical known flux renames in a disposable optical copy."""
+    after=case_fingerprint(case)
+    normalized=dict(after);renames=[]
+    for name in ('phi','alphaPhi0.metal'):
+        original='0.00018/'+name;renamed=original+'.unmapped'
+        if original in before and original not in after and renamed not in before:
+            if after.get(renamed)!=before[original]:
+                raise ValueError('Unmapped flux bytes differ: '+original)
+            normalized[original]=normalized.pop(renamed)
+            renames.append(dict(source=renamed,target=original,sha256=before[original]))
+    # Validate every change before performing any rename; never hide unrelated changes.
+    mapping_guard(before,normalized)
+    for row in renames:
+        (case/row['source']).rename(case/row['target'])
+    mapping_guard(before,case_fingerprint(case))
+    return renames
+
 def contrasts(powers):
     return [dict(comparison=label,reference_W=powers[a],candidate_W=powers[b],
         difference_W=powers[b]-powers[a],relative_difference=(powers[b]-powers[a])/powers[a])
@@ -83,7 +101,9 @@ def execute(audit_work,work):
             after=case_fingerprint(case)
             report['mapping_fingerprints']=dict(before=before,after=after)
             save() # Preserve evidence even when the strict guard rejects mapping.
-            report['mapped_changed_files']=mapping_guard(before,after)
+            report['restored_flux_names']=restore_unmapped_fluxes(case,before)
+            report['mapped_changed_files']=mapping_guard(before,case_fingerprint(case))
+            save()
             report['mapped_inputs_changed']=bool(report['mapped_changed_files'])
             # Native fields are deliberately mapped, not claimed equal across meshes.
             commands.append(run(work,['decomposePar','-case',str(case),'-time','0.00018','-noFunctionObjects'],name+'_decompose'))
