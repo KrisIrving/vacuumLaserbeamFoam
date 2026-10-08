@@ -1609,5 +1609,34 @@ class MovingInventoryTests(unittest.TestCase):
             self.assertGreaterEqual(r['disk_bytes']['free'],0)
             self.assertEqual(path.read_text(),'partial')
 
+class MovingDecompositionTests(unittest.TestCase):
+    def test_end_and_all_initial_rank_fields_required(self):
+        from moving_cfd import decomposition_gate
+        with tempfile.TemporaryDirectory() as directory:
+            case=Path(directory);log=case/'decompose.log';log.write_text('Processor 18: field transfer')
+            with self.assertRaisesRegex(ValueError,'End'):decomposition_gate(case,log)
+            log.write_text('End\n')
+            with self.assertRaisesRegex(ValueError,'48'):decomposition_gate(case,log)
+            for i in range(48):
+                folder=case/f'processor{i}/0.00018';folder.mkdir(parents=True)
+                for name in ('T','U','alpha.metal','epsilon1','phi'):(folder/name).write_text('field')
+            self.assertTrue(decomposition_gate(case,log)['passed'])
+            (case/'processor18/0.00018/T').write_text('')
+            with self.assertRaisesRegex(ValueError,'initial fields'):decomposition_gate(case,log)
+
+    def test_failed_and_interrupted_launch_persists_stage(self):
+        import subprocess
+        from moving_cfd import recorded_launch
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)
+            for index,error in enumerate((subprocess.CalledProcessError(9,['decomposePar']),subprocess.TimeoutExpired(['decomposePar'],1),KeyboardInterrupt())):
+                report={'commands':[]};states=[]
+                def save():states.append(report['commands'][-1]['state'])
+                with patch('moving_cfd.subprocess.run',side_effect=error):
+                    with self.assertRaises(type(error)):recorded_launch(['decomposePar'],work/f'{index}.log',report,save,1)
+                self.assertEqual(states,['running','failed_or_interrupted'])
+                self.assertEqual(report['commands'][0]['error_type'],type(error).__name__)
+                self.assertIn('elapsed_wall_s',report['commands'][0])
+
 if __name__=='__main__':
     unittest.main()

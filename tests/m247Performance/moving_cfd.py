@@ -10,6 +10,38 @@ from region_audit import sha
 from moving_window import collect,dynamic_dictionary
 
 
+def recorded_launch(command,log,report,save,timeout):
+    started=time.monotonic()
+    entry=dict(command=command,log=log.name,stage=log.stem,state='running')
+    report['commands'].append(entry);save()
+    print('Starting stage:',log.stem,'log:',log,flush=True)
+    try:
+        with log.open('x') as stream:
+            completed=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=timeout)
+        entry.update(state='completed',returncode=completed.returncode)
+    except BaseException as error:
+        entry.update(state='failed_or_interrupted',error_type=type(error).__name__,error=str(error),
+            returncode=getattr(error,'returncode',None))
+        raise
+    finally:
+        entry['elapsed_wall_s']=time.monotonic()-started;save()
+
+
+def decomposition_gate(case,log):
+    if not re.search(r'^End\s*$',log.read_text(),re.M):raise ValueError('Decomposition incomplete: native End missing')
+    ranks={p.name for p in case.iterdir() if p.is_dir() and re.fullmatch(r'processor[0-9]+',p.name)}
+    if ranks!={f'processor{i}' for i in range(48)}:raise ValueError('Decomposition incomplete: expected 48 processor directories')
+    missing=[]
+    for i in range(48):
+        folder=case/f'processor{i}'/'0.00018'
+        for name in ('T','U','alpha.metal','epsilon1','phi'):
+            path=folder/name
+            if not path.is_file() or path.stat().st_size==0:missing.append(f'processor{i}/0.00018/{name}')
+    if missing:raise ValueError('Decomposition incomplete initial fields: '+', '.join(missing[:10]))
+    return dict(passed=True,ranks=48,checked_initial_fields=['T','U','alpha.metal','epsilon1','phi'],
+        note='Native successful exit plus End and file presence; solver still validates mesh/field contents.')
+
+
 def mapping_gate(text,end_s=.0001802):
     rows=parse_records(text,'M247_MOVING_CFD')
     if not rows:raise ValueError('Missing rebuilt moving-CFD diagnostics')
@@ -203,21 +235,9 @@ def execute(previous,work,solver,max_delta_ns=5,duration_us=.2):
         def launch(command,name):
             remaining=deadline-time.monotonic()
             if remaining<=0:raise ValueError('30 minute command budget exhausted')
-            started=time.monotonic()
-            entry=dict(command=command,log=name+'.log',stage=name,state='running')
-            report['commands'].append(entry);save()
-            print('Starting stage:',name,'log:',work/(name+'.log'),flush=True)
-            try:
-                with (work/(name+'.log')).open('x') as stream:
-                    completed=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=remaining)
-                entry.update(state='completed',returncode=completed.returncode)
-            except BaseException as error:
-                entry.update(state='failed_or_interrupted',error_type=type(error).__name__,error=str(error),
-                    returncode=getattr(error,'returncode',None))
-                raise
-            finally:
-                entry['elapsed_wall_s']=time.monotonic()-started;save()
+            recorded_launch(command,work/(name+'.log'),report,save,remaining)
         launch(['decomposePar','-case',str(case),'-time','0.00018','-noFunctionObjects'],'movingCFD_decompose')
+        report['decomposition_gate']=decomposition_gate(case,work/'movingCFD_decompose.log');save()
         remaining=deadline-time.monotonic()
         if remaining<=240:raise ValueError('Insufficient command budget for solver and graceful MPI stop')
         wall_seconds=min(900,remaining-240)
