@@ -1169,6 +1169,27 @@ class FluxPilotTests(unittest.TestCase):
         self.assertEqual(moments(text,expected_time=.0001802)['cells'],2283911)
 
 class LocalOpticsTests(unittest.TestCase):
+    def test_single_input_contrasts_preserve_signed_nonlinear_effects(self):
+        from local_optics_inputs import contrast,ROLES
+        self.assertEqual(len(set(ROLES.values())),3)
+        c=contrast('normal','frozenNormalInput',333,289,332)
+        self.assertEqual(c['difference_from_fine_own_W'],44)
+        self.assertGreater(c['depositedPower_W'],c['fine_all_mapped_W'])
+        self.assertNotIn('passed',c)
+
+    def test_single_input_roles_have_distinct_complete_archives(self):
+        from package_results import LOCAL_OPTICS_INPUT_VARIANTS,FILES
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'inputs';work.mkdir()
+            for name in LOCAL_OPTICS_INPUT_VARIANTS:
+                for relative in FILES:
+                    if relative.startswith('capture'):continue
+                    p=work/name/relative;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('evidence')
+            (work/'localOpticsInputReview.json').write_text('{}')
+            _,manifest=package(work,exit_code=0)
+            self.assertEqual(manifest['variants'],list(LOCAL_OPTICS_INPUT_VARIANTS))
+            self.assertEqual(manifest['missing_files'],[])
+
     def test_restore_only_byte_identical_flux_names(self):
         from local_optics import restore_unmapped_fluxes,case_fingerprint,mapping_guard
         with tempfile.TemporaryDirectory() as directory:

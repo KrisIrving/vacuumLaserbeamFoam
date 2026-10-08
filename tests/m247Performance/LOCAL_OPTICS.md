@@ -1,3 +1,39 @@
+# Current action after the completed 144915 frozen comparison
+
+| Frozen role | Absorbed power W |
+|---|---:|
+| Coarse own input | 326.667535 |
+| Fine own input | 288.999073 |
+| Fine mapped coarse inputs | 332.355845 |
+
+Fine own versus coarse is -11.53%; fine all-mapped versus coarse is +1.74%.
+The input bundle changes absorption by43.36W on the same fine mesh. Mapping
+artifacts and nonlinear interactions prevent assigning that difference to one field.
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+./tests/m247Performance/RunLocalOpticsInputs
+```
+
+This reuses 144915 and retained124829 data. It copies the fine-own serial case
+three times and replaces exactly one captured optical field per role with its
+already mapped counterpart: localOpticsAlphaMapped (filtered alpha),
+localOpticsNormalMapped (filtered normal), localOpticsResistivityMapped (electrical
+resistivity). It launches three frozen traces, preserving the same fine mesh,
+48rank ownership,1536ray sampling, corrected handoff/termination and binary
+provenance. All input hashes and zero physical/time changes are checked.
+These are diagnostic hybrid optical inputs, not a production optical model.
+Single substitutions may interact; their power differences need not add up.
+
+No rebuild or new mapping is needed. Retain previous cases. Each trace has a
+5-minute budget plus stop grace; copying/hashing and three decompositions take
+additional time. The command packages partial reports on failure. Send:
+`tests/m247Performance/runs/M247_local-optics-inputs-<timestamp>_review.tar.gz`.
+Original copied flux is used only by frozen startup, which exits before CFD;
+this does not approve an unprojected transient restart.
+
+Earlier action descriptions below are historical.
+
 # Current action after the 144301 mapping audit
 
 The audit confirms only byte-identical renames of phi and alphaPhi0.metal to
