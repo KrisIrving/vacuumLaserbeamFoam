@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import tarfile
 from prepare_probe import VARIANTS
+VARIANTS = VARIANTS+('movingCFD',)
 
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
@@ -42,6 +43,8 @@ BUILD_FILES += ('localOpticsInputReview.json',) + tuple(
 BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json','opticalMappingAudit.json') + tuple(
     f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
     ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
+
+BUILD_FILES += ('movingCFDReview.json','movingCFD_dynamicMeshDict','movingCFD_windowDict','movingCFD_decompose.log','movingCFD_pilot.log')
 
 BUILD_FILES += ('movingWindowSmokeReview.json','movingWindowSmoke_blockMesh.log','movingWindowSmoke_updates.log')
 BUILD_FILES += ('movingWindowReview.json','movingWindow_dynamicMeshDict','movingWindow_auditDict','movingWindow_updates.log') + tuple(

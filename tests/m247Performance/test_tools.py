@@ -1417,5 +1417,46 @@ class MovingWindowTests(unittest.TestCase):
             self.assertEqual(manifest['missing_files'],[])
             self.assertEqual({f['source'] for f in manifest['files']},{'movingWindowReview.json','movingWindow_step1_quality.log'})
 
+class MovingCFDPilotTests(unittest.TestCase):
+    def fixture(self):
+        lines=[]
+        for time in (.0001801,.0001802):
+            row=dict(schema=1,time=time,cells=1400000,changed=1,centreX=-100e-6+time,centreZ=0,
+                requested=10000,wakeBefore=20000,wakeAfter=160000,wakeMissed=0,
+                metalBefore=3e-10,metalAfter=3e-10,thermalProxyBefore=5,thermalProxyAfter=5)
+            lines.append('M247_MOVING_CFD '+' '.join(f'{k}={v}' for k,v in row.items()))
+        return '\n'.join(lines)
+
+    def test_full_solver_mapping_screen_rejects_drift_and_missing_wake(self):
+        from moving_cfd import mapping_gate
+        good=mapping_gate(self.fixture())
+        self.assertTrue(good['coverage_gate'] and good['topology_gate'] and good['mapping_screen'])
+        self.assertFalse(mapping_gate(self.fixture().replace('wakeMissed=0','wakeMissed=1'))['coverage_gate'])
+        self.assertFalse(mapping_gate(self.fixture().replace('thermalProxyAfter=5','thermalProxyAfter=5.01'))['mapping_screen'])
+        self.assertFalse(mapping_gate(self.fixture().replace('changed=1','changed=0'))['topology_gate'])
+        for bad in ('',self.fixture().replace('cells=1400000','cells=2000001'),
+                    self.fixture().replace('centreZ=0','centreZ=1e-5'),
+                    self.fixture().replace('thermalProxyAfter=5','thermalProxyAfter=nan')):
+            with self.assertRaises(ValueError):mapping_gate(bad)
+
+    def test_full_solver_state_requires_every_step_and_bounds(self):
+        from moving_cfd import mapping_gate,state_gate
+        mapping=mapping_gate(self.fixture())
+        text='\n'.join('M247_MOVING_CFD_STATE schema=1 time='+str(r['time'])+
+            ' alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1300 Tmax=4100 Umax=78 divL1=0.01 divMax=100 invalid=0' for r in mapping['records'])
+        self.assertTrue(state_gate(text,mapping)['continuity_screen'])
+        self.assertFalse(state_gate(text.replace('divL1=0.01','divL1=0.1'),mapping)['continuity_screen'])
+        for bad in ('',text.replace('alphaMax=1','alphaMax=1.1'),text.replace('invalid=0','invalid=1')):
+            with self.assertRaises(ValueError):state_gate(bad,mapping)
+
+    def test_failed_full_solver_pilot_packages_named_solver_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory);case=work/'movingCFD';case.mkdir()
+            (case/'log.vacuumLaserbeamFoam').write_text('failed native topology evidence')
+            (work/'movingCFDReview.json').write_text('{"complete":false}')
+            _,manifest=package(work,exit_code=1)
+            self.assertIn('movingCFD/log.vacuumLaserbeamFoam',{f['source'] for f in manifest['files']})
+            self.assertIn('movingCFDReview.json',{f['source'] for f in manifest['files']})
+
 if __name__=='__main__':
     unittest.main()

@@ -38,7 +38,7 @@ Description
     with optional mesh motion and mesh topology changes including adaptive
     re-meshing.
 Authors
-    
+
     Tom Flint, UoM.
     Philip Cardiff, UCD.
     Gowthaman Parivendhan, UCD.
@@ -64,6 +64,7 @@ Authors
 #include "CorrectPhi.H"
 #include "fvcSmooth.H"
 #include "dynamicRefineFvMesh.H"
+#include "m247MovingRefineFvMesh.H"
 
 #include "Polynomial.H"
 #include "laserHeatSource.H"
@@ -94,6 +95,10 @@ int main(int argc, char *argv[])
     #include "initContinuityErrs.H"
     #include "createDyMControls.H"
     #include "createFields.H"
+    if (isA<m247MovingRefineFvMesh>(mesh))
+    {
+        refCast<m247MovingRefineFvMesh>(mesh).initializeMaskState();
+    }
     #include "frozenLaserProbe.H"
     #include "MULES/createAlphaFluxes.H"
     #include "initCorrectPhi.H"
@@ -137,14 +142,14 @@ int main(int argc, char *argv[])
                 #include "MULES/alphaCourantNo.H"
                 #include "MULES/setDeltaT.H"
             }
-        } 
+        }
         else if (interfaceTrackingScheme == "isoAdvector")
         {
             #include "isoAdvector/porousCourantNo.H"
             #include "isoAdvector/porousAlphaCourantNo.H"
             #include "isoAdvector/setDeltaT.H"
         }
-        
+
         ++runTime;
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
@@ -162,7 +167,7 @@ int main(int argc, char *argv[])
                 #include "MULES/firstIter.H"
                 #include "MULES/alphaControls.H"
                 #include "MULES/alphaEqnSubCycle.H"
-            } 
+            }
             else if (interfaceTrackingScheme == "isoAdvector")
             {
                 #include "isoAdvector/firstIter.H"
@@ -217,7 +222,7 @@ int main(int argc, char *argv[])
 
         performance.start(vacuumPerformance::history);
         // Update the melt history
-        const volScalarField& alphaMetal = 
+        const volScalarField& alphaMetal =
             mesh.lookupObject<volScalarField>("alpha.metal");
         condition = pos(alphaMetal - 0.5) * pos(epsilon1 - 0.5);
         meltHistory += condition;
@@ -228,6 +233,10 @@ int main(int argc, char *argv[])
         performance.stop(vacuumPerformance::fieldWrite);
 
         performance.start(vacuumPerformance::diagnostics);
+        if (isA<m247MovingRefineFvMesh>(mesh))
+        {
+            refCast<m247MovingRefineFvMesh>(mesh).reportPilotState();
+        }
         if (writeVacuumDiagnostics && runTime.outputTime())
         {
             const scalar depositedPower =

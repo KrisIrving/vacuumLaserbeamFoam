@@ -180,3 +180,12 @@ archived sparse-column diagnostic records are checked by the Python regression
 suite; they must never receive protected-mode approval. See the
 [error register](../../log/M247_ERROR_REGISTER.md) for previous failures and
 required closure evidence.
+
+## Protected native pass164709
+
+Small48hot cells refined to384children. Real205048wake children all covered at
+four positions, peak1428574cells, updates57.06795s; linear/direct proxy drift
+below5e-11. Cold coarsening and scoped coplanar geometry qualification pass.
+Sparse-selector issue closed; production CFD remains unapproved. Next run
+[RunMovingCFDPilot](MOVING_CFD.md), which starts from original coarse fields,
+not these mesh-only snapshots.
