@@ -1,3 +1,14 @@
+# Fix after the 154023 constructor exit
+
+The tools compiled; the diagnostic subclass's direct constructor triggered the
+motion-solver parent's mandatory initialization, failing before any mesh update.
+Construct with doInit=false and then call dynamicRefineFvMesh::init(true), which
+performs the staged refinement initialization allowing zero motion solvers.
+The V0 lifecycle fix and all mapping/quality/budget checks remain active.
+
+Pull and rerun RunMovingWindow below using its default fresh output. Native
+corrected constructor/updates still require Ubuntu validation.
+
 # Fix after the 153230 first-update abort
 
 The two diagnostic utilities compiled. The first refinement reached1239840cells

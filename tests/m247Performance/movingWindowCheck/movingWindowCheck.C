@@ -11,7 +11,13 @@ using namespace Foam;
 class movingWindowAuditMesh : public dynamicRefineFvMesh
 {
 public:
-    explicit movingWindowAuditMesh(const IOobject& io) : dynamicRefineFvMesh(io) {}
+    explicit movingWindowAuditMesh(const IOobject& io)
+    : dynamicRefineFvMesh(io, false)
+    {
+        // Match the runtime factory: defer lower-level initialization until
+        // the most-derived refinement class can allow zero motion solvers.
+        dynamicRefineFvMesh::init(true);
+    }
     void prepareOldVolumes(const label step)
     {
         storeOldVol(V());
