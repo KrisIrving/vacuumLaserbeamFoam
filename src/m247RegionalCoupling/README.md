@@ -93,3 +93,42 @@ Mixed native audit schema2 uses capacityMomentsMapped=1 and checks mapped energy
 inversion. Original global energy-only correction is unchanged. Native build/MPI
 pending; 160 Python reference tests pass. Default LPBF solver is untouched. No
 production promotion, full track cost prediction or standalone user test requested.
+
+
+## Local pressure/flux and source wiring (snapshot audits only)
+
+localProjectionAudit true invokes m247LocalProjection.H on flowRegion before the
+thermal audit. Required flowRegion U [m/s], rho [kg/m3], pRegionalCorrection [Pa];
+controls projectionPasses (1..10), projectionDivergenceTolerance [1/s], auditDeltaT
+[s]. pRegionalCorrection is an incremental physical pressure, NOT kinematic p or
+legacy p_rgh. Give it a fixedValue pressure outlet anchor. Supported external
+boundary pairs: U fixedValue + pRegionalCorrection fixedFluxPressure (walls/inlet),
+U zeroGradient + pRegionalCorrection fixedValue (pressure outlet). Processor-only
+coupling; no cyclic/empty/symmetry/moving mesh or closed gauge-only domain yet.
+Provide pressure solver entry and required laplacian/interpolation/div schemes in
+flowRegion fvSolution/fvSchemes. The module uses constrainPressure before pressure
+Poisson solve and subtracts pressure matrix flux, then reconstructs U correction.
+The corrected FACE phi remains continuity authority; reinterpolating corrected U
+can spoil conservation. Inputs are NO_WRITE. M247_LOCAL_PROJECTION reports initial/
+final max divergence, integral absolute divergence and physical boundary net flux;
+processor flux is excluded from physical boundary ledger. Gate requires final
+max divergence<=specified tolerance and abs(net)<=tolerance*global local volume.
+Projection rho/U are supplied snapshots; they are not yet obtained from the mapped
+state or a momentum predictor. This is not a VOF/free-surface boundary validation.
+
+sourceAudit true requires mixtureAudit true and explicit globalContainsLocalSources
+false. flowRegion supplies five [W/m3] fields: regionalLaserGain,
+regionalEvaporationLoss, regionalRadiationLoss, regionalAdvectionGain,
+regionalConductionGain. Arrays must already include interface localization, damping,
+flux divergence and sign conventions from their physical models. Do not pass raw
+surface evaporation [W/m2]. Local energy delta is dt*(laser-evaporation-radiation
++advection+localConduction-mappedGlobalConduction); its MPI-reduced components are
+reported in M247_REGIONAL_SOURCES. This replaces manufacturedCorrectionDensity as
+the mixed audit local correction. Global prediction still includes conduction once.
+The ownership flag is a caller contract; no existing production source is redirected
+by this utility. Actual source generation and matched conductive interface fluxes
+are pending. Pressure and source audits are independent snapshot steps, not a
+coupled local CFD timestep. 166 Python tests pass; native C++ compile/MPI unverified.
+
+OpenFOAM2512 pressure-boundary/flux pattern checked against official solver source:
+https://api.openfoam.com/2512/adjointShapeOptimizationFoam_8C_source.html

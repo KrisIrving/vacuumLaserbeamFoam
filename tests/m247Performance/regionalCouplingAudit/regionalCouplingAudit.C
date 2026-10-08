@@ -1,10 +1,50 @@
-// Native two-region FV/enthalpy/transfer wiring audit. No VOF/flow/laser equations.
+// Native regional wiring audit; optional flux projection and supplied source ledger.
+// No momentum predictor, VOF transport or ray tracing.
 #include "fvCFD.H"
 #include "timeSelector.H"
 #include "m247RegionalTransfer.H"
 #include "m247MetalEnthalpy.H"
 #include "m247RegionalState.H"
+#include "m247LocalProjection.H"
+#include "m247RegionalSources.H"
 using namespace Foam;
+scalarField auditSources(fvMesh& local,Time& time,const dictionary& c,
+    const m247RegionalTransfer& transfer,const scalarField& globalConduction)
+{
+    if(c.get<bool>("globalContainsLocalSources"))
+        FatalErrorInFunction<<"Source ownership requires conduction-only global prediction"<<exit(FatalError);
+    const char* names[]={"regionalLaserGain","regionalEvaporationLoss","regionalRadiationLoss",
+        "regionalAdvectionGain","regionalConductionGain"};
+    List<scalarField> fields(5);
+    for(label k=0;k<5;++k)
+    {
+        const volScalarField field(IOobject(names[k],time.timeName(),local,IOobject::MUST_READ,IOobject::NO_WRITE),local);
+        if(field.dimensions()!=dimensionSet(1,-1,-3,0,0,0,0))
+            FatalErrorInFunction<<"Source must be a volumetric power density: "<<names[k]<<exit(FatalError);
+        fields[k]=field.primitiveField();
+    }
+    const scalarField coarse=transfer.gatherDensity(globalConduction);
+    scalarField delta(local.nCells());scalar total=0,laserJ=0,evapJ=0,radJ=0,advJ=0,conductionJ=0;
+    const scalar dt=c.get<scalar>("auditDeltaT");
+    forAll(delta,i)
+    {
+        delta[i]=m247RegionalSourceDelta(dt,fields[0][i],fields[1][i],fields[2][i],fields[3][i],fields[4][i],coarse[i]);
+        const scalar dv=dt*local.V()[i];
+        total+=delta[i]*local.V()[i];laserJ+=fields[0][i]*dv;evapJ+=fields[1][i]*dv;
+        radJ+=fields[2][i]*dv;advJ+=fields[3][i]*dv;conductionJ+=(fields[4][i]-coarse[i])*dv;
+    }
+    reduce(total,sumOp<scalar>());reduce(laserJ,sumOp<scalar>());reduce(evapJ,sumOp<scalar>());
+    reduce(radJ,sumOp<scalar>());reduce(advJ,sumOp<scalar>());reduce(conductionJ,sumOp<scalar>());
+    const scalar expected=laserJ-evapJ-radJ+advJ+conductionJ;
+    const scalar scale=max(mag(laserJ)+mag(evapJ)+mag(radJ)+mag(advJ)+mag(conductionJ),scalar(1e-300));
+    if(!std::isfinite(total)||!std::isfinite(expected)||mag(total-expected)>1e-10*scale)
+        FatalErrorInFunction<<"Local source ledger failed"<<exit(FatalError);
+    Info().precision(17);
+    Info<<"M247_REGIONAL_SOURCES schema=1 laserJ="<<laserJ<<" evaporationLossJ="<<evapJ
+        <<" radiationLossJ="<<radJ<<" advectionGainJ="<<advJ<<" conductionDeltaJ="<<conductionJ
+        <<" totalDeltaJ="<<total<<" globalContainsLocalSources=0 productionApproved=0"<<endl;
+    return delta;
+}
 // Mixture branch audits fixed transported phase inventory, not equilibrium melting.
 void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary& c)
 {
@@ -39,13 +79,15 @@ void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary
         FatalErrorInFunction<<"Mixture audit diffusion step exceeds guard"<<exit(FatalError);
     m247RegionalTransfer transfer(thermal,local);
     const m247RegionalState state(transfer,material,energy,alpha.primitiveField(),latent);
+    const scalarField sourceDelta=c.getOrDefault<bool>("sourceAudit",false)
+        ?auditSources(local,runTime,c,transfer,divergence.primitiveField()):scalarField(local.nCells(),change);
     scalarField finalEnergy(state.energy);scalar added=0,maxInverseError=0;
     forAll(finalEnergy,i)
     {
-        finalEnergy[i]+=change;
+        finalEnergy[i]+=sourceDelta[i];
         const scalar back=state.closure(i).temperature(finalEnergy[i],state.latentInventory[i]);
         maxInverseError=max(maxInverseError,mag(state.closure(i).density(back,state.latentInventory[i])-finalEnergy[i])/max(mag(finalEnergy[i]),scalar(1)));
-        added+=change*local.V()[i];
+        added+=sourceDelta[i]*local.V()[i];
     }
     const scalarField correction=state.energyCorrection(transfer,finalEnergy,local.V());
     scalar after=0;
@@ -76,6 +118,9 @@ int main(int argc,char *argv[])
     fvMesh thermal(IOobject("thermalRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     fvMesh local(IOobject("flowRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     IOdictionary controls(IOobject("regionalTransferDict",runTime.constant(),runTime,IOobject::MUST_READ,IOobject::NO_WRITE));
+    if(controls.getOrDefault<bool>("sourceAudit",false)&&!controls.getOrDefault<bool>("mixtureAudit",false))
+        FatalErrorInFunction<<"sourceAudit requires mixtureAudit"<<exit(FatalError);
+    if(controls.getOrDefault<bool>("localProjectionAudit",false))m247LocalProjection(local,runTime,controls);
     if(controls.getOrDefault<bool>("mixtureAudit",false))
     {auditMixture(thermal,local,runTime,controls);Info<<"End"<<endl;return 0;}
     const scalar rho=controls.get<scalar>("rho"),conductivity=controls.get<scalar>("kappa");

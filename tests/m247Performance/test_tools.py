@@ -1844,5 +1844,49 @@ class RegionalCapacityTests(unittest.TestCase):
             for delta in (-1000,1000):
                 self.assertAlmostEqual(c.density(c.temperature(h+delta,120000),120000)-h,delta,places=7)
 
+class RegionalFlowSourceTests(unittest.TestCase):
+    def test_variable_density_pressure_projection_closes_every_cell(self):
+        from regional_flow_reference import project_line
+        p,q=project_line([2,5,-3,7],[.1,2,.4])
+        self.assertTrue(all(abs(x-2)<1e-12 for x in q))
+        self.assertAlmostEqual(sum(q[i+1]-q[i] for i in range(3)),0)
+        self.assertNotEqual(p[0],p[-1])
+
+    def test_manufactured_pressure_gradient_recovered_with_correct_sign(self):
+        from regional_flow_reference import project_line
+        # Exact p=[3,1,-2], outlet=0, through-flow=-1, arbitrary dt/rho.
+        expected=[3,1,-2];k=[2,4,.5];target=-1
+        q=[target]+[target+k[i]*(expected[i+1]-expected[i]) for i in range(2)]+[target+k[-1]*(0-expected[-1])]
+        p,corrected=project_line(q,k)
+        self.assertEqual(p,expected)
+        self.assertEqual(corrected,[-1]*4)
+
+    def test_projection_invalid_addressing_and_coefficients_reject(self):
+        from regional_flow_reference import project_line
+        for q,k in (([0],[1]),([0,1],[0]),([0,1],[-1]),([0,float('nan')],[1])):
+            with self.assertRaises(ValueError):project_line(q,k)
+
+    def test_source_delta_replaces_conduction_and_adds_local_sources_once(self):
+        from regional_flow_reference import source_delta
+        dt=.2;old=1000;global_prediction=old+dt*50
+        delta=source_delta(dt,100,20,10,-5,60,50)
+        self.assertAlmostEqual(global_prediction+delta,old+dt*(60+100-20-10-5))
+        with self.assertRaisesRegex(ValueError,'conduction only'):
+            source_delta(dt,100,20,10,-5,60,50,True)
+
+    def test_radiation_heating_negative_corrections_and_overlap_conserve(self):
+        from regional_flow_reference import source_delta
+        from regional_transfer import Transfer
+        mapper=Transfer([(0,0,0,1,1,1),(1,0,0,2,1,1)],[(.5,0,0,1.5,1,1)])
+        gain=source_delta(.1,0,0,-10,0,50,50)
+        loss=source_delta(.1,0,30,0,-10,50,50)
+        self.assertEqual(gain,1);self.assertEqual(loss,-4)
+        self.assertEqual(sum(mapper.scatter_integrated_correction([loss])),loss)
+
+    def test_nonfinite_or_negative_absorption_and_evaporation_rejected(self):
+        from regional_flow_reference import source_delta
+        for dt,laser,evap in ((0,1,1),(.1,-1,1),(.1,1,-1),(.1,float('inf'),1)):
+            with self.assertRaises(ValueError):source_delta(dt,laser,evap,0,0,0,0)
+
 if __name__=='__main__':
     unittest.main()
