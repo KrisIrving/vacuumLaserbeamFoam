@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Opt-in 0.2us full-solver pilot; no measured speedup claim."""
-import argparse,json,math,shutil,subprocess,sys,time
+import argparse,json,math,re,shutil,subprocess,sys,tarfile,time
 from pathlib import Path
 from collect_probe import read_probe,parse_records
 from collect_thermal_validation import residual_gate
@@ -45,6 +45,83 @@ def state_gate(text,mapping):
             raise ValueError('Invalid final-step field bounds/continuity')
     return dict(records=rows,continuity_screen=all(r['divL1']<=.05 and r['divMax']<=15000 for r in rows),
         limits=dict(divL1=.05,divMax=15000),note='Short-pilot continuity screen, not production tolerance.')
+
+
+def thermal_metadata(case,metadata):
+    """Read explicit archived controls; never silently substitute a tolerance."""
+    text=(case/'system/fvSolution').read_text()
+    text=re.sub(r'/\*.*?\*/|//[^\n]*','',text,flags=re.S)
+    match=re.search(r'\bMELTING\s*\{',text)
+    if not match:raise ValueError('Missing MELTING controls')
+    start=match.end();depth=1;end=start
+    while end<len(text) and depth:
+        if text[end]=='{':depth+=1
+        elif text[end]=='}':depth-=1
+        end+=1
+    if depth:raise ValueError('Incomplete MELTING controls')
+    block=text[start:end-1];result=dict(metadata)
+    for name,key in (('epsilonTolerance','epsilon_tolerance'),('phaseTemperatureTolerance','phase_temperature_tolerance_K')):
+        values=re.findall(r'\b'+name+r'\s+([-+0-9.eE]+)\s*;',block)
+        if len(values)!=1:raise ValueError('Explicit unique thermal control required: '+name)
+        value=float(values[0])
+        if not math.isfinite(value) or value<=0:raise ValueError('Invalid thermal control: '+name)
+        if key in metadata and not math.isclose(metadata[key],value,rel_tol=1e-12,abs_tol=0):
+            raise ValueError('Thermal metadata differs from fvSolution: '+key)
+        result[key]=value
+    return result
+
+
+def collect_case(case,solver_sha):
+    provenance=json.loads((case/'run.json').read_text())
+    if provenance.get('solver_sha256')!=solver_sha:raise ValueError('Launched solver binary differs from recorded rebuild')
+    meta,summary,diagnostics=read_probe(case)
+    meta=thermal_metadata(case,meta)
+    text=(case/'log.vacuumLaserbeamFoam').read_text()
+    mapping=mapping_gate(text);state=state_gate(text,mapping)
+    thermal=summary['thermal_limit_hits']==0 and residual_gate(case,meta,summary['steps'])
+    if abs(mapping['records'][-1]['time']-.0001802)>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
+    if len(mapping['records'])!=summary['steps']:raise ValueError('Missing per-step mesh lifecycle records')
+    return dict(complete=True,metadata_used=meta,pilot=summary,physical_diagnostics=diagnostics,
+        moving_mapping=mapping,final_step_state=state,thermal_gate=thermal,
+        pilot_gate=all((thermal,mapping['coverage_gate'],mapping['topology_gate'],mapping['mapping_screen'],state['continuity_screen'])))
+
+
+def resume(previous,work):
+    """Verify immutable archived inputs, recollect only, and write a fresh bundle."""
+    previous,work=map(lambda p:Path(p).resolve(),(previous,work))
+    if work==previous or previous in work.parents or work in previous.parents:raise ValueError('Resume output overlaps completed run')
+    archive=previous.parent/('M247_'+previous.name+'_review.tar.gz')
+    with tarfile.open(archive) as stream:
+        manifest=json.load(stream.extractfile('manifest.json'))
+    files={f['source']:f for f in manifest['files']}
+    critical=('movingCFDReview.json','movingCFD/log.vacuumLaserbeamFoam','movingCFD/probe.json','movingCFD/run.json','movingCFD/system/fvSolution')
+    for name in critical:
+        if name not in files:raise ValueError('Original archive lacks critical resume input: '+name)
+        path=previous/name;record=files[name]
+        if sha(path)!=record['sha256'] or path.stat().st_size!=record['bytes']:raise ValueError('Archived resume input changed: '+name)
+    prior=json.loads((previous/'movingCFDReview.json').read_text())
+    source=Path(prior['source_case']).resolve()
+    if work==source or source in work.parents or work in source.parents:raise ValueError('Resume output overlaps original source')
+    if case_fingerprint(source)!=prior['source_sha256']:raise ValueError('Original coarse source changed')
+    if (work/'movingCFDReview.json').exists():raise ValueError('Choose fresh collection work')
+    work.mkdir(parents=True,exist_ok=True)
+    from package_results import FILES
+    case=work/'movingCFD';case.mkdir()
+    for name in FILES:
+        original=previous/'movingCFD'/name
+        if original.is_file():
+            target=case/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(original,target)
+    report={k:v for k,v in prior.items() if k not in ('error','error_type','commands')}
+    report.update(complete=False,pilot_gate=False,commands=[],original_commands=prior.get('commands',[]),
+        collection_only=True,no_cfd_advanced=True,resumed_from=str(previous),original_archive_sha256=sha(archive))
+    target=work/'movingCFDReview.json'
+    def save():target.write_text(json.dumps(report,indent=2)+'\n')
+    save()
+    try:
+        report.update(collect_case(case,prior['solver_sha256']),source_unchanged_gate=True)
+        save();return report
+    except (ValueError,KeyError,OSError) as error:
+        report.update(error_type=type(error).__name__,error=str(error));save();raise
 
 
 def execute(previous,work,solver):
@@ -99,6 +176,7 @@ def execute(previous,work,solver):
         metadata=dict(schema=1,source=str(source),variant='movingCFD',start_s=.00018,end_s=.0001802,
             duration_us=.2,ranks=48,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
             purpose='Experimental moving fine-window full-solver pilot; no measured speedup claim')
+        metadata=thermal_metadata(case,metadata)
         (case/'probe.json').write_text(json.dumps(metadata,indent=2)+'\n')
         deadline=time.monotonic()+1800
         def launch(command,name):
@@ -114,18 +192,9 @@ def execute(previous,work,solver):
         wall_seconds=min(900,remaining-240)
         report['solver_wall_budget_s']=wall_seconds;save()
         launch([sys.executable,str(Path(__file__).with_name('run_probe.py')),'--case',str(case),'--wall-hours',str(wall_seconds/3600)],'movingCFD_pilot')
-        provenance=json.loads((case/'run.json').read_text())
-        if provenance.get('solver_sha256')!=report['solver_sha256']:raise ValueError('Launched solver binary differs from recorded rebuild')
-        meta,summary,diagnostics=read_probe(case)
-        text=(case/'log.vacuumLaserbeamFoam').read_text()
-        mapping=mapping_gate(text);state=state_gate(text,mapping)
-        report.update(pilot=summary,physical_diagnostics=diagnostics,moving_mapping=mapping,final_step_state=state,
-            thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,meta,summary['steps']))
-        if abs(mapping['records'][-1]['time']-.0001802)>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
-        if len(mapping['records'])!=summary['steps']:raise ValueError('Missing per-step mesh lifecycle records')
+        collected=collect_case(case,report['solver_sha256'])
         if case_fingerprint(source)!=expected:raise ValueError('Original source changed')
-        report.update(complete=True,source_unchanged_gate=True,pilot_gate=all((report['thermal_gate'],
-            mapping['coverage_gate'],mapping['topology_gate'],mapping['mapping_screen'],state['continuity_screen'])))
+        report.update(collected,source_unchanged_gate=True)
         save();return report
     except (ValueError,KeyError,OSError,subprocess.SubprocessError) as error:
         report.update(error_type=type(error).__name__,error=str(error));save();raise
@@ -133,11 +202,14 @@ def execute(previous,work,solver):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    for name in ('previous','work','solver'):p.add_argument('--'+name,type=Path,required=True)
+    for name in ('previous','work'):p.add_argument('--'+name,type=Path,required=True)
+    p.add_argument('--solver',type=Path)
+    p.add_argument('--resume',action='store_true')
     a=p.parse_args()
     try:
-        r=execute(a.previous,a.work,a.solver)
+        if not a.resume and a.solver is None:raise ValueError('--solver is required for a new CFD run')
+        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver)
         print('Moving CFD compatibility pilot gate:',r['pilot_gate'],'production approved: False')
         if not r['pilot_gate']:p.exit(2,'Pilot screen failed; send review archive.\n')
-    except (ValueError,KeyError,OSError,subprocess.SubprocessError) as e:p.exit(1,f'Moving CFD pilot failed: {e}\n')
+    except (ValueError,KeyError,OSError,subprocess.SubprocessError,tarfile.TarError) as e:p.exit(1,f'Moving CFD pilot failed: {e}\n')
 if __name__=='__main__':main()

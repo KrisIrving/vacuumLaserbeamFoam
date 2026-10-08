@@ -1,0 +1,17 @@
+{
+  "solver": "/media/kris/one/OpenFOAM/kris-v2512/platforms/linux64GccDPInt32Opt/bin/vacuumLaserbeamFoam",
+  "solver_sha256": "d9915005808cf0e1acce8a8e551b9c3e9921761ff86692b9ab10654a2673378b",
+  "laser_library_sha256": "d06434a0734f690cbb72e7995fb4eb216b84886114a117e202ae0de32edfd416",
+  "command": [
+    "mpirun",
+    "-np",
+    "48",
+    "/media/kris/one/OpenFOAM/kris-v2512/platforms/linux64GccDPInt32Opt/bin/vacuumLaserbeamFoam",
+    "-parallel"
+  ],
+  "elapsed_wall_s": 384.4037991988007,
+  "returncode": 0,
+  "wall_budget_stop": false,
+  "forced_stop": false,
+  "wall_budget_hours": 0.25
+}

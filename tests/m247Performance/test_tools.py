@@ -1458,5 +1458,55 @@ class MovingCFDPilotTests(unittest.TestCase):
             self.assertIn('movingCFD/log.vacuumLaserbeamFoam',{f['source'] for f in manifest['files']})
             self.assertIn('movingCFDReview.json',{f['source'] for f in manifest['files']})
 
+class MovingCFDCollectionRegressionTests(unittest.TestCase):
+    fixture=Path(__file__).parent/'fixtures/moving-cfd-172613'
+
+    def test_actual_40_step_collection_recovers_explicit_tolerances(self):
+        from moving_cfd import collect_case
+        before=(self.fixture/'probe.json').read_bytes()
+        run=json.loads((self.fixture/'run.json').read_text())
+        report=collect_case(self.fixture,run['solver_sha256'])
+        self.assertTrue(report['pilot_gate'])
+        self.assertEqual(report['pilot']['steps'],40)
+        self.assertEqual(report['metadata_used']['epsilon_tolerance'],1e-5)
+        self.assertEqual(report['metadata_used']['phase_temperature_tolerance_K'],.001)
+        self.assertEqual(before,(self.fixture/'probe.json').read_bytes())
+
+    def test_missing_and_conflicting_controls_rejected(self):
+        from moving_cfd import thermal_metadata
+        with self.assertRaisesRegex(ValueError,'differs'):
+            thermal_metadata(self.fixture,{'epsilon_tolerance':1e-4})
+        with tempfile.TemporaryDirectory() as directory:
+            case=Path(directory);(case/'system').mkdir()
+            text=(self.fixture/'system/fvSolution').read_text()
+            for bad in (text.replace('epsilonTolerance','absentTolerance'),text.replace('1e-05','0')):
+                (case/'system/fvSolution').write_text(bad)
+                with self.assertRaises(ValueError):thermal_metadata(case,{})
+
+    def test_resume_recollects_without_subprocess_and_rejects_changed_input(self):
+        import shutil
+        from moving_cfd import resume
+        from restart_audit import case_fingerprint
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); previous=root/'moving-cfd-pilot-original';previous.mkdir()
+            shutil.copytree(self.fixture,previous/'movingCFD')
+            source=root/'source';(source/'system').mkdir(parents=True)
+            (source/'system/controlDict').write_text('original')
+            solver=json.loads((self.fixture/'run.json').read_text())['solver_sha256']
+            prior=dict(source_case=str(source),source_sha256=case_fingerprint(source),solver_sha256=solver,
+                complete=False,pilot_gate=False,error='epsilon_tolerance',error_type='KeyError',commands=[])
+            (previous/'movingCFDReview.json').write_text(json.dumps(prior))
+            package(previous,exit_code=1)
+            before={p.relative_to(previous):p.read_bytes() for p in previous.rglob('*') if p.is_file()}
+            with patch('moving_cfd.subprocess.run',side_effect=AssertionError('CFD must not run')):
+                result=resume(previous,root/'moving-cfd-collection')
+            self.assertTrue(result['pilot_gate'] and result['no_cfd_advanced'] and result['collection_only'])
+            self.assertNotIn('error',result)
+            self.assertEqual(before,{p.relative_to(previous):p.read_bytes() for p in previous.rglob('*') if p.is_file()})
+            _,manifest=package(root/'moving-cfd-collection',exit_code=0)
+            self.assertEqual(manifest['wrapper_exit_code'],0)
+            (previous/'movingCFD/probe.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'changed'):resume(previous,root/'other')
+
 if __name__=='__main__':
     unittest.main()

@@ -36,3 +36,15 @@ Next: pull feat/m247-material-port and run RunMovingCFDPilot once, returning
 the automatically named moving-cfd-pilot archive. This starts from the hash-checked
 original coarse state, not the stale-field mesh-only snapshots. Do not bypass wake coverage or reduce
 thresholds merely to make this test pass.
+
+## MW05 — missing thermal metadata after successful native CFD (172613)
+
+Cause: moving_cfd prepared probe.json without epsilon_tolerance and
+phase_temperature_tolerance_K, then called residual_gate requiring those keys.
+Native40-step run succeeded; collection raised KeyError. Parser-only tests missed
+the complete collection call. Fix: read and validate explicit MELTING controls,
+persist them before future launches, and recollect immutable existing evidence.
+No fallback tolerance, skipped gate or CFD rerun. Actual diagnostic fixture plus
+full collector and resume/package tests pass locally. Ubuntu recollection pending.
+Native full-solver build/runtime are now confirmed by172613; production approval
+and measured acceleration remain pending.

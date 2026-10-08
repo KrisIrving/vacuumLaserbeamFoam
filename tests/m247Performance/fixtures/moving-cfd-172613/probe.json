@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "source": "/media/kris/one/OpenFOAM/kris-v2512/vacuumLaserbeamFoam-m247/tests/m247Performance/runs/local-refinement-20261008-101101/coarse",
+  "variant": "movingCFD",
+  "start_s": 0.00018,
+  "end_s": 0.0001802,
+  "duration_us": 0.2,
+  "ranks": 48,
+  "checkpoint": "0.00018",
+  "source_snapshot_sha256": "c8855f5ab0de58070cb77ba8e428e162b016699747b4495582b5ebb5a5bccb97",
+  "purpose": "Experimental moving fine-window full-solver pilot; no measured speedup claim"
+}

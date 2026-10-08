@@ -1,8 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-PREVIOUS=${1:-tests/m247Performance/runs/moving-window-protected-20261008-164709}
-WORK=${2:-tests/m247Performance/runs/moving-cfd-pilot-$(date +%Y%m%d-%H%M%S)}
+RESUME=false
+DEFAULT_PREVIOUS=tests/m247Performance/runs/moving-window-protected-20261008-164709
+TAG=moving-cfd-pilot
+if [[ "${1:-}" == "--resume" ]]; then
+    RESUME=true
+    DEFAULT_PREVIOUS=tests/m247Performance/runs/moving-cfd-pilot-20261008-172613
+    TAG=moving-cfd-collection
+    shift
+fi
+PREVIOUS=${1:-$DEFAULT_PREVIOUS}
+WORK=${2:-tests/m247Performance/runs/${TAG}-$(date +%Y%m%d-%H%M%S)}
 JOBS=${3:-48}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
 [[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
@@ -21,9 +30,14 @@ trap bundle_on_exit EXIT
     echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
     echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
     echo "previous=$PREVIOUS"
-    echo "Experimental0.2us moving full-solver pilot;15minute solver budget;no speedup pair"
+    echo "collection_only=$RESUME; new pilot duration=0.2us; no speedup pair"
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
+if [[ "$RESUME" == true ]]; then
+    python3 tests/m247Performance/moving_cfd.py --resume --previous "$PREVIOUS" --work "$WORK" \
+        2>&1 | tee "$WORK/collection.log"
+    exit 0
+fi
 ( cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake -j "$JOBS" ) \
     2>&1 | tee "$WORK/build.log"
 SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/vacuumLaserbeamFoam
