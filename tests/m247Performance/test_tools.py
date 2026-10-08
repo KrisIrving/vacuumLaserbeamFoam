@@ -1597,5 +1597,17 @@ class MovingCompletionTests(unittest.TestCase):
             self.assertEqual(sha(log),before)
             self.assertEqual((root/'collection/referenceLongDecompose.log').read_text(),'decomposition in progress')
 
+class MovingInventoryTests(unittest.TestCase):
+    def test_inventory_reports_partial_rank_fields_without_modification(self):
+        from collect_moving_long import inventory
+        with tempfile.TemporaryDirectory() as directory:
+            previous=Path(directory)/'pair';folder=previous/'pair-5ns/movingCFD/processor18/0.00018';folder.mkdir(parents=True)
+            path=folder/'T';path.write_text('partial')
+            r=inventory(previous)
+            self.assertEqual(r['runs'][0]['rank_progress'][18]['fields_present'],['T'])
+            self.assertFalse(r['runs'][1]['solver_log_present'])
+            self.assertGreaterEqual(r['disk_bytes']['free'],0)
+            self.assertEqual(path.read_text(),'partial')
+
 if __name__=='__main__':
     unittest.main()

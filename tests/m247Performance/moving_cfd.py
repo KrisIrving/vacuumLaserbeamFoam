@@ -204,9 +204,19 @@ def execute(previous,work,solver,max_delta_ns=5,duration_us=.2):
             remaining=deadline-time.monotonic()
             if remaining<=0:raise ValueError('30 minute command budget exhausted')
             started=time.monotonic()
-            with (work/(name+'.log')).open('x') as stream:
-                subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=remaining)
-            report['commands'].append(dict(command=command,elapsed_wall_s=time.monotonic()-started,log=name+'.log'));save()
+            entry=dict(command=command,log=name+'.log',stage=name,state='running')
+            report['commands'].append(entry);save()
+            print('Starting stage:',name,'log:',work/(name+'.log'),flush=True)
+            try:
+                with (work/(name+'.log')).open('x') as stream:
+                    completed=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=remaining)
+                entry.update(state='completed',returncode=completed.returncode)
+            except BaseException as error:
+                entry.update(state='failed_or_interrupted',error_type=type(error).__name__,error=str(error),
+                    returncode=getattr(error,'returncode',None))
+                raise
+            finally:
+                entry['elapsed_wall_s']=time.monotonic()-started;save()
         launch(['decomposePar','-case',str(case),'-time','0.00018','-noFunctionObjects'],'movingCFD_decompose')
         remaining=deadline-time.monotonic()
         if remaining<=240:raise ValueError('Insufficient command budget for solver and graceful MPI stop')

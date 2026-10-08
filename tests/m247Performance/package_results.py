@@ -44,7 +44,7 @@ BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json','opticalMappin
     f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
     ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
 
-BUILD_FILES += ('movingPilotStatus.json','movingLongPairStatus.json','movingLongCollectionInputs.json')
+BUILD_FILES += ('movingPilotStatus.json','movingLongPairStatus.json','movingLongCollectionInputs.json','movingLongInventory.json')
 BUILD_FILES += tuple(f'{variant}Long{suffix}.json' for variant in ('reference','candidate') for suffix in ('Run','Probe'))
 BUILD_FILES += tuple(f'{variant}Long{suffix}.log' for variant in ('reference','candidate') for suffix in ('Solver','Build','Collection','Decompose','Pilot'))
 
