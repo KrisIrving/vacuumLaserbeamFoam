@@ -1701,5 +1701,36 @@ class RegionalTransferTests(unittest.TestCase):
         with self.assertRaises(ValueError):t.gather_density([float('nan')])
         with self.assertRaises(ValueError):t.scatter_integrated_correction([])
 
+class RegionalEnthalpyTests(unittest.TestCase):
+    def test_inverse_covers_solid_mushy_and_superheated_states(self):
+        from regional_enthalpy import MetalEnthalpy
+        for cs,cl in ((500,700),(700,500),(600,600)):
+            material=MetalEnthalpy(1537,1631,cs,cl,250000)
+            for t in (0,300,1323,1537,1580,1631,4000):
+                self.assertAlmostEqual(material.temperature(material.value(t)),t,places=9)
+            self.assertAlmostEqual(material.sensible(1631)-material.sensible(1537),94*(cs+cl)/2)
+        m247=MetalEnthalpy(1537,1631,790,860,150000)
+        self.assertAlmostEqual(m247.value(1631),790*1537+94*(790+860)/2+150000)
+        self.assertAlmostEqual(m247.temperature(m247.value(1580)),1580,places=9)
+
+    def test_derivative_is_cp_plus_equilibrium_latent_contribution(self):
+        from regional_enthalpy import MetalEnthalpy
+        material=MetalEnthalpy(1537,1631,500,700,250000);t=1580;step=.001
+        derivative=(material.value(t+step)-material.value(t-step))/(2*step)
+        expected=500+200*(t-1537)/94+250000/94
+        self.assertAlmostEqual(derivative,expected,places=5)
+
+    def test_integrated_correction_returns_energy_without_double_counting(self):
+        from regional_transfer import Transfer
+        from regional_enthalpy import MetalEnthalpy
+        material=MetalEnthalpy(1537,1631,500,700,250000)
+        mapper=Transfer([(0,0,0,1,1,1)],[(0,0,0,.5,1,1),(.5,0,0,1,1,1)])
+        density=8000*material.value(1550)
+        local=mapper.gather_density([density])
+        delta=[8000*(material.value(t)-local[i]/8000)*.5 for i,t in enumerate((1551,1549))]
+        corrected=density+mapper.scatter_integrated_correction(delta)[0]
+        self.assertAlmostEqual(corrected-density,sum(delta),places=4)
+        self.assertNotAlmostEqual(corrected,sum(local),places=0)
+
 if __name__=='__main__':
     unittest.main()
