@@ -1265,5 +1265,57 @@ class LocalOpticsTests(unittest.TestCase):
             self.assertEqual(manifest['variants'],list(LOCAL_OPTICS_VARIANTS))
             self.assertEqual(manifest['missing_files'],[])
 
+class MovingWindowTests(unittest.TestCase):
+    def fixture(self):
+        from moving_window import CENTRES
+        lines=[]
+        for step in range(9):
+            r=dict(schema=1,step=step,physicalTime=.00018,auditTime=.00018+step*1e-9,
+                centreX=CENTRES[0] if step==0 else CENTRES[(step-1)//2],changed=int(step>0),
+                cells=756000 if step==0 else 1200000,fineCells=0 if step==0 else 400000,
+                protectedCells=0,interiorCells=100,coveredCells=0 if step==0 else 100,
+                updateWall_s=0 if step==0 else 2,volume=5e-10,metalVolume=3e-10,
+                mappedMetalTemperature=4e-7,mappedLiquidVolume=8e-12,
+                directMetalTemperature=4e-7,directLiquidVolume=8e-12,
+                alphaMin=0,alphaMax=1,epsilonMin=0,epsilonMax=1,Tmin=1343,Tmax=4151)
+            lines.append('M247_MOVING_WINDOW '+' '.join(f'{k}={v}' for k,v in r.items()))
+        return '\n'.join(lines)+'\nUnrefined from 1300000 to 1200000 cells.\nM247_MOVING_WINDOW_END schema=1 updates=8 advancedPhysics=0\nEnd\n'
+
+    def test_complete_path_requires_coarsening_and_preserves_linear_moments(self):
+        from moving_window import collect
+        r=collect(self.fixture())
+        self.assertTrue(r['linear_mapping_gate'] and r['coverage_gate'] and r['coarsening_gate'])
+        self.assertEqual(r['coarsened_cell_reductions'],100000)
+        self.assertEqual(r['update_wall_s'],16)
+        r=collect(self.fixture().replace('Unrefined from 1300000 to 1200000 cells.',''))
+        self.assertFalse(r['coarsening_gate'])
+
+    def test_partial_overbudget_invalid_physics_and_wrong_path_rejected(self):
+        from moving_window import collect
+        for text in (self.fixture().replace('End\n',''),self.fixture().replace('cells=1200000','cells=2000001'),
+                     self.fixture().replace('physicalTime=0.00018','physicalTime=0.000181'),
+                     self.fixture().replace('alphaMax=1','alphaMax=1.1'),
+                     self.fixture().replace('centreX=0.00016','centreX=0.00017')):
+            with self.assertRaises(ValueError):collect(text)
+
+    def test_nonlinear_drift_reported_separately_from_passive_proxy_conservation(self):
+        from moving_window import collect
+        text=self.fixture()
+        text=text.replace('directMetalTemperature=4e-07','directMetalTemperature=4.1e-07',1)
+        r=collect(text)
+        self.assertTrue(r['linear_mapping_gate'])
+        self.assertNotEqual(r['nonlinear_product_drift'][0]['relative_difference'],0)
+        text=self.fixture().replace('mappedMetalTemperature=4e-07','mappedMetalTemperature=5e-07',1)
+        self.assertFalse(collect(text)['linear_mapping_gate'])
+
+    def test_moving_prototype_archive_contains_quality_and_partial_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'moving-window';work.mkdir()
+            (work/'movingWindowReview.json').write_text('{"complete":false}')
+            (work/'movingWindow_step1_quality.log').write_text('failure evidence')
+            _,manifest=package(work,exit_code=1)
+            self.assertEqual(manifest['missing_files'],[])
+            self.assertEqual({f['source'] for f in manifest['files']},{'movingWindowReview.json','movingWindow_step1_quality.log'})
+
 if __name__=='__main__':
     unittest.main()

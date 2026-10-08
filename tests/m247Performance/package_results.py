@@ -43,6 +43,9 @@ BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json','opticalMappin
     f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
     ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
 
+BUILD_FILES += ('movingWindowReview.json','movingWindow_dynamicMeshDict','movingWindow_auditDict','movingWindow_updates.log') + tuple(
+    f'movingWindow_step{step}_{suffix}.log' for step in range(1,9) for suffix in ('quality','concavity'))
+
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
     if not work.is_dir():

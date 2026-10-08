@@ -7,6 +7,7 @@ int main(int argc,char *argv[])
 {
     argList::noParallel();
     argList::noFunctionObjects();
+    argList::addBoolOption("geometryOnly", "Audit mesh geometry without requiring mapped material fields");
     argList::addBoolOption("concavity", "Diagnose checkMesh concaveCells without waiving quality");
     argList::addBoolOption("restart", "Read velocity and mapped fluxes; report continuity without writes");
     argList::addBoolOption("project", "Rebuild/project and write phi ONLY on an explicitly copied case");
@@ -17,10 +18,16 @@ int main(int argc,char *argv[])
     if (args.found("project")&&!args.found("restart"))
         FatalErrorInFunction<< "-project requires -restart" << exit(FatalError);
     #include "createMesh.H"
+    if (args.found("geometryOnly") && (args.found("restart") || args.found("project")))
+        FatalErrorInFunction<< "geometryOnly cannot audit restart fields"<<exit(FatalError);
+    Info().precision(17);
+    scalar volume=0;
+    if (!args.found("geometryOnly"))
+    {
     volScalarField T(IOobject("T",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
     volScalarField alpha(IOobject("alpha.metal",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
     volScalarField epsilon(IOobject("epsilon1",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
-    scalar volume=0,metalVolume=0,liquidVolume=0,metalTemperatureMoment=0;
+    scalar metalVolume=0,liquidVolume=0,metalTemperatureMoment=0;
     scalar amin=GREAT,amax=-GREAT,emin=GREAT,emax=-GREAT,tmin=GREAT,tmax=-GREAT;
     forAll(T,i)
     {
@@ -40,6 +47,7 @@ int main(int argc,char *argv[])
         << " alphaMin=" << amin << " alphaMax=" << amax
         << " epsilonMin=" << emin << " epsilonMax=" << emax
         << " Tmin=" << tmin << " Tmax=" << tmax << endl;
+    }
     if (args.found("concavity"))
     {
         const cellSet selected(mesh,"concaveCells",IOobject::MUST_READ);
