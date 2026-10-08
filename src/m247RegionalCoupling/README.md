@@ -66,3 +66,30 @@ reports conduction, delta source, final energy, residual, inverse error and diff
 guard. Input fields remain NO_WRITE. This is still a wiring audit, not local CFD.
 155 Python tests pass; native build/runtime remain pending. No standalone user
 micro-screen is requested: include in the future integrated acceptance command.
+
+
+## Persistent capacity moments (current native state contract)
+
+The initial alpha-only inverse above remains a diagnostic for original cell states.
+Regional state handoff now uses m247CapacityEnthalpy.H: map Csolid=rho*cpSolidMix,
+Cliquid=rho*cpLiquidMix and latent capacity=rho*Lfiltered as independent densities,
+plus energy, alpha and latent inventory. The common metal Ts/Tl define the sensible
+capacity ramp; constant gas cp is included in both endpoints. Because these
+capacities are volume averaged with the same positive overlap weights, valid
+source inventories remain bounded by mapped latent capacity. Uniform source T
+remains uniform after remapping even across metal/gas. An alpha-only reconstruction
+can fail both properties due to nonlinear rho(alpha)*cp(alpha)/L(alpha).
+
+m247RegionalState original-material constructor imports moments from checkpoint
+coefficients ONCE. Its explicit-moment overload supports repeated remaps; callers
+must carry stored solidCapacity,liquidCapacity,latentCapacity fields thereafter.
+Regenerating them from averaged alpha loses subcell information. Volume integrals
+are conserved over equal covered domains; a cropped window retains only overlap
+and requires the future global history/migration ledger for excluded material.
+This carries subcell coefficient moments; it does not reconstruct VOF geometry,
+prove phase equilibrium, or supply their evolution under local flow/advection.
+
+Mixed native audit schema2 uses capacityMomentsMapped=1 and checks mapped energy
+inversion. Original global energy-only correction is unchanged. Native build/MPI
+pending; 160 Python reference tests pass. Default LPBF solver is untouched. No
+production promotion, full track cost prediction or standalone user test requested.

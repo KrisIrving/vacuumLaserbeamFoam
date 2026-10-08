@@ -58,3 +58,36 @@ class MixtureEnthalpy:
         if h>=hl:return sensible.tl+(h-hl)/sensible.cl
         qa=.5*(sensible.cl-sensible.cs)/(sensible.tl-sensible.ts);qb=sensible.cs;qc=hs-h
         return sensible.ts+(-qc/qb if qa==0 else -2*qc/(qb+math.sqrt(qb*qb-4*qa*qc)))
+
+
+class CapacityEnthalpy:
+    """Persistent volume capacity moments, independent analytic inverse."""
+    def __init__(self,ts,tl,cs,cl,capacity):
+        self.s=MetalEnthalpy(ts,tl,cs,cl,1)
+        if not math.isfinite(capacity) or capacity<0:raise ValueError('Invalid mapped capacity')
+        self.capacity=capacity
+    def epsilon(self,inventory):
+        if not math.isfinite(inventory) or not 0<=inventory<=self.capacity:
+            raise ValueError('Inventory exceeds mapped capacity')
+        return inventory/self.capacity if self.capacity else 0
+    def density(self,t,inventory):
+        self.epsilon(inventory);return self.s.sensible(t)+inventory
+    def temperature(self,energy,inventory):
+        self.epsilon(inventory)
+        if not math.isfinite(energy) or energy<inventory:raise ValueError('Energy below inventory')
+        h=energy-inventory;hs=self.s.sensible(self.s.ts);hl=self.s.sensible(self.s.tl)
+        if h<=hs:return h/self.s.cs
+        if h>=hl:return self.s.tl+(h-hl)/self.s.cl
+        a=.5*(self.s.cl-self.s.cs)/(self.s.tl-self.s.ts);b=self.s.cs;c=hs-h
+        return self.s.ts+(-c/b if a==0 else -2*c/(b+math.sqrt(b*b-4*a*c)))
+
+
+def remap_capacity_state(transfer,energy,alpha,inventory,cs,cl,capacity,ts=1537,tl=1631):
+    """Use stored moments after initialization; no regeneration from mapped alpha."""
+    arrays=[transfer.gather_density(x) for x in (energy,alpha,inventory,cs,cl,capacity)]
+    temperatures=[];fractions=[]
+    for en,a,inv,s,l,cap in zip(*arrays):
+        MixtureEnthalpy.fraction(a)
+        closure=CapacityEnthalpy(ts,tl,s,l,cap)
+        temperatures.append(closure.temperature(en,inv));fractions.append(closure.epsilon(inv))
+    return dict(zip(('energy','alpha','inventory','cs','cl','capacity'),arrays),temperature=temperatures,epsilon=fractions)

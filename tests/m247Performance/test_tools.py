@@ -1782,5 +1782,67 @@ class RegionalMixtureTests(unittest.TestCase):
             self.assertAlmostEqual(m.density(back,a,e)-predicted,delta,places=5)
             self.assertEqual(m.epsilon(a,m.capacity(a)*e),e)
 
+class RegionalCapacityTests(unittest.TestCase):
+    def sources(self,temperatures=(2000,300)):
+        from regional_enthalpy import MetalEnthalpy,MixtureEnthalpy
+        m=MixtureEnthalpy(MetalEnthalpy(1537,1631,790,860,150000))
+        alpha=[1,0];epsilon=[1,0]
+        capacity=[m.capacity(a) for a in alpha]
+        cs=[m.rho(a)*(a*790+(1-a)*520) for a in alpha]
+        cl=[m.rho(a)*(a*860+(1-a)*520) for a in alpha]
+        inventory=[cap*e for cap,e in zip(capacity,epsilon)]
+        energy=[m.density(t,a,e) for t,a,e in zip(temperatures,alpha,epsilon)]
+        return m,[energy,alpha,inventory,cs,cl,capacity]
+
+    def test_fully_liquid_metal_gas_crossing_is_admissible(self):
+        from regional_transfer import Transfer
+        from regional_enthalpy import remap_capacity_state,CapacityEnthalpy
+        mapper=Transfer([(0,0,0,1,1,1),(1,0,0,2,1,1)],[(.5,0,0,1.5,1,1)])
+        m,arrays=self.sources();state=remap_capacity_state(mapper,*arrays)
+        # Original alpha-only closure failed this physically valid source state.
+        with self.assertRaises(ValueError):m.epsilon(state['alpha'][0],state['inventory'][0])
+        self.assertLessEqual(state['epsilon'][0],1)
+        self.assertGreater(state['epsilon'][0],.999)
+        c=CapacityEnthalpy(1537,1631,state['cs'][0],state['cl'][0],state['capacity'][0])
+        self.assertAlmostEqual(c.density(state['temperature'][0],state['inventory'][0]),state['energy'][0],places=5)
+
+    def test_uniform_temperature_survives_interface_mapping(self):
+        from regional_transfer import Transfer
+        from regional_enthalpy import remap_capacity_state
+        _,arrays=self.sources((1580,1580))
+        mapper=Transfer([(0,0,0,1,1,1),(1,0,0,2,1,1)],[(.25,0,0,1.75,1,1)])
+        self.assertAlmostEqual(remap_capacity_state(mapper,*arrays)['temperature'][0],1580,places=9)
+
+    def test_repeated_remap_retains_all_integrated_moments(self):
+        from regional_transfer import Transfer
+        from regional_enthalpy import remap_capacity_state
+        boxes=[(0,0,0,1,1,1),(1,0,0,2,1,1)]
+        next_boxes=[(0,0,0,.5,1,1),(.5,0,0,1.5,1,1),(1.5,0,0,2,1,1)]
+        final_boxes=[(0,0,0,.75,1,1),(.75,0,0,2,1,1)]
+        _,arrays=self.sources();names=('energy','alpha','inventory','cs','cl','capacity')
+        first=remap_capacity_state(Transfer(boxes,next_boxes),*arrays)
+        second=remap_capacity_state(Transfer(next_boxes,final_boxes),*(first[n] for n in names))
+        for name,original in zip(names,arrays):
+            self.assertAlmostEqual(sum(x*v for x,v in zip(second[name],(.75,1.25))),sum(original),delta=1e-12*max(sum(original),1))
+        self.assertTrue(all(0<=e<=1 for e in second['epsilon']))
+
+    def test_invalid_inventory_and_energy_still_rejected(self):
+        from regional_enthalpy import CapacityEnthalpy
+        c=CapacityEnthalpy(1537,1631,100,200,10)
+        for inv in (-1,11,float('nan')):
+            with self.assertRaises(ValueError):c.epsilon(inv)
+        with self.assertRaises(ValueError):c.temperature(9,10)
+        self.assertEqual(CapacityEnthalpy(1537,1631,100,200,0).epsilon(0),0)
+
+    def test_energy_delta_keeps_mapped_capacity_and_inventory(self):
+        from regional_enthalpy import CapacityEnthalpy
+        for cs,cl in ((200,100),(100,200),(100,100)):
+            c=CapacityEnthalpy(1537,1631,cs,cl,150000)
+            for t in (0,300,1537,1580,1631,4000):
+                self.assertAlmostEqual(c.temperature(c.density(t,120000),120000),t,places=8)
+            h=c.density(1580,120000)
+            for delta in (-1000,1000):
+                self.assertAlmostEqual(c.density(c.temperature(h+delta,120000),120000)-h,delta,places=7)
+
 if __name__=='__main__':
     unittest.main()

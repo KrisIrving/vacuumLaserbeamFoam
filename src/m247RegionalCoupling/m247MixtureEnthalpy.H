@@ -7,7 +7,7 @@ namespace Foam
 class m247MixtureEnthalpy
 {
     m247MetalEnthalpy metal_;
-    scalar rhoMetal_,rhoGas_,cpGas_,latentMetal_,latentGas_,minimumCp_;
+    scalar rhoMetal_,rhoGas_,cpGas_,latentMetal_,latentGas_,minimumCp_,ts_,tl_,cs_,cl_;
     static void fraction(scalar x)
     {
         if(!std::isfinite(x)||x<0||x>1)
@@ -17,12 +17,16 @@ public:
     m247MixtureEnthalpy(scalar ts,scalar tl,scalar cs,scalar cl,scalar lm,
         scalar rm,scalar rg,scalar cg,scalar lg)
     :metal_(ts,tl,cs,cl,lm),rhoMetal_(rm),rhoGas_(rg),cpGas_(cg),
-      latentMetal_(lm),latentGas_(lg),minimumCp_(min(min(cs,cl),cg))
+      latentMetal_(lm),latentGas_(lg),minimumCp_(min(min(cs,cl),cg)),ts_(ts),tl_(tl),cs_(cs),cl_(cl)
     {
         if(!std::isfinite(rm)||!std::isfinite(rg)||!std::isfinite(cg)||!std::isfinite(lg)
             ||rm<=0||rg<=0||cg<=0||lg<0)
             FatalErrorInFunction<<"Invalid regional mixture parameters"<<exit(FatalError);
     }
+    scalar solidus() const {return ts_;}
+    scalar liquidus() const {return tl_;}
+    scalar sensibleSolidCapacity(scalar a) const {return rho(a)*(a*cs_+(1-a)*cpGas_);}
+    scalar sensibleLiquidCapacity(scalar a) const {return rho(a)*(a*cl_+(1-a)*cpGas_);}
     scalar rho(scalar a) const {fraction(a);return a*rhoMetal_+(1-a)*rhoGas_;}
     scalar latent(scalar a) const
     {

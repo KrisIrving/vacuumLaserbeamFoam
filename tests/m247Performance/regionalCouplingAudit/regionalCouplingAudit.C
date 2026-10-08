@@ -43,8 +43,8 @@ void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary
     forAll(finalEnergy,i)
     {
         finalEnergy[i]+=change;
-        const scalar back=material.temperature(finalEnergy[i],state.alpha[i],state.epsilon[i]);
-        maxInverseError=max(maxInverseError,mag(material.density(back,state.alpha[i],state.epsilon[i])-finalEnergy[i])/max(mag(finalEnergy[i]),scalar(1)));
+        const scalar back=state.closure(i).temperature(finalEnergy[i],state.latentInventory[i]);
+        maxInverseError=max(maxInverseError,mag(state.closure(i).density(back,state.latentInventory[i])-finalEnergy[i])/max(mag(finalEnergy[i]),scalar(1)));
         added+=change*local.V()[i];
     }
     const scalarField correction=state.energyCorrection(transfer,finalEnergy,local.V());
@@ -60,10 +60,10 @@ void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary
     if(residual>1e-10*max(mag(before)+mag(heat)+mag(added),scalar(1e-300))||maxInverseError>1e-10)
         FatalErrorInFunction<<"Regional mixture energy ledger failed"<<exit(FatalError);
     Info().precision(17);
-    Info<<"M247_REGIONAL_MIXTURE_AUDIT schema=1 ranks="<<Pstream::nProcs()
+    Info<<"M247_REGIONAL_MIXTURE_AUDIT schema=2 ranks="<<Pstream::nProcs()
         <<" beforeJ="<<before<<" heatAddedJ="<<heat<<" correctionJ="<<added<<" afterJ="<<after
         <<" ledgerResidualJ="<<residual<<" inverseRelativeError="<<maxInverseError
-        <<" diffusionNumber="<<diffusion<<" phaseInventoryFixed=1 productionApproved=0"<<endl;
+        <<" diffusionNumber="<<diffusion<<" phaseInventoryFixed=1 capacityMomentsMapped=1 productionApproved=0"<<endl;
 }
 int main(int argc,char *argv[])
 {
