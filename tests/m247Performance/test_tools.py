@@ -1732,5 +1732,55 @@ class RegionalEnthalpyTests(unittest.TestCase):
         self.assertAlmostEqual(corrected-density,sum(delta),places=4)
         self.assertNotAlmostEqual(corrected,sum(local),places=0)
 
+class RegionalMixtureTests(unittest.TestCase):
+    def material(self):
+        from regional_enthalpy import MetalEnthalpy,MixtureEnthalpy
+        return MixtureEnthalpy(MetalEnthalpy(1537,1631,790,860,150000))
+
+    def test_fixed_phase_inverse_and_actual_material_endpoints(self):
+        m=self.material()
+        for a in (0,.009,.01,.05,.5,.99,.991,1):
+            for e in (0,.37,1):
+                for t in (0,300,1537,1580,1631,4152):
+                    self.assertAlmostEqual(m.temperature(m.density(t,a,e),a,e),t,places=8)
+        self.assertEqual(m.capacity(1),7950*150000)
+        self.assertEqual(m.capacity(0),1)
+
+    def test_legacy_latent_filter_is_distinct_from_cp_weight(self):
+        m=self.material()
+        self.assertEqual(m.capacity(.009),m.rho(.009))
+        self.assertEqual(m.capacity(.991),m.rho(.991)*150000)
+        derivative=(m.density(1580.001,.009,.37)-m.density(1579.999,.009,.37))/.002
+        self.assertAlmostEqual(derivative,m.rho(.009)*(.009*(790+70*43/94)+.991*520),places=3)
+
+    def test_cross_interface_map_conserves_energy_not_temperature(self):
+        from regional_transfer import Transfer
+        m=self.material();mapper=Transfer([(0,0,0,1,1,1),(1,0,0,2,1,1)],[(.5,0,0,1.5,1,1)])
+        energy=mapper.gather_density([m.density(300,0,0),m.density(2000,1,.1)])[0]
+        a=mapper.gather_density([0,1])[0]
+        latent=mapper.gather_density([0,m.capacity(1)*.1])[0]
+        e=m.epsilon(a,latent);t=m.temperature(energy,a,e)
+        self.assertAlmostEqual(m.density(t,a,e),energy,places=5)
+        self.assertGreater(abs(t-1150),100)
+        self.assertNotAlmostEqual(e,m.m.liquid(t),places=3)
+        correction=mapper.scatter_integrated_correction([25])
+        self.assertEqual(sum(correction),25)
+
+    def test_inadmissible_mapped_inventory_rejected_without_clipping(self):
+        m=self.material()
+        with self.assertRaisesRegex(ValueError,'Incompatible'):
+            m.epsilon(.5,.5*m.capacity(1))
+        for a in (-.01,1.01,float('nan')):
+            with self.assertRaises(ValueError):m.rho(a)
+        with self.assertRaisesRegex(ValueError,'Insufficient'):m.temperature(m.capacity(.5)-1,.5,1)
+
+    def test_delta_return_preserves_latent_inventory(self):
+        m=self.material();a=.5;e=.4;t=1580
+        predicted=m.density(t,a,e)
+        for delta in (-1e6,0,1e6):
+            back=m.temperature(predicted+delta,a,e)
+            self.assertAlmostEqual(m.density(back,a,e)-predicted,delta,places=5)
+            self.assertEqual(m.epsilon(a,m.capacity(a)*e),e)
+
 if __name__=='__main__':
     unittest.main()

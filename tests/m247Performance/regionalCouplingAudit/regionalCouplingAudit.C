@@ -3,7 +3,68 @@
 #include "timeSelector.H"
 #include "m247RegionalTransfer.H"
 #include "m247MetalEnthalpy.H"
+#include "m247RegionalState.H"
 using namespace Foam;
+// Mixture branch audits fixed transported phase inventory, not equilibrium melting.
+void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary& c)
+{
+    m247MixtureEnthalpy material(c.get<scalar>("Tsolidus"),c.get<scalar>("Tliquidus"),
+        c.get<scalar>("cpSolidus"),c.get<scalar>("cpLiquidus"),c.get<scalar>("LatentHeat"),
+        c.get<scalar>("rho"),c.get<scalar>("rhoGas"),c.get<scalar>("cpGas"),c.get<scalar>("LatentHeatGas"));
+    const scalar dt=c.get<scalar>("auditDeltaT"),k=c.get<scalar>("kappa"),change=c.get<scalar>("manufacturedCorrectionDensity");
+    if(!std::isfinite(dt)||dt<=0||!std::isfinite(k)||k<=0||!std::isfinite(change))
+        FatalErrorInFunction<<"Invalid mixture audit controls"<<exit(FatalError);
+    volScalarField T(IOobject("T",runTime.timeName(),thermal,IOobject::MUST_READ,IOobject::NO_WRITE),thermal);
+    volScalarField alpha(IOobject("alpha.metal",runTime.timeName(),thermal,IOobject::MUST_READ,IOobject::NO_WRITE),thermal);
+    volScalarField epsilon(IOobject("epsilon1",runTime.timeName(),thermal,IOobject::MUST_READ,IOobject::NO_WRITE),thermal);
+    if(T.dimensions()!=dimTemperature||alpha.dimensions()!=dimless||epsilon.dimensions()!=dimless)
+        FatalErrorInFunction<<"Invalid regional mixture field dimensions"<<exit(FatalError);
+    const dimensionedScalar kappa("kappa",dimensionSet(1,1,-3,-1,0,0,0),k);
+    const volScalarField divergence(fvc::laplacian(kappa,T));
+    const volScalarField geometry(fvc::surfaceSum(thermal.magSf()*thermal.deltaCoeffs()));
+    scalarField energy(thermal.nCells()),latent(thermal.nCells());
+    scalar before=0,heat=0,diffusion=0;
+    const scalar minCp=min(min(c.get<scalar>("cpSolidus"),c.get<scalar>("cpLiquidus")),c.get<scalar>("cpGas"));
+    forAll(energy,i)
+    {
+        const scalar old=material.density(T[i],alpha[i],epsilon[i]);
+        latent[i]=material.latentDensity(alpha[i],epsilon[i]);
+        energy[i]=old+dt*divergence[i];
+        material.temperature(energy[i],alpha[i],epsilon[i]);
+        before+=old*thermal.V()[i];heat+=dt*divergence[i]*thermal.V()[i];
+        diffusion=max(diffusion,dt*k*geometry[i]/(material.rho(alpha[i])*minCp*thermal.V()[i]));
+    }
+    reduce(diffusion,maxOp<scalar>());
+    if(!std::isfinite(diffusion)||diffusion>0.5)
+        FatalErrorInFunction<<"Mixture audit diffusion step exceeds guard"<<exit(FatalError);
+    m247RegionalTransfer transfer(thermal,local);
+    const m247RegionalState state(transfer,material,energy,alpha.primitiveField(),latent);
+    scalarField finalEnergy(state.energy);scalar added=0,maxInverseError=0;
+    forAll(finalEnergy,i)
+    {
+        finalEnergy[i]+=change;
+        const scalar back=material.temperature(finalEnergy[i],state.alpha[i],state.epsilon[i]);
+        maxInverseError=max(maxInverseError,mag(material.density(back,state.alpha[i],state.epsilon[i])-finalEnergy[i])/max(mag(finalEnergy[i]),scalar(1)));
+        added+=change*local.V()[i];
+    }
+    const scalarField correction=state.energyCorrection(transfer,finalEnergy,local.V());
+    scalar after=0;
+    forAll(energy,i)
+    {
+        material.temperature(energy[i]+correction[i],alpha[i],epsilon[i]);
+        after+=(energy[i]+correction[i])*thermal.V()[i];
+    }
+    reduce(before,sumOp<scalar>());reduce(heat,sumOp<scalar>());reduce(added,sumOp<scalar>());
+    reduce(after,sumOp<scalar>());reduce(maxInverseError,maxOp<scalar>());
+    const scalar residual=mag(after-before-heat-added);
+    if(residual>1e-10*max(mag(before)+mag(heat)+mag(added),scalar(1e-300))||maxInverseError>1e-10)
+        FatalErrorInFunction<<"Regional mixture energy ledger failed"<<exit(FatalError);
+    Info().precision(17);
+    Info<<"M247_REGIONAL_MIXTURE_AUDIT schema=1 ranks="<<Pstream::nProcs()
+        <<" beforeJ="<<before<<" heatAddedJ="<<heat<<" correctionJ="<<added<<" afterJ="<<after
+        <<" ledgerResidualJ="<<residual<<" inverseRelativeError="<<maxInverseError
+        <<" diffusionNumber="<<diffusion<<" phaseInventoryFixed=1 productionApproved=0"<<endl;
+}
 int main(int argc,char *argv[])
 {
     timeSelector::addOptions();
@@ -15,6 +76,8 @@ int main(int argc,char *argv[])
     fvMesh thermal(IOobject("thermalRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     fvMesh local(IOobject("flowRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     IOdictionary controls(IOobject("regionalTransferDict",runTime.constant(),runTime,IOobject::MUST_READ,IOobject::NO_WRITE));
+    if(controls.getOrDefault<bool>("mixtureAudit",false))
+    {auditMixture(thermal,local,runTime,controls);Info<<"End"<<endl;return 0;}
     const scalar rho=controls.get<scalar>("rho"),conductivity=controls.get<scalar>("kappa");
     const scalar dt=controls.get<scalar>("auditDeltaT");
     const scalar correctionDensity=controls.get<scalar>("manufacturedCorrectionDensity");
