@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+PREVIOUS=${1:-tests/m247Performance/runs/moving-window-protected-20261008-164709}
+WORK=${2:-tests/m247Performance/runs/moving-long-pair-$(date +%Y%m%d-%H%M%S)}
+[[ ! -e "$WORK" ]] || { echo "Choose fresh WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+TAG=$(basename "$WORK")
+BASE="$WORK/${TAG}-5ns"
+CAND="$WORK/${TAG}-10ns"
+bundle() {
+    local status=$?
+    trap - EXIT
+    for item in "reference:$BASE" "candidate:$CAND"; do
+        local name=${item%%:*} run=${item#*:}
+        if [[ -f "$run/movingCFD/log.vacuumLaserbeamFoam" ]]; then cp "$run/movingCFD/log.vacuumLaserbeamFoam" "$WORK/${name}LongSolver.log"; fi
+        if [[ -f "$run/build.log" ]]; then cp "$run/build.log" "$WORK/${name}LongBuild.log"; fi
+        if [[ -f "$run/collection.log" ]]; then cp "$run/collection.log" "$WORK/${name}LongCollection.log"; fi
+        if [[ -f "$run/movingCFDReview.json" ]]; then
+            if [[ "$name" == reference ]]; then cp "$run/movingCFDReview.json" "$WORK/movingStepReference.json";
+            else cp "$run/movingCFDReview.json" "$WORK/movingStepCandidate.json"; fi
+        fi
+    done
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then status=1; fi
+    exit "$status"
+}
+trap bundle EXIT
+./tests/m247Performance/RunMovingCFDPilot --long "$PREVIOUS" "$BASE"
+./tests/m247Performance/RunMovingCFDPilot --dt10 --long "$PREVIOUS" "$CAND"
+python3 tests/m247Performance/compare_moving_steps.py --reference "$BASE/movingCFDReview.json" \
+    --candidate "$CAND/movingCFDReview.json" --output "$WORK/movingStepComparison.json"

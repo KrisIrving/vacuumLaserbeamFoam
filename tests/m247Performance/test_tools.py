@@ -1559,5 +1559,18 @@ class MovingProfileTests(unittest.TestCase):
         from moving_profiles import execute
         with self.assertRaisesRegex(ValueError,'overlaps'):execute(Path('/case'),Path('/other'),Path('/case/audit'),Path('/utility'))
 
+class MovingLongPilotTests(unittest.TestCase):
+    def test_invalid_duration_rejected_before_source_access(self):
+        from moving_cfd import execute
+        with self.assertRaisesRegex(ValueError,'duration'):execute('missing','missing','missing',5,1)
+
+    def test_mapping_screen_uses_requested_horizon(self):
+        from moving_cfd import mapping_gate
+        text=MovingCFDPilotTests().fixture().replace('0.0001802','0.0001804').replace('centreX=8.02e-05','centreX=8.04e-05')
+        # Construct centre exactly to avoid dependence on Python float spelling.
+        lines=text.splitlines();parts=lines[-1].split();parts=[('centreX='+str(-100e-6+.0001804)) if x.startswith('centreX=') else x for x in parts];lines[-1]=' '.join(parts);text='\n'.join(lines)
+        with self.assertRaises(ValueError):mapping_gate(text)
+        self.assertTrue(mapping_gate(text,.0001804)['coverage_gate'])
+
 if __name__=='__main__':
     unittest.main()

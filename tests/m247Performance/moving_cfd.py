@@ -10,7 +10,7 @@ from region_audit import sha
 from moving_window import collect,dynamic_dictionary
 
 
-def mapping_gate(text):
+def mapping_gate(text,end_s=.0001802):
     rows=parse_records(text,'M247_MOVING_CFD')
     if not rows:raise ValueError('Missing rebuilt moving-CFD diagnostics')
     previous=.00018
@@ -18,7 +18,7 @@ def mapping_gate(text):
         keys=('schema','time','cells','changed','centreX','centreZ','requested','wakeBefore','wakeAfter','wakeMissed',
               'metalBefore','metalAfter','thermalProxyBefore','thermalProxyAfter')
         if any(k not in row or not math.isfinite(row[k]) for k in keys):raise ValueError('Incomplete/nonfinite moving-CFD record')
-        if row['schema']!=1 or not previous<row['time']<=.0001802+1e-12:raise ValueError('Wrong moving-CFD time/schema')
+        if row['schema']!=1 or not previous<row['time']<=end_s+1e-12:raise ValueError('Wrong moving-CFD time/schema')
         previous=row['time']
         if not 756000<=row['cells']<=2000000 or row['cells']!=int(row['cells']):raise ValueError('Moving-CFD cell budget failed')
         if row['changed'] not in (0,1):raise ValueError('Invalid topology flag')
@@ -95,9 +95,9 @@ def collect_case(case,solver_sha,require_mesh_cost=False):
     meta,summary,diagnostics=read_probe(case)
     meta=thermal_metadata(case,meta)
     text=(case/'log.vacuumLaserbeamFoam').read_text()
-    mapping=mapping_gate(text);state=state_gate(text,mapping)
+    mapping=mapping_gate(text,meta['end_s']);state=state_gate(text,mapping)
     thermal=summary['thermal_limit_hits']==0 and residual_gate(case,meta,summary['steps'])
-    if abs(mapping['records'][-1]['time']-.0001802)>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
+    if abs(mapping['records'][-1]['time']-meta['end_s'])>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
     if len(mapping['records'])!=summary['steps']:raise ValueError('Missing per-step mesh lifecycle records')
     return dict(complete=True,metadata_used=meta,pilot=summary,physical_diagnostics=diagnostics,
         moving_mapping=mapping,final_step_state=state,mesh_cost=mesh_cost(text,mapping,require_mesh_cost),thermal_gate=thermal,
@@ -142,8 +142,10 @@ def resume(previous,work):
         report.update(error_type=type(error).__name__,error=str(error));save();raise
 
 
-def execute(previous,work,solver,max_delta_ns=5):
+def execute(previous,work,solver,max_delta_ns=5,duration_us=.2):
     if max_delta_ns not in (5,10):raise ValueError("Pilot max delta must be 5 or 10 ns")
+    if duration_us not in (.2,.4):raise ValueError("Pilot duration must be 0.2 or 0.4 us")
+    end_s=.00018+duration_us*1e-6
     previous,work,solver=map(lambda p:Path(p).resolve(),(previous,work,solver))
     prior=json.loads((previous/'movingWindowReview.json').read_text())
     if not prior.get('complete') or not prior.get('prototype_gate') or not prior.get('protect_wake'):
@@ -162,7 +164,7 @@ def execute(previous,work,solver,max_delta_ns=5):
     work.mkdir(parents=True,exist_ok=True);case=work/'movingCFD';case.mkdir()
     report=dict(schema=1,complete=False,production_approved=False,pilot_gate=False,
         original_protected_review_sha256=sha(previous/'movingWindowReview.json'),source_case=str(source),
-        source_sha256=expected,solver_sha256=sha(solver),duration_us=.2,ranks=48,max_delta_ns=max_delta_ns,commands=[],
+        source_sha256=expected,solver_sha256=sha(solver),duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,commands=[],
         note='Actual isoAdvector/CorrectPhi/thermal solver pilot. No equivalent-grid speedup pair; rho*(cp*T+L*epsilon) is a screening proxy, not thermodynamic enthalpy.')
     target=work/'movingCFDReview.json'
     def save():target.write_text(json.dumps(report,indent=2)+'\n')
@@ -182,7 +184,7 @@ def execute(previous,work,solver,max_delta_ns=5):
         (case/'system/m247MovingWindowDict').write_text('FoamFile { version 2.0; format ascii; class dictionary; object m247MovingWindowDict; }\nhalfX 96e-6; halfZ 96e-6; hotTemperature 1537; releaseTemperature 1487;\nliquidThreshold 1e-4; solidThreshold 1e-6; metalThreshold 1e-6;\n')
         shutil.copy2(case/'constant/dynamicMeshDict',work/'movingCFD_dynamicMeshDict')
         shutil.copy2(case/'system/m247MovingWindowDict',work/'movingCFD_windowDict')
-        for key,value in (('startFrom','startTime'),('startTime','0.00018'),('endTime','0.0001802'),
+        for key,value in (('startFrom','startTime'),('startTime','0.00018'),('endTime',format(end_s,'.12g')),
                           ('stopAt','endTime'),('writeInterval','1e-7'),('timePrecision','12'),
                           ('deltaT','1e-9'),('maxDeltaT',str(max_delta_ns*1e-9)),('adjustTimeStep','true'),
                           ('maxCo','0.1'),('maxAlphaCo','0.1'),
@@ -192,8 +194,8 @@ def execute(previous,work,solver,max_delta_ns=5):
             set_entry(case/'system/controlDict',key,value)
         set_entry(case/'system/fvSolution','PIMPLE/correctPhi','true')
         set_entry(case/'system/fvSolution','PIMPLE/moveMeshOuterCorrectors','false')
-        metadata=dict(schema=1,source=str(source),variant='movingCFD',start_s=.00018,end_s=.0001802,
-            duration_us=.2,ranks=48,max_delta_ns=max_delta_ns,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
+        metadata=dict(schema=1,source=str(source),variant='movingCFD',start_s=.00018,end_s=end_s,
+            duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
             purpose='Experimental moving fine-window full-solver pilot; no measured speedup claim')
         metadata=thermal_metadata(case,metadata)
         (case/'probe.json').write_text(json.dumps(metadata,indent=2)+'\n')
@@ -225,10 +227,11 @@ def main():
     p.add_argument('--solver',type=Path)
     p.add_argument('--resume',action='store_true')
     p.add_argument('--max-delta-ns',type=int,choices=(5,10),default=5)
+    p.add_argument('--duration-us',type=float,choices=(.2,.4),default=.2)
     a=p.parse_args()
     try:
         if not a.resume and a.solver is None:raise ValueError('--solver is required for a new CFD run')
-        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver,a.max_delta_ns)
+        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver,a.max_delta_ns,a.duration_us)
         print('Moving CFD compatibility pilot gate:',r['pilot_gate'],'production approved: False')
         if not r['pilot_gate']:p.exit(2,'Pilot screen failed; send review archive.\n')
     except (ValueError,KeyError,OSError,subprocess.SubprocessError,tarfile.TarError) as e:p.exit(1,f'Moving CFD pilot failed: {e}\n')
