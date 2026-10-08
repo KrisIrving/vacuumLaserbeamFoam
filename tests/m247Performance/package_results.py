@@ -35,6 +35,11 @@ BUILD_FILES += ('fluxPilotInputs.json','fluxPilotReview.json') + tuple(
     f'localProjected_{suffix}.log' for suffix in
     ('before','projection','after','decompose','pilot','reconstruct','final'))
 
+LOCAL_OPTICS_VARIANTS=('localOpticsCoarse','localOpticsFine','localOpticsMapped')
+BUILD_FILES += ('localOpticsInputs.json','localOpticsReview.json') + tuple(
+    f'{case}_{suffix}.log' for case in LOCAL_OPTICS_VARIANTS for suffix in
+    ('decompose','captureJob','captureReconstruct','mapping','traceJob'))
+
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
     if not work.is_dir():
@@ -56,7 +61,7 @@ def package(work, output=None, exit_code=None):
         entries.append((archive_name, data))
         found.append(dict(source=relative, archive_name=archive_name,
                           bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
-    variants = [v for v in VARIANTS if (work/v).is_dir()]
+    variants = [v for v in VARIANTS+LOCAL_OPTICS_VARIANTS if (work/v).is_dir()]
     if not variants and not any((work/name).is_file() for name in BUILD_FILES):
         raise ValueError('No recognised probe variant directories or build/preflight files')
     for name in BUILD_FILES:

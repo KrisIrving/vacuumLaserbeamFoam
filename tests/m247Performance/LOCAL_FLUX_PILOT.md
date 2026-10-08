@@ -1,5 +1,9 @@
 # Projected-flux local-grid compatibility pilot
 
+110422 completes this pilot successfully. Next use RunLocalOptics as described
+in LOCAL_OPTICS.md to isolate the observed optical/grid sensitivity. Do not
+repeat the flux pilot or extend CFD until that evidence is reviewed.
+
 104821 restart audit identifies a real continuity defect in mapped phi:
 coarse volume-weighted |div(phi)|=0.02664/s, four-layer=88759.27/s,
 ten-layer=93421.85/s. Refined maximum divergence=8.2985e7/s. Scalar moment

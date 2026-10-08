@@ -1168,5 +1168,33 @@ class FluxPilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):moments(text)
         self.assertEqual(moments(text,expected_time=.0001802)['cells'],2283911)
 
+class LocalOpticsTests(unittest.TestCase):
+    def test_mapping_is_restricted_to_three_frozen_inputs(self):
+        from local_optics import mapping_guard
+        before={'0.00018/T':'T','constant/polyMesh/points':'mesh','0.00018/frozenNormalInput':'old'}
+        self.assertEqual(mapping_guard(before,dict(before,**{'0.00018/frozenNormalInput':'new'})),['0.00018/frozenNormalInput'])
+        for key in ('0.00018/T','constant/polyMesh/points','0.00018/phi'):
+            with self.assertRaises(ValueError):mapping_guard(before,dict(before,**{key:'changed'}))
+    def test_capture_rejects_time_advancement_and_reports_contrasts(self):
+        from local_optics import check_capture,contrasts
+        text='FROZEN_LASER_CAPTURE schema=1 time=0.00018 calls=0\nEnd\n'
+        check_capture(text)
+        for invalid in (text+'Time = 0.0001801\n',text.replace('End',''),text.replace('calls=0','calls=1')):
+            with self.assertRaises(ValueError):check_capture(invalid)
+        results=contrasts([328,288,327])
+        self.assertEqual([r['difference_W'] for r in results],[-40,-1,-39])
+        self.assertNotIn('production_approved',results[0])
+    def test_all_local_optical_roles_are_distinct_in_archive(self):
+        from package_results import LOCAL_OPTICS_VARIANTS,FILES
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'local-optics';work.mkdir()
+            for name in LOCAL_OPTICS_VARIANTS:
+                for relative in FILES:
+                    if relative.startswith('capture'):continue
+                    p=work/name/relative;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('evidence')
+            _,manifest=package(work,exit_code=0)
+            self.assertEqual(manifest['variants'],list(LOCAL_OPTICS_VARIANTS))
+            self.assertEqual(manifest['missing_files'],[])
+
 if __name__=='__main__':
     unittest.main()

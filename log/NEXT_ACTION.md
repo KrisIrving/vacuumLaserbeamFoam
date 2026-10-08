@@ -2,6 +2,18 @@
 
 Updated: 2026-10-08
 
+## Freeze coarse/fine optics before extending local CFD
+
+110422pilot passes:23archivehashes valid,22converged steps,no caps,133.14s job,
+bounded fields, projectedflux and finalcontinuity good. GlobalTmax4448K and
+power~288W differ from earliercoarse window; no matchedphysics verdict.
+Pull and `./tests/m247Performance/RunLocalOptics`: existingcoarse/fine180us
+snapshots, own opticalinputs plusfine-mapped coarseinputs, threefrozen updates,
+noCFD advancement/rebuild. Onlythreeopticalfields maymap; sourcehashes protected,
+binary/ray/rank/zerochange gates. Send M247_local-optics-..._review.tar.gz.
+103Python tests/Bash pass; native newmapping execution pendingUbuntu. See
+LOCAL_OPTICS.md. No longerCFD or repeatedfluxpilot yet; older actions superseded.
+
 ## Project copied local flux, then gated0.2us compatibility pilot
 
 104821audit complete12hashes valid; mapped fine phi has divL1~88759/93422 per

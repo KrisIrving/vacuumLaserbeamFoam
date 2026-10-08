@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+AUDIT=${1:-tests/m247Performance/runs/local-restart-20261008-104821}
+WORK=${2:-tests/m247Performance/runs/local-optics-$(date +%Y%m%d-%H%M%S)}
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{ echo "audit=$AUDIT"; echo "Frozen coarse/fine/mapped optical updates; no CFD time advance"; git rev-parse HEAD; } > "$WORK/buildEnvironment.txt"
+python3 tests/m247Performance/check_solver.py --frozen-optics --laser-profile --output "$WORK/solverCheck.json" \
+    2>&1 | tee "$WORK/collection.log"
+python3 tests/m247Performance/local_optics.py --audit "$AUDIT" --work "$WORK" \
+    2>&1 | tee -a "$WORK/collection.log"

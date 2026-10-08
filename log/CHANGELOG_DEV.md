@@ -1,5 +1,14 @@
 # Development changelog
 
+## 2026-10-08 — Local CFD compatibility passes; frozen grid/input optics
+
+11042223archivehashes verified;projectedphi divL1~9.84e-10/s;0.2us22steps
+133.14s,no thermalcaps,boundedalpha/epsilon,finaldivL1.01164/s. Compatibility
+only:globalT4448K/power288W versusearliercoarse requirematchedopticalisolation.
+Addedthree frozen opticalroleswithrestrictedmapping/protectedhashes/reconciled
+profiles andnamedarchive;noCFD/C++changes/production approval.103Pythontests/Bash
+pass;nativeorchestration pendingUbuntu. NextRunLocalOptics.
+
 ## 2026-10-08 — Mapped phi continuity rejected; projection and gated pilot
 
 10482112archivehashesverified, nativebuild/readchecks pass; fine divL1~88759
