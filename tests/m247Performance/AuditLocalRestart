@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+PREVIOUS=${1:-tests/m247Performance/runs/local-refinement-20261008-101101}
+WORK=${2:-tests/m247Performance/runs/local-restart-$(date +%Y%m%d-%H%M%S)}
+JOBS=${3:-48}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "previous=$PREVIOUS"
+    echo "Existing mesh/restart read audit; no CFD or field writes"
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+( cd tests/m247Performance/meshPreviewCheck && wclean && wmake -j "$JOBS" ) \
+    2>&1 | tee "$WORK/build.log"
+UTILITY=${FOAM_USER_APPBIN:?Source OpenFOAM}/m247MeshPreviewCheck
+sha256sum "$UTILITY" tests/m247Performance/meshPreviewCheck/meshPreviewCheck.C > "$WORK/previewBinary.txt"
+python3 tests/m247Performance/restart_audit.py --previous "$PREVIOUS" --work "$WORK" \
+    --utility "$UTILITY" 2>&1 | tee "$WORK/collection.log"

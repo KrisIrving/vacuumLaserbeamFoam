@@ -1,5 +1,15 @@
 # Development changelog
 
+## 2026-10-08 — Coplanar transitions qualified; mapped restart flux audit
+
+10110123archive hashes valid,both variants complete2.284/2.889millioncells,
+moments pass,native concavity onlyfailure. Outward distances<=8.7e-19m/1.02e-13
+relative;official test includesplanar pairs. Retain strictfailure and add narrow
+coplanar geometry screening,notproduction. Added AuditLocalRestart freshquality,
+unchangedfield/meshhashes andnative U/phi/alphaPhi continuity diagnostics on
+existingmeshes;noCFD/refinement/fieldwrites.96Python tests/Bashpass;nativefluxmode
+pendingUbuntu. Next AuditLocalRestart,send automaticlocal-restartarchive.
+
 ## 2026-10-08 — Local refinement concavity rejection and recovery
 
 13archive hashes verified;4-layer mesh2.284million cells,all four mapped moments

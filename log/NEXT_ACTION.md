@@ -2,6 +2,20 @@
 
 Updated: 2026-10-08
 
+## Audit mapped fluxes on the existing local meshes
+
+101101 both previews complete;23archive hashes verified;2.284/2.889million cells,
+all mapped moments pass. Native concave flags retain strict failure, but outward
+plane excursions only1.02e-13relative. Official OpenCFD test includes planar
+face pairs. Scoped coplanar qualification accepts only this evidence pattern,
+not other failures or real concavity; no native threshold change.
+Pull and run `./tests/m247Performance/AuditLocalRestart`. It reuses101101 meshes,
+builds only the checker, verifies unchanged hashes and reports U/phi/alphaPhi
+mapping/continuity on coarse/four/ten-layer cases. No CFD or field writes.
+Send M247_local-restart-..._review.tar.gz.96Python tests/Bash pass; new native flux
+mode pendingUbuntu. See tests/m247Performance/LOCAL_RESTART.md. No further mesh
+sizing rerun; restart_ready and production remainfalse. Earlier steps superseded.
+
 ## Recover local sizing and diagnose concavity without CFD
 
 003900 four-layer refinement has2,283,911cells and preserved moments, but

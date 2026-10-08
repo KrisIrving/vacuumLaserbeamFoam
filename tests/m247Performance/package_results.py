@@ -27,6 +27,10 @@ BUILD_FILES += ('previewInputs.json','previewBinary.txt','localRefinementReview.
     f'localRefine{layers}_{suffix}' for layers in (4,10) for suffix in
     ('topoSetDict','selection.log','refinement.log','moments.log','checkMesh.log','concavity.log'))
 
+BUILD_FILES += ('restartAuditInputs.json','localRestartReview.json') + tuple(
+    f'{case}_{suffix}' for case in ('coarse','localRefine4','localRefine10')
+    for suffix in ('restart.log','restartCheckMesh.log'))
+
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()
     if not work.is_dir():

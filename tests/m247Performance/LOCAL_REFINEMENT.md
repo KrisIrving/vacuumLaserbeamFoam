@@ -1,5 +1,11 @@
 # Static local-refinement preview
 
+The 101101 preview now contains both alternatives. Next run AuditLocalRestart
+as described in LOCAL_RESTART.md; do not repeat either refinement. Raw native
+concavity flags are retained; coplanar transition qualification is a separate
+scoped screen and does not approve a CFD restart. Older recovery steps below
+are historical instructions.
+
 ## Recovery after the 003900 mesh-quality failure
 
 The four-layer preview has 2,283,911 cells and preserves all four checked

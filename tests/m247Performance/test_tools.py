@@ -1055,5 +1055,66 @@ class LocalRefinementTests(unittest.TestCase):
             evidence=json.loads((work/'resumeInputs.json').read_text())
             self.assertTrue(evidence['copy_hash_gate']);self.assertEqual(len(evidence['copied_files_sha256']),3)
 
+class RestartAuditTests(unittest.TestCase):
+    def test_coplanar_qualification_is_narrow_and_keeps_native_failure(self):
+        from restart_audit import geometry_qualification
+        text='Face flatness (1 = flat, 0 = butterfly) : min = 0.99999999999999956 average = 1\n ***Concave cells (using face planes) found, number of cells: 15101\nFailed 1 mesh checks.\nEnd\n'
+        diagnostic=dict(count=15101,worstPlaneDistance=8.7e-19,maxRelativePlaneDistance=1.1e-13,aboveRelative1e9=0)
+        r=geometry_qualification(text,diagnostic)
+        self.assertTrue(r['qualified']);self.assertFalse(r['native']['passed'])
+        for altered,d in ((text,dict(diagnostic,worstPlaneDistance=1e-10)),
+            (text,dict(diagnostic,maxRelativePlaneDistance=1e-5)),(text,dict(diagnostic,count=1)),
+            (text,None),(text.replace('Failed 1','Failed 2'),diagnostic),
+            (text.replace('0.99999999999999956','0.95'),diagnostic),
+            (text.replace('End',' ***Zero volume\nEnd'),diagnostic)):
+            self.assertFalse(geometry_qualification(altered,d)['qualified'])
+    def test_flux_records_reject_nonfinite_and_inconsistent_counts(self):
+        from restart_audit import flux_record
+        text='M247_RESTART_FLUX schema=1 cells=756000 divL1=1 divRMS=2 divMax=3 netFlux=-1e-12 Umax=78 velocityFluxDifference=1e-5 velocityFluxAbs=1e-3 alphaFluxAbs=1e-3 internalFaces=100 zeroInternalFluxFaces=25\nEnd\n'
+        self.assertEqual(flux_record(text)['netFlux'],-1e-12)
+        for invalid in (text.replace('End',''),text.replace('divL1=1','divL1=nan'),
+            text.replace('zeroInternalFluxFaces=25','zeroInternalFluxFaces=101'),text.replace('cells=756000','cells=1.1')):
+            with self.assertRaises(ValueError):flux_record(invalid)
+    def test_restart_audit_logs_are_packaged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'local-restart';work.mkdir()
+            for name in ('restartAuditInputs.json','localRestartReview.json','localRefine4_restart.log','localRefine10_restartCheckMesh.log'):
+                (work/name).write_text('evidence')
+            _,manifest=package(work,exit_code=0)
+            self.assertEqual(len(manifest['files']),4)
+
+    def test_audit_keeps_flux_observations_separate_from_restart_approval(self):
+        import restart_audit as module
+        from local_refinement import moments
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);previous=root/'preview';previous.mkdir();utility=root/'utility';utility.write_text('binary')
+            state='M247_MESH_MOMENTS schema=1 time=0.00018 cells=756000 volume=5e-10 metalVolume=3e-10 liquidVolume=8e-12 metalTemperatureMoment=4e-7 alphaMin=0 alphaMax=1 epsilonMin=0 epsilonMax=1 Tmin=1343 Tmax=4500\n'
+            expected=moments(state+'End\n')
+            preview=dict(schema=2,complete=True,production_approved=False,before=expected,
+                variants=[dict(variant=v,moments=expected) for v in ('localRefine4','localRefine10')])
+            (previous/'localRefinementReview.json').write_text(json.dumps(preview))
+            for case in ('coarse','localRefine4','localRefine10'):
+                for part in ('constant','system','0.00018'):
+                    p=previous/case/part;p.mkdir(parents=True);(p/'field').write_text('unchanged')
+            def native(work,command,name):
+                if name.endswith('CheckMesh'):text='Mesh OK.\nEnd\n'
+                else:
+                    value=1 if name.startswith('coarse_') else 100
+                    text=state+f'M247_RESTART_FLUX schema=1 cells=756000 divL1={value} divRMS={value} divMax={value} netFlux=0 Umax=78 velocityFluxDifference=0 velocityFluxAbs=1 alphaFluxAbs=1 internalFaces=100 zeroInternalFluxFaces=0\nEnd\n'
+                (work/(name+'.log')).write_text(text)
+                return dict(command=command,log=name+'.log',elapsed_wall_s=1)
+            with patch.object(module,'run',side_effect=native):
+                result=module.audit(previous,root/'audit',utility)
+            self.assertTrue(result['complete']);self.assertTrue(result['geometry_qualification_gate'])
+            self.assertFalse(result['restart_ready']);self.assertFalse(result['production_approved'])
+            self.assertEqual(result['cases'][1]['continuity_change']['divL1']['ratio'],100)
+            def changing(work,command,name):
+                result=native(work,command,name)
+                if name=='coarse_restart':(previous/'coarse/0.00018/field').write_text('changed')
+                return result
+            with patch.object(module,'run',side_effect=changing):
+                with self.assertRaisesRegex(ValueError,'changed during read-only'):
+                    module.audit(previous,root/'changed-audit',utility)
+
 if __name__=='__main__':
     unittest.main()

@@ -8,6 +8,7 @@ int main(int argc,char *argv[])
     argList::noParallel();
     argList::noFunctionObjects();
     argList::addBoolOption("concavity", "Diagnose checkMesh concaveCells without waiving quality");
+    argList::addBoolOption("restart", "Read velocity and mapped fluxes; report continuity without writes");
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
@@ -77,6 +78,51 @@ int main(int argc,char *argv[])
             << " xmin=" << lo.x() << " xmax=" << hi.x()
             << " ymin=" << lo.y() << " ymax=" << hi.y()
             << " zmin=" << lo.z() << " zmax=" << hi.z() << endl;
+    }
+    if (args.found("restart"))
+    {
+        const volVectorField U(IOobject("U",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+        const surfaceScalarField phi(IOobject("phi",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+        const surfaceScalarField alphaPhi(IOobject("alphaPhi0.metal",runTime.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+        if (U.dimensions()!=dimensionSet(0,1,-1,0,0,0,0)
+            || phi.dimensions()!=dimensionSet(0,3,-1,0,0,0,0)
+            || alphaPhi.dimensions()!=phi.dimensions())
+            FatalErrorInFunction<< "Unexpected restart velocity/flux dimensions" << exit(FatalError);
+        const surfaceScalarField velocityPhi(fvc::flux(U));
+        const volScalarField divergence(fvc::div(phi));
+        scalar divL1=0,divSquare=0,divMax=0,divSigned=0,umax=0;
+        forAll(U,i)
+        {
+            const scalar d=divergence[i],speed=mag(U[i]),v=mesh.V()[i];
+            if (!std::isfinite(d)||!std::isfinite(speed))
+                FatalErrorInFunction<< "Nonfinite restart velocity/divergence" << exit(FatalError);
+            divL1+=v*mag(d);divSquare+=v*d*d;divMax=max(divMax,mag(d));
+            divSigned+=v*d;umax=max(umax,speed);
+        }
+        scalar fluxDifference=0,velocityFluxAbs=0,alphaFluxAbs=0;
+        label zeroInternalFluxFaces=0;
+        auto addFlux=[&](const scalar p,const scalar vp,const scalar ap)
+        {
+            if (!std::isfinite(p)||!std::isfinite(vp)||!std::isfinite(ap))
+                FatalErrorInFunction<< "Nonfinite restart surface flux" << exit(FatalError);
+            fluxDifference+=mag(p-vp);velocityFluxAbs+=mag(vp);alphaFluxAbs+=mag(ap);
+        };
+        forAll(phi,i)
+        {
+            addFlux(phi[i],velocityPhi[i],alphaPhi[i]);
+            if (phi[i]==0)++zeroInternalFluxFaces;
+        }
+        forAll(phi.boundaryField(),patchi)
+        {
+            forAll(phi.boundaryField()[patchi],i)
+                addFlux(phi.boundaryField()[patchi][i],velocityPhi.boundaryField()[patchi][i],alphaPhi.boundaryField()[patchi][i]);
+        }
+        Info<< "M247_RESTART_FLUX schema=1 cells=" << mesh.nCells()
+            << " divL1=" << divL1/volume << " divRMS=" << std::sqrt(divSquare/volume)
+            << " divMax=" << divMax << " netFlux=" << divSigned << " Umax=" << umax
+            << " velocityFluxDifference=" << fluxDifference << " velocityFluxAbs=" << velocityFluxAbs
+            << " alphaFluxAbs=" << alphaFluxAbs << " internalFaces=" << mesh.nInternalFaces()
+            << " zeroInternalFluxFaces=" << zeroInternalFluxFaces << endl;
     }
     Info<< "End" << endl;
     return 0;
