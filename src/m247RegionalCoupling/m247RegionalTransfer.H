@@ -146,7 +146,14 @@ public:
     {
         ensureCurrent();
         const scalarField all=gather(globalDensity);scalarField result(localVolume_.size(),0);
-        forAll(result,j)for(const Weight& w:weights_[j])result[j]+=all[w.source]*w.volume/localVolume_[j];
+        forAll(result,j)
+        {
+            scalar covered=0;
+            for(const Weight& w:weights_[j]){result[j]+=all[w.source]*w.volume;covered+=w.volume;}
+            // Coverage was checked against actual V on construction. Normalize the
+            // geometric row once: constant alpha=1 must not become 1+roundoff.
+            result[j]/=covered;
+        }
         return result;
     }
     scalarField scatterIntegratedCorrection(const scalarField& delta) const

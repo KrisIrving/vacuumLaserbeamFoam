@@ -1,0 +1,39 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+WORK=${1:-tests/m247Performance/runs/regional-acceptance-$(date +%Y%m%d-%H%M%S)}
+JOBS=${2:-2}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "JOBS must be positive" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose a fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    local checked=0
+    python3 tests/m247Performance/regional_acceptance.py --finalize --work "$WORK" --requested-status "$status" || checked=$?
+    status=$checked
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
+    echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
+    echo "native interface acceptance: generated 16/80-cell regions; serial plus 2 MPI ranks"
+    echo "build budget=300s; acceptance budget=600s; no production case used"
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+for tool in python3 timeout wclean wmake blockMesh setFields decomposePar mpirun; do
+    command -v "$tool" >/dev/null || { echo "Missing tool: $tool; source OpenFOAM first" >&2; exit 1; }
+done
+timeout 300s bash -c 'cd tests/m247Performance/regionalCouplingAudit; wclean; wmake -j "$1"' _ "$JOBS" \
+    2>&1 | tee "$WORK/build.log"
+SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/m247RegionalCouplingAudit
+sha256sum "$SOLVER" > "$WORK/regionalBinary.txt"
+python3 tests/m247Performance/regional_acceptance.py --work "$WORK" --solver "$SOLVER" \
+    2>&1 | tee "$WORK/collection.log"

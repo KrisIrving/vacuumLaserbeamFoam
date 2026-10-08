@@ -1888,5 +1888,64 @@ class RegionalFlowSourceTests(unittest.TestCase):
         for dt,laser,evap in ((0,1,1),(.1,-1,1),(.1,1,-1),(.1,float('inf'),1)):
             with self.assertRaises(ValueError):source_delta(dt,laser,evap,0,0,0,0)
 
+class RegionalAcceptanceTests(unittest.TestCase):
+    def text(self,ranks=1,delta=.00039):
+        laser=.0006 if delta>0 else .00006
+        evap=.00012 if delta>0 else .00024
+        adv=-.00003 if delta>0 else 0
+        return f"M247_LOCAL_PROJECTION schema=1 initialMaxDiv=100 finalMaxDiv=1e-8 boundaryNetM3PerS=0 productionApproved=0\nM247_REGIONAL_SOURCES schema=1 laserJ={laser} evaporationLossJ={evap} radiationLossJ=.00006 advectionGainJ={adv} conductionDeltaJ=0 totalDeltaJ={delta} globalContainsLocalSources=0 productionApproved=0\nM247_REGIONAL_MIXTURE_AUDIT schema=2 ranks={ranks} beforeJ=10 afterJ={10+delta} heatAddedJ=0 correctionJ={delta} ledgerResidualJ=1e-15 inverseRelativeError=1e-15 capacityMomentsMapped=1 productionApproved=0 globalCells=16 localCells=80 mappedTemperatureDifference=1e-12 constantError=0\nEnd\n"
+
+    def test_serial_parallel_ledgers_and_expected_sign(self):
+        from regional_acceptance import parse_audit,compare_audits
+        for delta in (.00039,-.00024):
+            compare_audits(parse_audit(self.text(1,delta)),parse_audit(self.text(2,delta)),delta)
+        with self.assertRaisesRegex(ValueError,'MPI size'):
+            compare_audits(parse_audit(self.text()),parse_audit(self.text()),.00039)
+
+    def test_missing_marker_fake_end_and_unexercised_projection_rejected(self):
+        from regional_acceptance import parse_audit
+        for bad in (self.text().replace('End',''),self.text().replace('capacityMomentsMapped=1','capacityMomentsMapped=0'),self.text().replace('initialMaxDiv=100','initialMaxDiv=0'),self.text()+'FOAM FATAL ERROR',self.text()+self.text(),self.text().replace('totalDeltaJ=0.00039','totalDeltaJ=0.001')):
+            with self.assertRaises(ValueError):parse_audit(bad)
+
+    def test_fixture_has_crossing_mesh_and_explicit_two_region_inputs(self):
+        from regional_acceptance import prepare_fixture,digest_case
+        with tempfile.TemporaryDirectory() as folder:
+            case=Path(folder)/'fixture';prepare_fixture(case)
+            self.assertIn('(5 4 4)',(case/'system/flowRegion/blockMeshDict').read_text())
+            self.assertIn('blocks (hex',(case/'system/flowRegion/blockMeshDict').read_text())
+            self.assertIn('0.0005',(case/'system/thermalRegion/setFieldsDict').read_text())
+            before=digest_case(case);(case/'0/flowRegion/U').write_text('changed')
+            self.assertNotEqual(before,digest_case(case))
+            with self.assertRaises(ValueError):prepare_fixture(case)
+
+    def test_failed_native_stage_records_and_packages_before_exit(self):
+        from regional_acceptance import execute,finalize
+        from package_results import package
+        with tempfile.TemporaryDirectory() as folder:
+            work=Path(folder)/'regional-acceptance-test';work.mkdir()
+            solver=work/'fakeSolver';solver.write_bytes(b'fixture')
+            with patch('regional_acceptance.run_bounded',return_value=42):
+                with self.assertRaisesRegex(RuntimeError,'returned 42'):execute(work,solver)
+            state=json.loads((work/'regionalAcceptance.json').read_text())
+            self.assertFalse(state['complete']);self.assertEqual(state['stages'][0]['returncode'],42)
+            self.assertEqual(finalize(work,0),1)
+            archive,manifest=package(work,exit_code=1)
+            self.assertTrue(archive.is_file())
+            self.assertTrue(any('regionalAcceptanceStatus' in row['archive_name'] for row in manifest['files']))
+
+    def test_incomplete_zero_exit_and_signal_status_preserved(self):
+        from regional_acceptance import finalize,save
+        with tempfile.TemporaryDirectory() as folder:
+            work=Path(folder)
+            self.assertEqual(finalize(work,0),1)
+            self.assertEqual(finalize(work,130),130)
+            save(work/'regionalAcceptance.json',dict(complete=True,regionalGain=dict(serial_parallel_gate=True),regionalLoss=dict(serial_parallel_gate=True),stages=[dict(status='failed',returncode=1)]))
+            self.assertEqual(finalize(work,0),1)
+
+    def test_geometry_row_normalization_preserves_constant_alpha(self):
+        from regional_transfer import Transfer
+        mapper=Transfer([(0,0,0,.3,1,1),(.3,0,0,1,1,1)],[(.1,0,0,.7,1,1)])
+        self.assertEqual(mapper.gather_density([1,1]),[1])
+
 if __name__=='__main__':
     unittest.main()

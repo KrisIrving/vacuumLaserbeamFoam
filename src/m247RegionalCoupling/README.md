@@ -132,3 +132,36 @@ coupled local CFD timestep. 166 Python tests pass; native C++ compile/MPI unveri
 
 OpenFOAM2512 pressure-boundary/flux pattern checked against official solver source:
 https://api.openfoam.com/2512/adjointShapeOptimizationFoam_8C_source.html
+
+
+## First integrated native acceptance command
+
+After pulling the current branch, in an OpenFOAM2512 Ubuntu shell at repository root:
+
+```bash
+./tests/m247Performance/RunRegionalAcceptance
+```
+
+Build2jobs by default; generated thermal16cells/local80cells; serial and MPI2ranks.
+One invocation checks both positive/negative manufactured source corrections,
+fully liquid/gas cross-interface capacity mapping, constant alpha and uniform T,
+pressure flux projection, component/global energy ledger, unchanged inputs and
+serial/MPI consistency. Geometry/power expectations are explicit in collector.
+No existing powder case/checkpoint used. It is a native integration gate, not a
+physical LPBF melting simulation, mesh-accuracy study or performance comparison.
+No momentum predictor/VOF advection or actual ray tracing/source generation occurs.
+Fixtures deliberately include nonequilibrium fully liquid metal at1580K to check
+state preservation; this must not be read as an equilibrium M247 material result.
+
+Build is capped at300s; all mesh/setup/serial/MPI commands share600s. MPI process
+group terminates on timeout/interruption. Unique fresh run folder required;
+completed native stages and reports are checked before declaring success. Every
+exit packages M247_regional-acceptance-<timestamp>_review.tar.gz including named
+logs, fixture source dictionaries/fields, input hashes, binarySHA256, build info,
+checks and completion status. Send the archive even on failure. No production
+case fields are edited. Changing number of MPI ranks is not exposed as a sweep.
+The optional second positional argument changes build jobs only; runtime remains2.
+
+Current172Python tests/Bash syntax pass; native compile/MPI runtime unverified.
+All-region decomposition follows the official OpenFOAM2512 selection interface:
+https://api.openfoam.com/2512/getAllRegionOptions_8H_source.html

@@ -79,6 +79,15 @@ void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary
         FatalErrorInFunction<<"Mixture audit diffusion step exceeds guard"<<exit(FatalError);
     m247RegionalTransfer transfer(thermal,local);
     const m247RegionalState state(transfer,material,energy,alpha.primitiveField(),latent);
+    const scalarField mappedT=transfer.gatherDensity(T.primitiveField());
+    const scalarField constant=transfer.gatherDensity(scalarField(thermal.nCells(),1));
+    scalar mappedTemperatureDifference=0,constantError=0;
+    forAll(mappedT,i)
+    {
+        mappedTemperatureDifference=max(mappedTemperatureDifference,mag(state.temperature[i]-mappedT[i]));
+        constantError=max(constantError,mag(constant[i]-1));
+    }
+    reduce(mappedTemperatureDifference,maxOp<scalar>());reduce(constantError,maxOp<scalar>());
     const scalarField sourceDelta=c.getOrDefault<bool>("sourceAudit",false)
         ?auditSources(local,runTime,c,transfer,divergence.primitiveField()):scalarField(local.nCells(),change);
     scalarField finalEnergy(state.energy);scalar added=0,maxInverseError=0;
@@ -105,7 +114,11 @@ void auditMixture(fvMesh& thermal,fvMesh& local,Time& runTime,const IOdictionary
     Info<<"M247_REGIONAL_MIXTURE_AUDIT schema=2 ranks="<<Pstream::nProcs()
         <<" beforeJ="<<before<<" heatAddedJ="<<heat<<" correctionJ="<<added<<" afterJ="<<after
         <<" ledgerResidualJ="<<residual<<" inverseRelativeError="<<maxInverseError
-        <<" diffusionNumber="<<diffusion<<" phaseInventoryFixed=1 capacityMomentsMapped=1 productionApproved=0"<<endl;
+        <<" diffusionNumber="<<diffusion
+        <<" globalCells="<<returnReduce(thermal.nCells(),sumOp<label>())
+        <<" localCells="<<returnReduce(local.nCells(),sumOp<label>())
+        <<" mappedTemperatureDifference="<<mappedTemperatureDifference<<" constantError="<<constantError
+        <<" phaseInventoryFixed=1 capacityMomentsMapped=1 productionApproved=0"<<endl;
 }
 int main(int argc,char *argv[])
 {

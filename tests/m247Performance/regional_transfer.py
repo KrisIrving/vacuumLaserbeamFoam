@@ -61,7 +61,7 @@ class Transfer:
     def gather_density(self,source_density):
         """Piecewise constant source density -> target volume average."""
         self.validate(source_density,len(self.source))
-        return [math.fsum(source_density[i]*w for i,w in row)/v for row,v in zip(self.weights,self.target_volume)]
+        return [math.fsum(source_density[i]*w for i,w in row)/math.fsum(w for i,w in row) for row in self.weights]
 
     def scatter_integrated_correction(self,target_correction):
         """Integrated target delta (e.g. joules) -> source density increment.
