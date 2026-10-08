@@ -1675,5 +1675,31 @@ class MovingHaloTests(unittest.TestCase):
         self.assertEqual(cadence_gate(text,mapping,4,True,1)['skipped'],1)
         with self.assertRaisesRegex(ValueError,'Halo'):cadence_gate(text.replace('haloAdded=0','haloAdded=1'),mapping,4,True,1)
 
+class RegionalTransferTests(unittest.TestCase):
+    def test_coarse_to_fine_and_back_conserve_corrections(self):
+        from regional_transfer import Transfer
+        global_cells=[(0,0,0,1,1,1),(1,0,0,2,1,1)]
+        local_cells=[(.5,0,0,1,1,1),(1,0,0,1.5,1,1)]
+        transfer=Transfer(global_cells,local_cells)
+        self.assertEqual(transfer.gather_density([100,200]),[100,200])
+        correction=transfer.scatter_integrated_correction([3,-1])
+        self.assertEqual(correction,[3,-1])
+        self.assertEqual(sum(correction),2)
+
+    def test_crossing_cell_receives_exact_overlap_weights(self):
+        from regional_transfer import Transfer
+        transfer=Transfer([(0,0,0,1,1,1),(1,0,0,2,1,1)],[(.5,0,0,1.5,1,1)])
+        self.assertEqual(transfer.gather_density([100,200]),[150])
+        self.assertEqual(transfer.scatter_integrated_correction([4]),[2,2])
+
+    def test_gaps_overlaps_and_invalid_values_rejected(self):
+        from regional_transfer import Transfer
+        box=(0,0,0,1,1,1)
+        for source,target in (([box,box],[box]),([box],[box,box]),([box],[(.5,0,0,1.5,1,1)])):
+            with self.assertRaises(ValueError):Transfer(source,target)
+        t=Transfer([box],[box])
+        with self.assertRaises(ValueError):t.gather_density([float('nan')])
+        with self.assertRaises(ValueError):t.scatter_integrated_correction([])
+
 if __name__=='__main__':
     unittest.main()
