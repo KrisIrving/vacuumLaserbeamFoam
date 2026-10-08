@@ -2,12 +2,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 RESUME=false
+MAX_DELTA_NS=5
 DEFAULT_PREVIOUS=tests/m247Performance/runs/moving-window-protected-20261008-164709
 TAG=moving-cfd-pilot
 if [[ "${1:-}" == "--resume" ]]; then
     RESUME=true
     DEFAULT_PREVIOUS=tests/m247Performance/runs/moving-cfd-pilot-20261008-172613
     TAG=moving-cfd-collection
+    shift
+fi
+if [[ "${1:-}" == "--dt10" ]]; then
+    [[ "$RESUME" == false ]] || { echo "--dt10 cannot resume" >&2; exit 1; }
+    MAX_DELTA_NS=10
+    TAG=moving-cfd-dt10
     shift
 fi
 PREVIOUS=${1:-$DEFAULT_PREVIOUS}
@@ -30,7 +37,7 @@ trap bundle_on_exit EXIT
     echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
     echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
     echo "previous=$PREVIOUS"
-    echo "collection_only=$RESUME; new pilot duration=0.2us; no speedup pair"
+    echo "max_delta_ns=$MAX_DELTA_NS; collection_only=$RESUME; new pilot duration=0.2us; no speedup pair"
     git rev-parse HEAD || true
 } > "$WORK/buildEnvironment.txt"
 if [[ "$RESUME" == true ]]; then
@@ -43,4 +50,4 @@ fi
 SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/vacuumLaserbeamFoam
 sha256sum "$SOLVER" applications/solvers/vacuumLaserbeamFoam/m247MovingRefineFvMesh.H > "$WORK/previewBinary.txt"
 python3 tests/m247Performance/moving_cfd.py --previous "$PREVIOUS" --work "$WORK" \
-    --solver "$SOLVER" 2>&1 | tee "$WORK/collection.log"
+    --solver "$SOLVER" --max-delta-ns "$MAX_DELTA_NS" 2>&1 | tee "$WORK/collection.log"

@@ -142,7 +142,8 @@ def resume(previous,work):
         report.update(error_type=type(error).__name__,error=str(error));save();raise
 
 
-def execute(previous,work,solver):
+def execute(previous,work,solver,max_delta_ns=5):
+    if max_delta_ns not in (5,10):raise ValueError("Pilot max delta must be 5 or 10 ns")
     previous,work,solver=map(lambda p:Path(p).resolve(),(previous,work,solver))
     prior=json.loads((previous/'movingWindowReview.json').read_text())
     if not prior.get('complete') or not prior.get('prototype_gate') or not prior.get('protect_wake'):
@@ -161,7 +162,7 @@ def execute(previous,work,solver):
     work.mkdir(parents=True,exist_ok=True);case=work/'movingCFD';case.mkdir()
     report=dict(schema=1,complete=False,production_approved=False,pilot_gate=False,
         original_protected_review_sha256=sha(previous/'movingWindowReview.json'),source_case=str(source),
-        source_sha256=expected,solver_sha256=sha(solver),duration_us=.2,ranks=48,commands=[],
+        source_sha256=expected,solver_sha256=sha(solver),duration_us=.2,ranks=48,max_delta_ns=max_delta_ns,commands=[],
         note='Actual isoAdvector/CorrectPhi/thermal solver pilot. No equivalent-grid speedup pair; rho*(cp*T+L*epsilon) is a screening proxy, not thermodynamic enthalpy.')
     target=work/'movingCFDReview.json'
     def save():target.write_text(json.dumps(report,indent=2)+'\n')
@@ -183,7 +184,7 @@ def execute(previous,work,solver):
         shutil.copy2(case/'system/m247MovingWindowDict',work/'movingCFD_windowDict')
         for key,value in (('startFrom','startTime'),('startTime','0.00018'),('endTime','0.0001802'),
                           ('stopAt','endTime'),('writeInterval','1e-7'),('timePrecision','12'),
-                          ('deltaT','1e-9'),('maxDeltaT','5e-9'),('adjustTimeStep','true'),
+                          ('deltaT','1e-9'),('maxDeltaT',str(max_delta_ns*1e-9)),('adjustTimeStep','true'),
                           ('maxCo','0.1'),('maxAlphaCo','0.1'),
                           ('writePrecision','17'),('writeFormat','ascii'),('writeCompression','off'),
                           ('performanceDiagnostics','true'),('writeDiagnostics','true'),
@@ -192,7 +193,7 @@ def execute(previous,work,solver):
         set_entry(case/'system/fvSolution','PIMPLE/correctPhi','true')
         set_entry(case/'system/fvSolution','PIMPLE/moveMeshOuterCorrectors','false')
         metadata=dict(schema=1,source=str(source),variant='movingCFD',start_s=.00018,end_s=.0001802,
-            duration_us=.2,ranks=48,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
+            duration_us=.2,ranks=48,max_delta_ns=max_delta_ns,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
             purpose='Experimental moving fine-window full-solver pilot; no measured speedup claim')
         metadata=thermal_metadata(case,metadata)
         (case/'probe.json').write_text(json.dumps(metadata,indent=2)+'\n')
@@ -223,10 +224,11 @@ def main():
     for name in ('previous','work'):p.add_argument('--'+name,type=Path,required=True)
     p.add_argument('--solver',type=Path)
     p.add_argument('--resume',action='store_true')
+    p.add_argument('--max-delta-ns',type=int,choices=(5,10),default=5)
     a=p.parse_args()
     try:
         if not a.resume and a.solver is None:raise ValueError('--solver is required for a new CFD run')
-        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver)
+        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver,a.max_delta_ns)
         print('Moving CFD compatibility pilot gate:',r['pilot_gate'],'production approved: False')
         if not r['pilot_gate']:p.exit(2,'Pilot screen failed; send review archive.\n')
     except (ValueError,KeyError,OSError,subprocess.SubprocessError,tarfile.TarError) as e:p.exit(1,f'Moving CFD pilot failed: {e}\n')

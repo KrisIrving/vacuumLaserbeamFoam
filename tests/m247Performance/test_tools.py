@@ -1518,5 +1518,11 @@ class MovingMeshCostTests(unittest.TestCase):
         for bad in ('',line.replace('topologyWallMax=2','topologyWallMax=-1'),line.replace('updateWallMax=3.5','updateWallMax=1'),line.replace('time=0.0001802','time=0.0001801')):
             with self.assertRaises(ValueError):mesh_cost(bad,mapping,True)
 
+class MovingPilotTimeStepTests(unittest.TestCase):
+    def test_invalid_timestep_rejected_before_source_access(self):
+        from moving_cfd import execute
+        for ns in (0,1,20):
+            with self.assertRaisesRegex(ValueError,'5 or 10'):execute('missing','missing','missing',ns)
+
 if __name__=='__main__':
     unittest.main()
