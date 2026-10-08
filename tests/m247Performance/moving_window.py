@@ -61,6 +61,11 @@ def collect(text):
         expected=CENTRES[0] if i==0 else CENTRES[(i-1)//2]
         if abs(row['centreX']-expected)>1e-12:raise ValueError('Wrong window path')
     if rows[0]['cells']!=BASE_CELLS or rows[0]['fineCells']!=0:raise ValueError('Expected unrefined coarse initial state')
+    history=parse_records(text,'M247_MOVING_V0')
+    if len(history)!=8:raise ValueError('Missing old-volume initialization evidence')
+    for i,row in enumerate(history):
+        if any(row.get(k)!=v for k,v in dict(schema=1,step=i+1,cells=rows[i]['cells'],ready=1,maxDifference=0).items()):
+            raise ValueError('Old-volume initialization count/state failed')
     baseline=rows[0];linear=[];nonlinear=[]
     for row in rows[1:]:
         for key in ('volume','metalVolume','mappedMetalTemperature','mappedLiquidVolume'):
@@ -75,7 +80,7 @@ def collect(text):
     coverage=all(r['interiorCells']>0 and r['coveredCells']==r['interiorCells'] for r in settled)
     unrefined=re.findall(r'Unrefined from\s+(\d+)\s+to\s+(\d+)\s+cells',text)
     coarsened=sum(int(a)-int(b) for a,b in unrefined if int(a)>int(b))
-    return dict(records=rows,linear_mapping=linear,nonlinear_product_drift=nonlinear,
+    return dict(records=rows,old_volume_history=history,linear_mapping=linear,nonlinear_product_drift=nonlinear,
         linear_mapping_gate=all(r['passed'] for r in linear),coverage_gate=coverage,
         coarsened_cell_reductions=coarsened,coarsening_gate=coarsened>0,
         maximum_cells=max(r['cells'] for r in rows),update_wall_s=sum(r['updateWall_s'] for r in rows))

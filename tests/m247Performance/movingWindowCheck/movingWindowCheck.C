@@ -6,14 +6,42 @@
 #include <cmath>
 using namespace Foam;
 
+// The mesh-only driver has no ddt assembly/point motion to seed old volumes.
+// Expose the protected OpenCFD lifecycle helper in this diagnostic subclass.
+class movingWindowAuditMesh : public dynamicRefineFvMesh
+{
+public:
+    explicit movingWindowAuditMesh(const IOobject& io) : dynamicRefineFvMesh(io) {}
+    void prepareOldVolumes(const label step)
+    {
+        storeOldVol(V());
+        const scalarField& oldVolumes=V0();
+        const scalarField& currentVolumes=V();
+        if (oldVolumes.size()!=nCells())
+            FatalErrorInFunction<< "Old-volume count mismatch"<<exit(FatalError);
+        scalar maxDifference=0;
+        forAll(oldVolumes,i)
+        {
+            if (!std::isfinite(oldVolumes[i]) || oldVolumes[i]<=0)
+                FatalErrorInFunction<< "Invalid old volume"<<exit(FatalError);
+            maxDifference=max(maxDifference,mag(oldVolumes[i]-currentVolumes[i]));
+        }
+        if (maxDifference!=0)
+            FatalErrorInFunction<< "Old volumes differ before topology update"<<exit(FatalError);
+        Info<< "M247_MOVING_V0 schema=1 step="<<step<<" cells="<<nCells()
+            <<" ready=1 maxDifference="<<maxDifference<<endl;
+    }
+};
+
 int main(int argc,char *argv[])
 {
     argList::noParallel();
     argList::noFunctionObjects();
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createDynamicFvMesh.H"
-    dynamicRefineFvMesh& refiner=refCast<dynamicRefineFvMesh>(mesh);
+    movingWindowAuditMesh mesh(IOobject(polyMesh::defaultRegion,
+        runTime.timeName(),runTime,IOobject::MUST_READ));
+    dynamicRefineFvMesh& refiner=mesh;
     IOdictionary controls(IOobject("movingWindowAuditDict",runTime.system(),mesh,
         IOobject::MUST_READ,IOobject::NO_WRITE));
     const scalar physicalTime=runTime.value();
@@ -87,6 +115,7 @@ int main(int argc,char *argv[])
             }
             mask.correctBoundaryConditions();
             const auto started=std::chrono::steady_clock::now();
+            mesh.prepareOldVolumes(step);
             const bool changed=mesh.update();
             const scalar elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-started).count();
             report(centres[position],elapsed,changed);

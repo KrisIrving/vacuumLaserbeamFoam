@@ -1,3 +1,19 @@
+# Fix after the 153230 first-update abort
+
+The two diagnostic utilities compiled. The first refinement reached1239840cells
+from756000, then dynamicRefineFvMesh::mapFields aborted because V0 was missing.
+The mesh-only driver's synthetic time labels did not initialize old cell volumes.
+The driver now uses a diagnostic subclass to call the protected OpenCFD lifecycle
+helper storeOldVol(V) before each update, checks finite positive old volumes equal
+current pre-update volumes, and emits8 initialization records checked by Python.
+It introduces no point motion and keeps physical fields frozen between mappings.
+
+Pull and rerun the same RunMovingWindow command below; the default creates a
+fresh work directory. No data from the aborted topology operation is reused.
+Native repaired compilation/mapping is still to be validated on Ubuntu.
+
+API reference: [v2512 fvMesh.H](https://api.openfoam.com/2512/fvMesh_8H_source.html).
+
 # Moving fine-window prototype
 
 Run from the repository root:

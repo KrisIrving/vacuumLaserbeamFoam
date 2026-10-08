@@ -1279,7 +1279,17 @@ class MovingWindowTests(unittest.TestCase):
                 directMetalTemperature=4e-7,directLiquidVolume=8e-12,
                 alphaMin=0,alphaMax=1,epsilonMin=0,epsilonMax=1,Tmin=1343,Tmax=4151)
             lines.append('M247_MOVING_WINDOW '+' '.join(f'{k}={v}' for k,v in r.items()))
+        for step in range(1,9):
+            lines.append(f'M247_MOVING_V0 schema=1 step={step} cells={756000 if step==1 else 1200000} ready=1 maxDifference=0')
         return '\n'.join(lines)+'\nUnrefined from 1300000 to 1200000 cells.\nM247_MOVING_WINDOW_END schema=1 updates=8 advancedPhysics=0\nEnd\n'
+
+    def test_old_volumes_required_for_every_update_with_correct_cell_count(self):
+        from moving_window import collect
+        for text in (self.fixture().replace('M247_MOVING_V0','WRONG_VOLUME_PREFIX'),
+                     self.fixture().replace('ready=1','ready=0'),
+                     self.fixture().replace('maxDifference=0','maxDifference=1e-20'),
+                     self.fixture().replace('M247_MOVING_V0 schema=1 step=1 cells=756000','M247_MOVING_V0 schema=1 step=1 cells=1')):
+            with self.assertRaises(ValueError):collect(text)
 
     def test_complete_path_requires_coarsening_and_preserves_linear_moments(self):
         from moving_window import collect
