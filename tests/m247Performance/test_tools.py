@@ -1638,5 +1638,28 @@ class MovingDecompositionTests(unittest.TestCase):
                 self.assertEqual(report['commands'][0]['error_type'],type(error).__name__)
                 self.assertIn('elapsed_wall_s',report['commands'][0])
 
+class MovingCadenceTests(unittest.TestCase):
+    def test_selected_interval_reaches_native_dictionary(self):
+        from moving_cfd import window_dictionary
+        import re
+        for interval in (1,4):
+            self.assertEqual(re.findall(r'topologyInterval\s+(\d+)\s*;',window_dictionary(interval)),[str(interval)])
+
+    def test_coverage_forces_update_and_skips_must_have_unchanged_topology(self):
+        from moving_cfd import cadence_gate
+        mapping={'records':[dict(time=.000180005,changed=1),dict(time=.00018001,changed=0),dict(time=.000180015,changed=1)]}
+        text='\n'.join(f'M247_MOVING_CADENCE schema=1 time={r["time"]} interval=4 cycle={i} attempted={a} coverageRequired={c} windowMissed=0' for i,(r,a,c) in enumerate(zip(mapping['records'],(1,0,1),(1,0,3)),1))
+        result=cadence_gate(text,mapping,4,True)
+        self.assertEqual(result['skipped'],1);self.assertEqual(result['coverage_overrides'],1)
+        for bad in ('',text.replace('windowMissed=0','windowMissed=1'),text.replace('attempted=0','attempted=1'),text.replace('coverageRequired=3','coverageRequired=0')):
+            with self.assertRaises(ValueError):cadence_gate(bad,mapping,4,True)
+        mapping['records'][1]['changed']=1
+        with self.assertRaises(ValueError):cadence_gate(text,mapping,4,True)
+        self.assertFalse(cadence_gate('',mapping,1)['available'])
+
+    def test_unsupported_interval_rejected_before_case_access(self):
+        from moving_cfd import execute
+        with self.assertRaisesRegex(ValueError,'Topology interval'):execute('missing','missing','missing',5,.2,2)
+
 if __name__=='__main__':
     unittest.main()

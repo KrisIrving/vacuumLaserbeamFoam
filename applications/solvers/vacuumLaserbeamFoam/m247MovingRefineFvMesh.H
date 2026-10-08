@@ -14,6 +14,7 @@ class m247MovingRefineFvMesh : public dynamicRefineFvMesh
     autoPtr<volScalarField> hold_;
     autoPtr<interpolationTable<vector>> position_;
     label lastIndex_=-1;
+    label updateCycle_=0;
 protected:
     void selectRefineCandidates(const scalar lower,const scalar upper,
         const scalarField& values,bitSet& candidates) const override
@@ -82,6 +83,17 @@ public:
         const auto updateStarted=std::chrono::steady_clock::now();
         IOdictionary controls(IOobject("m247MovingWindowDict",time().system(),*this,
             IOobject::MUST_READ,IOobject::NO_WRITE));
+        const label interval=controls.lookupOrDefault<label>("topologyInterval",1);
+        if(interval!=1 && interval!=4)
+            FatalErrorInFunction<<"Experimental topologyInterval must be 1 or 4"<<exit(FatalError);
+        if(interval>1)
+        {
+            IOdictionary dynamicControls(IOobject("dynamicMeshDict",time().constant(),*this,
+                IOobject::MUST_READ,IOobject::NO_WRITE,false));
+            if(dynamicControls.found("solvers") || dynamicControls.found("motionSolver") || dynamicControls.found("solver"))
+                FatalErrorInFunction<<"Topology deferral supports fixed mesh points only"<<exit(FatalError);
+        }
+        const label cycle=++updateCycle_;
         const scalar halfX=controls.get<scalar>("halfX");
         const scalar halfZ=controls.get<scalar>("halfZ");
         const scalar hot=controls.get<scalar>("hotTemperature");
@@ -108,7 +120,8 @@ public:
             position_.reset(new interpolationTable<vector>(laser.subDict("timeVsLaserPosition")));
         }
         const vector centre=(*position_)(time().value());
-        label invalid=0,requested=0,wake=0;
+        label invalid=0,requested=0,wake=0,coverageRequired=0;
+        const auto& beforeLevels=meshCutter().cellLevel();
         forAll(T,i)
         {
             if (!std::isfinite(T[i])||!std::isfinite(alpha[i])||!std::isfinite(eps[i])||!std::isfinite((*hold_)[i])
@@ -120,7 +133,8 @@ public:
             const vector& c=C()[i];
             const bool inside=mag(c.x()-centre.x())<=halfX && mag(c.z()-centre.z())<=halfZ;
             (*mask_)[i]=(inside||retained)?1:0;
-            if ((*mask_)[i]==1)++requested;
+            if ((*mask_)[i]==1)
+            { ++requested;if(beforeLevels[i]!=1)++coverageRequired; }
         }
         reduce(invalid,sumOp<label>());
         if (invalid)FatalErrorInFunction<<"Nonfinite moving-mask state"<<exit(FatalError);
@@ -135,10 +149,25 @@ public:
         forAll(old,i)if (!std::isfinite(old[i]) || old[i]<=0)
             FatalErrorInFunction<<"Invalid pre-update old volume"<<exit(FatalError);
         const auto topologyStarted=std::chrono::steady_clock::now();
-        const bool changed=dynamicRefineFvMesh::update();
+        reduce(coverageRequired,sumOp<label>());
+        const bool attempted=((cycle-1)%interval==0 || coverageRequired>0);
+        bool changed=false;
+        if(attempted)changed=dynamicRefineFvMesh::update();
+        else
+        {
+            // This pilot moves the refinement window, not mesh points.
+            // Reset previous-step flags so isoAdvector does not remap stale topology.
+            topoChanging(false);moving(false);
+        }
         const auto topologyFinished=std::chrono::steady_clock::now();
         const auto& levels=meshCutter().cellLevel();
-        label missed=0,afterWake=0;
+        label missed=0,afterWake=0,windowMissed=0;
+        forAll(T,i)
+        {
+            const vector& c=C()[i];
+            if(mag(c.x()-centre.x())<=halfX && mag(c.z()-centre.z())<=halfZ && levels[i]!=1)++windowMissed;
+        }
+        reduce(windowMissed,sumOp<label>());
         forAll(T,i)if ((*hold_)[i]>0)
         { ++afterWake;if (levels[i]!=1)++missed; }
         reduce(missed,sumOp<label>());reduce(afterWake,sumOp<label>());
@@ -160,6 +189,9 @@ public:
         Info<<"M247_MOVING_MESH_COST schema=1 time="<<time().value()
             <<" topologyWallMax="<<topologyWall<<" preparationWallMax="<<preparationWall
             <<" auditWallMax="<<auditWall<<" updateWallMax="<<updateWall<<endl;
+        Info<<"M247_MOVING_CADENCE schema=1 time="<<time().value()
+            <<" interval="<<interval<<" cycle="<<cycle<<" attempted="<<label(attempted)
+            <<" coverageRequired="<<coverageRequired<<" windowMissed="<<windowMissed<<endl;
         Info<<"M247_MOVING_CFD schema=1 time="<<time().value()
             <<" cells="<<returnReduce(nCells(),sumOp<label>())<<" changed="<<label(changed)
             <<" centreX="<<centre.x()<<" centreZ="<<centre.z()
@@ -170,6 +202,7 @@ public:
         if (!std::isfinite(afterMetal)||!std::isfinite(afterThermal)||beforeMetal<=0||beforeThermal<=0
             ||mag(afterMetal/beforeMetal-1)>1e-6||mag(afterThermal/beforeThermal-1)>1e-6)
             FatalErrorInFunction<<"Experimental moving mapping screen failed"<<exit(FatalError);
+        if(windowMissed)FatalErrorInFunction<<"Moving laser window refinement incomplete"<<exit(FatalError);
         if (missed)FatalErrorInFunction<<"Moving wake refinement incomplete"<<exit(FatalError);
         return changed;
     }
