@@ -1572,5 +1572,30 @@ class MovingLongPilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):mapping_gate(text)
         self.assertTrue(mapping_gate(text,.0001804)['coverage_gate'])
 
+class MovingCompletionTests(unittest.TestCase):
+    def test_shell_zero_does_not_approve_missing_or_initial_reports(self):
+        from moving_completion import completion
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)
+            (work/'movingStepReference.json').write_text('{"complete":false,"pilot_gate":false,"commands":[]}')
+            r=completion(work,0)
+            self.assertFalse(r['complete']);self.assertEqual(r['wrapper_exit_code'],1)
+            self.assertEqual(completion(work,130)['wrapper_exit_code'],130)
+            self.assertEqual(completion(work,143)['wrapper_exit_code'],143)
+            self.assertFalse(completion(work,0,True)['complete'])
+
+    def test_read_only_collection_keeps_partial_decomposition_evidence(self):
+        from collect_moving_long import collect
+        from region_audit import sha
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);previous=root/'pair';run=previous/'pair-5ns';run.mkdir(parents=True)
+            (run/'movingCFDReview.json').write_text('{"complete":false,"pilot_gate":false,"commands":[]}')
+            log=run/'movingCFD_decompose.log';log.write_text('decomposition in progress')
+            before=sha(log)
+            archive,r=collect(previous,root/'collection')
+            self.assertTrue(archive.is_file());self.assertFalse(r['complete'])
+            self.assertEqual(sha(log),before)
+            self.assertEqual((root/'collection/referenceLongDecompose.log').read_text(),'decomposition in progress')
+
 if __name__=='__main__':
     unittest.main()

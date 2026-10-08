@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+PREVIOUS=${1:-tests/m247Performance/runs/moving-long-pair-20261008-190128}
+WORK=${2:-tests/m247Performance/runs/moving-long-collection-$(date +%Y%m%d-%H%M%S)}
+python3 tests/m247Performance/collect_moving_long.py --previous "$PREVIOUS" --work "$WORK"

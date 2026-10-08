@@ -34,12 +34,17 @@ WORK=$(cd "$WORK" && pwd)
 bundle_on_exit() {
     local status=$?
     trap - EXIT
+    local checked=0
+    python3 tests/m247Performance/moving_completion.py --pilot --work "$WORK" --requested-status "$status" || checked=$?
+    status=$checked
     if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
         if [[ "$status" -eq 0 ]]; then status=1; fi
     fi
     exit "$status"
 }
 trap bundle_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 {
     echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}"
     echo "FOAM_USER_APPBIN=${FOAM_USER_APPBIN:-unset}"
