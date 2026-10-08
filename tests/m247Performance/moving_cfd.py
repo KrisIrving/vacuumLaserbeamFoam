@@ -97,7 +97,7 @@ def mesh_cost(text,mapping,required=False):
         note='Per-call rank maxima; stage maxima need not sum to total. Excludes timing reductions/output, isoAdvector remap and external CorrectPhi.')
 
 
-def cadence_gate(text,mapping,expected_interval,required=False):
+def cadence_gate(text,mapping,expected_interval,required=False,expected_halo=0):
     rows=parse_records(text,'M247_MOVING_CADENCE')
     if not rows and not required:return dict(available=False)
     if len(rows)!=len(mapping['records']):raise ValueError('Missing cadence records')
@@ -106,6 +106,9 @@ def cadence_gate(text,mapping,expected_interval,required=False):
         if any(k not in r or not math.isfinite(r[k]) for k in keys):raise ValueError('Invalid cadence record')
         if r['schema']!=1 or abs(r['time']-m['time'])>1e-12 or r['interval']!=expected_interval or r['cycle']!=index:raise ValueError('Wrong cadence time/control/cycle')
         if r['attempted'] not in (0,1) or any(r[k]<0 or r[k]!=int(r[k]) for k in ('coverageRequired','windowMissed')):raise ValueError('Invalid cadence counts')
+        if required or 'haloLayers' in r:
+            if r.get('haloLayers')!=expected_halo or 'haloAdded' not in r or not math.isfinite(r['haloAdded']) or r['haloAdded']<0 or r['haloAdded']!=int(r['haloAdded']):raise ValueError('Invalid halo controls/counts')
+            if (not r['attempted'] or not expected_halo) and r['haloAdded']!=0:raise ValueError('Halo applied on skipped/disabled update')
         expected=(index-1)%expected_interval==0 or r['coverageRequired']>0
         if bool(r['attempted'])!=expected or (not expected and m['changed']!=0) or r['windowMissed']!=0:raise ValueError('Unsafe topology deferral or uncovered window')
     return dict(available=True,records=rows,attempts=sum(r['attempted'] for r in rows),
@@ -147,7 +150,7 @@ def collect_case(case,solver_sha,require_mesh_cost=False,require_cadence=False):
     if abs(mapping['records'][-1]['time']-meta['end_s'])>1e-12:raise ValueError('Mesh lifecycle did not reach pilot end time')
     if len(mapping['records'])!=summary['steps']:raise ValueError('Missing per-step mesh lifecycle records')
     return dict(complete=True,metadata_used=meta,pilot=summary,physical_diagnostics=diagnostics,
-        moving_mapping=mapping,final_step_state=state,cadence=cadence_gate(text,mapping,meta.get('topology_interval',1),require_cadence),mesh_cost=mesh_cost(text,mapping,require_mesh_cost),thermal_gate=thermal,
+        moving_mapping=mapping,final_step_state=state,cadence=cadence_gate(text,mapping,meta.get('topology_interval',1),require_cadence,meta.get('refinement_halo_layers',0)),mesh_cost=mesh_cost(text,mapping,require_mesh_cost),thermal_gate=thermal,
         pilot_gate=all((thermal,mapping['coverage_gate'],mapping['topology_gate'],mapping['mapping_screen'],state['continuity_screen'])))
 
 
@@ -189,15 +192,17 @@ def resume(previous,work):
         report.update(error_type=type(error).__name__,error=str(error));save();raise
 
 
-def window_dictionary(topology_interval):
+def window_dictionary(topology_interval,refinement_halo_layers=0):
+    if refinement_halo_layers not in (0,1):raise ValueError("Halo layers must be 0 or 1")
     if topology_interval not in (1,4):raise ValueError('Topology interval must be 1 or 4')
     return ('FoamFile { version 2.0; format ascii; class dictionary; object m247MovingWindowDict; }\n'
         'halfX 96e-6; halfZ 96e-6; hotTemperature 1537; releaseTemperature 1487;\n'
         'liquidThreshold 1e-4; solidThreshold 1e-6; metalThreshold 1e-6;\n'
-        f'topologyInterval {topology_interval};\n')
+        f'topologyInterval {topology_interval};\nrefinementHaloLayers {refinement_halo_layers};\n')
 
 
-def execute(previous,work,solver,max_delta_ns=5,duration_us=.2,topology_interval=1):
+def execute(previous,work,solver,max_delta_ns=5,duration_us=.2,topology_interval=1,refinement_halo_layers=0):
+    if refinement_halo_layers not in (0,1):raise ValueError("Halo layers must be 0 or 1")
     if topology_interval not in (1,4):raise ValueError("Topology interval must be 1 or 4")
     if max_delta_ns not in (5,10):raise ValueError("Pilot max delta must be 5 or 10 ns")
     if duration_us not in (.2,.4):raise ValueError("Pilot duration must be 0.2 or 0.4 us")
@@ -216,11 +221,11 @@ def execute(previous,work,solver,max_delta_ns=5,duration_us=.2,topology_interval
     if (work/'movingCFDReview.json').exists():raise ValueError('Choose fresh work')
     located=shutil.which('vacuumLaserbeamFoam')
     if not located or Path(located).resolve()!=solver:raise ValueError('PATH solver differs from rebuilt binary')
-    if b'M247_MOVING_CFD' not in solver.read_bytes() or b'M247_MOVING_MESH_COST' not in solver.read_bytes() or b'M247_MOVING_CADENCE' not in solver.read_bytes():raise ValueError('Solver rebuild required: missing moving-CFD marker')
+    if b'M247_MOVING_CFD' not in solver.read_bytes() or b'M247_MOVING_MESH_COST' not in solver.read_bytes() or b'M247_MOVING_CADENCE' not in solver.read_bytes() or b' haloLayers=' not in solver.read_bytes():raise ValueError('Solver rebuild required: missing moving-CFD marker')
     work.mkdir(parents=True,exist_ok=True);case=work/'movingCFD';case.mkdir()
     report=dict(schema=1,complete=False,production_approved=False,pilot_gate=False,
         original_protected_review_sha256=sha(previous/'movingWindowReview.json'),source_case=str(source),
-        source_sha256=expected,solver_sha256=sha(solver),duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,topology_interval=topology_interval,commands=[],
+        source_sha256=expected,solver_sha256=sha(solver),duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,topology_interval=topology_interval,refinement_halo_layers=refinement_halo_layers,commands=[],
         note='Actual isoAdvector/CorrectPhi/thermal solver pilot. No equivalent-grid speedup pair; rho*(cp*T+L*epsilon) is a screening proxy, not thermodynamic enthalpy.')
     target=work/'movingCFDReview.json'
     def save():target.write_text(json.dumps(report,indent=2)+'\n')
@@ -237,7 +242,7 @@ def execute(previous,work,solver,max_delta_ns=5,duration_us=.2,topology_interval
         dictionary=dynamic_dictionary().replace('dynamicFvMesh dynamicRefineFvMesh;',
             'dynamicFvMesh m247MovingRefineFvMesh;').replace('field movingRefineMask;','field m247RefineMask;').replace('correctFluxes ();','correctFluxes ((phi U));')
         (case/'constant/dynamicMeshDict').write_text(dictionary)
-        (case/'system/m247MovingWindowDict').write_text(window_dictionary(topology_interval))
+        (case/'system/m247MovingWindowDict').write_text(window_dictionary(topology_interval,refinement_halo_layers))
         shutil.copy2(case/'constant/dynamicMeshDict',work/'movingCFD_dynamicMeshDict')
         shutil.copy2(case/'system/m247MovingWindowDict',work/'movingCFD_windowDict')
         for key,value in (('startFrom','startTime'),('startTime','0.00018'),('endTime',format(end_s,'.12g')),
@@ -251,7 +256,7 @@ def execute(previous,work,solver,max_delta_ns=5,duration_us=.2,topology_interval
         set_entry(case/'system/fvSolution','PIMPLE/correctPhi','true')
         set_entry(case/'system/fvSolution','PIMPLE/moveMeshOuterCorrectors','false')
         metadata=dict(schema=1,source=str(source),variant='movingCFD',start_s=.00018,end_s=end_s,
-            duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,topology_interval=topology_interval,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
+            duration_us=duration_us,ranks=48,max_delta_ns=max_delta_ns,topology_interval=topology_interval,refinement_halo_layers=refinement_halo_layers,checkpoint='0.00018',source_snapshot_sha256=sha(previous/'movingWindowReview.json'),
             purpose='Experimental moving fine-window full-solver pilot; no measured speedup claim')
         metadata=thermal_metadata(case,metadata)
         (case/'probe.json').write_text(json.dumps(metadata,indent=2)+'\n')
@@ -283,10 +288,11 @@ def main():
     p.add_argument('--max-delta-ns',type=int,choices=(5,10),default=5)
     p.add_argument('--duration-us',type=float,choices=(.2,.4),default=.2)
     p.add_argument('--topology-interval',type=int,choices=(1,4),default=1)
+    p.add_argument('--refinement-halo-layers',type=int,choices=(0,1),default=0)
     a=p.parse_args()
     try:
         if not a.resume and a.solver is None:raise ValueError('--solver is required for a new CFD run')
-        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver,a.max_delta_ns,a.duration_us,a.topology_interval)
+        r=resume(a.previous,a.work) if a.resume else execute(a.previous,a.work,a.solver,a.max_delta_ns,a.duration_us,a.topology_interval,a.refinement_halo_layers)
         print('Moving CFD compatibility pilot gate:',r['pilot_gate'],'production approved: False')
         if not r['pilot_gate']:p.exit(2,'Pilot screen failed; send review archive.\n')
     except (ValueError,KeyError,OSError,subprocess.SubprocessError,tarfile.TarError) as e:p.exit(1,f'Moving CFD pilot failed: {e}\n')

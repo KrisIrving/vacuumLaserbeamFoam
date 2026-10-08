@@ -5,6 +5,7 @@ RESUME=false
 MAX_DELTA_NS=5
 DURATION_US=0.2
 TOPOLOGY_INTERVAL=1
+REFINEMENT_HALO_LAYERS=0
 DEFAULT_PREVIOUS=tests/m247Performance/runs/moving-window-protected-20261008-164709
 TAG=moving-cfd-pilot
 if [[ "${1:-}" == "--resume" ]]; then
@@ -29,6 +30,12 @@ if [[ "${1:-}" == "--mesh4" ]]; then
     [[ "$RESUME" == false ]] || { echo "--mesh4 cannot resume" >&2; exit 1; }
     TOPOLOGY_INTERVAL=4
     TAG="${TAG}-mesh4"
+    shift
+fi
+if [[ "${1:-}" == "--halo1" ]]; then
+    [[ "$RESUME" == false ]] || { echo "--halo1 cannot resume" >&2; exit 1; }
+    REFINEMENT_HALO_LAYERS=1
+    TAG="${TAG}-halo1"
     shift
 fi
 PREVIOUS=${1:-$DEFAULT_PREVIOUS}
@@ -69,4 +76,4 @@ fi
 SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/vacuumLaserbeamFoam
 sha256sum "$SOLVER" applications/solvers/vacuumLaserbeamFoam/m247MovingRefineFvMesh.H > "$WORK/previewBinary.txt"
 python3 tests/m247Performance/moving_cfd.py --previous "$PREVIOUS" --work "$WORK" \
-    --solver "$SOLVER" --max-delta-ns "$MAX_DELTA_NS" --duration-us "$DURATION_US" --topology-interval "$TOPOLOGY_INTERVAL" 2>&1 | tee "$WORK/collection.log"
+    --solver "$SOLVER" --max-delta-ns "$MAX_DELTA_NS" --duration-us "$DURATION_US" --topology-interval "$TOPOLOGY_INTERVAL" --refinement-halo-layers "$REFINEMENT_HALO_LAYERS" 2>&1 | tee "$WORK/collection.log"

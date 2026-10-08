@@ -1648,7 +1648,7 @@ class MovingCadenceTests(unittest.TestCase):
     def test_coverage_forces_update_and_skips_must_have_unchanged_topology(self):
         from moving_cfd import cadence_gate
         mapping={'records':[dict(time=.000180005,changed=1),dict(time=.00018001,changed=0),dict(time=.000180015,changed=1)]}
-        text='\n'.join(f'M247_MOVING_CADENCE schema=1 time={r["time"]} interval=4 cycle={i} attempted={a} coverageRequired={c} windowMissed=0' for i,(r,a,c) in enumerate(zip(mapping['records'],(1,0,1),(1,0,3)),1))
+        text='\n'.join(f'M247_MOVING_CADENCE schema=1 time={r["time"]} interval=4 cycle={i} attempted={a} coverageRequired={c} windowMissed=0 haloLayers=0 haloAdded=0' for i,(r,a,c) in enumerate(zip(mapping['records'],(1,0,1),(1,0,3)),1))
         result=cadence_gate(text,mapping,4,True)
         self.assertEqual(result['skipped'],1);self.assertEqual(result['coverage_overrides'],1)
         for bad in ('',text.replace('windowMissed=0','windowMissed=1'),text.replace('attempted=0','attempted=1'),text.replace('coverageRequired=3','coverageRequired=0')):
@@ -1660,6 +1660,20 @@ class MovingCadenceTests(unittest.TestCase):
     def test_unsupported_interval_rejected_before_case_access(self):
         from moving_cfd import execute
         with self.assertRaisesRegex(ValueError,'Topology interval'):execute('missing','missing','missing',5,.2,2)
+
+class MovingHaloTests(unittest.TestCase):
+    def test_halo_control_is_explicit_and_invalid_value_rejected(self):
+        from moving_cfd import window_dictionary,execute
+        import re
+        self.assertEqual(re.findall(r'refinementHaloLayers\s+(\d+)\s*;',window_dictionary(4,1)),['1'])
+        with self.assertRaisesRegex(ValueError,'Halo'):execute('missing','missing','missing',5,.2,4,2)
+
+    def test_skipped_step_cannot_claim_halo_expansion(self):
+        from moving_cfd import cadence_gate
+        mapping={'records':[dict(time=.000180005,changed=1),dict(time=.00018001,changed=0)]}
+        text='M247_MOVING_CADENCE schema=1 time=0.000180005 interval=4 cycle=1 attempted=1 coverageRequired=2 windowMissed=0 haloLayers=1 haloAdded=100\nM247_MOVING_CADENCE schema=1 time=0.00018001 interval=4 cycle=2 attempted=0 coverageRequired=0 windowMissed=0 haloLayers=1 haloAdded=0'
+        self.assertEqual(cadence_gate(text,mapping,4,True,1)['skipped'],1)
+        with self.assertRaisesRegex(ValueError,'Halo'):cadence_gate(text.replace('haloAdded=0','haloAdded=1'),mapping,4,True,1)
 
 if __name__=='__main__':
     unittest.main()

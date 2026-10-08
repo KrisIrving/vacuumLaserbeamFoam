@@ -93,6 +93,9 @@ public:
             if(dynamicControls.found("solvers") || dynamicControls.found("motionSolver") || dynamicControls.found("solver"))
                 FatalErrorInFunction<<"Topology deferral supports fixed mesh points only"<<exit(FatalError);
         }
+        const label haloLayers=controls.lookupOrDefault<label>("refinementHaloLayers",0);
+        if(haloLayers<0 || haloLayers>1)
+            FatalErrorInFunction<<"Experimental refinementHaloLayers must be 0 or 1"<<exit(FatalError);
         const label cycle=++updateCycle_;
         const scalar halfX=controls.get<scalar>("halfX");
         const scalar halfZ=controls.get<scalar>("halfZ");
@@ -152,7 +155,20 @@ public:
         reduce(coverageRequired,sumOp<label>());
         const bool attempted=((cycle-1)%interval==0 || coverageRequired>0);
         bool changed=false;
-        if(attempted)changed=dynamicRefineFvMesh::update();
+        label haloAdded=0;
+        if(attempted)
+        {
+            if(haloLayers==1)
+            {
+                bitSet expanded(nCells());
+                forAll(T,i)if((*mask_)[i]==1)expanded.set(i);
+                extendMarkedCells(expanded);
+                forAll(T,i)if(expanded.test(i) && (*mask_)[i]==0)
+                { (*mask_)[i]=1;++haloAdded; }
+                mask_->correctBoundaryConditions();
+            }
+            changed=dynamicRefineFvMesh::update();
+        }
         else
         {
             // This pilot moves the refinement window, not mesh points.
@@ -167,7 +183,7 @@ public:
             const vector& c=C()[i];
             if(mag(c.x()-centre.x())<=halfX && mag(c.z()-centre.z())<=halfZ && levels[i]!=1)++windowMissed;
         }
-        reduce(windowMissed,sumOp<label>());
+        reduce(windowMissed,sumOp<label>());reduce(haloAdded,sumOp<label>());
         forAll(T,i)if ((*hold_)[i]>0)
         { ++afterWake;if (levels[i]!=1)++missed; }
         reduce(missed,sumOp<label>());reduce(afterWake,sumOp<label>());
@@ -191,7 +207,8 @@ public:
             <<" auditWallMax="<<auditWall<<" updateWallMax="<<updateWall<<endl;
         Info<<"M247_MOVING_CADENCE schema=1 time="<<time().value()
             <<" interval="<<interval<<" cycle="<<cycle<<" attempted="<<label(attempted)
-            <<" coverageRequired="<<coverageRequired<<" windowMissed="<<windowMissed<<endl;
+            <<" coverageRequired="<<coverageRequired<<" windowMissed="<<windowMissed
+            <<" haloLayers="<<haloLayers<<" haloAdded="<<haloAdded<<endl;
         Info<<"M247_MOVING_CFD schema=1 time="<<time().value()
             <<" cells="<<returnReduce(nCells(),sumOp<label>())<<" changed="<<label(changed)
             <<" centreX="<<centre.x()<<" centreZ="<<centre.z()
