@@ -1947,5 +1947,48 @@ class RegionalAcceptanceTests(unittest.TestCase):
         mapper=Transfer([(0,0,0,.3,1,1),(.3,0,0,1,1,1)],[(.1,0,0,.7,1,1)])
         self.assertEqual(mapper.gather_density([1,1]),[1])
 
+class RegionalFlowAcceptanceTests(unittest.TestCase):
+    def text(self,ranks=1):
+        lines=['M247_LOCAL_PROJECTION schema=1 finalMaxDiv=1e-9 boundaryNetM3PerS=0 productionApproved=0']
+        for step in range(1,21):
+            lines.append(lines[0])
+            lines.append(f'M247_REGIONAL_FLOW_STEP schema=1 step={step} time={step*1e-5} courant=.02 alphaMin=0 alphaMax=1 massKg=2e-6 massResidualKg=1e-20 volumeResidualM3=1e-24 metalVolumeM3=3e-10')
+        lines.append(f'M247_REGIONAL_FLOW_COMPLETE schema=1 ranks={ranks} steps=20 initialMetalM3=3e-10 finalMetalM3=3.2e-10 cumulativeMetalOutM3=-2e-11 alphaChangeL1M3=2e-11 maxVolumeResidualM3=1e-24 maxMassResidualKg=1e-20 productionApproved=0')
+        return '\n'.join(lines)+'\nEnd\n'
+
+    def test_flow_step_sequence_and_parallel_material_inventory(self):
+        from regional_acceptance import parse_flow,compare_flow
+        compare_flow(parse_flow(self.text(1)),parse_flow(self.text(2)))
+        with self.assertRaisesRegex(ValueError,'MPI size'):
+            compare_flow(parse_flow(self.text(2)),parse_flow(self.text(2)))
+
+    def test_no_interface_motion_missing_step_or_volume_drift_rejected(self):
+        from regional_acceptance import parse_flow
+        for text in (self.text().replace('alphaChangeL1M3=2e-11','alphaChangeL1M3=0'),self.text().replace('step=20','step=19'),self.text().replace('finalMetalM3=3.2e-10','finalMetalM3=3.4e-10'),self.text().replace('massResidualKg=1e-20','massResidualKg=1e-3')):
+            with self.assertRaises(ValueError):parse_flow(text)
+
+    def test_flow_fixture_selects_unclipped_geometric_vof_and_real_time_interval(self):
+        from regional_acceptance import prepare_flow_fixture
+        with tempfile.TemporaryDirectory() as folder:
+            case=Path(folder)/'flow';prepare_flow_fixture(case)
+            self.assertIn('flowDeltaT 1e-5',(case/'constant/regionalTransferDict').read_text())
+            self.assertIn('clip false',(case/'system/flowRegion/fvSolution').read_text())
+            self.assertIn('div(rhoPhi,U) Gauss upwind',(case/'system/flowRegion/fvSchemes').read_text())
+            self.assertIn('value uniform 1',(case/'0/flowRegion/alpha.metal').read_text())
+
+    def test_flow_completion_cannot_be_inferred_from_interface_reports(self):
+        from regional_acceptance import finalize,save
+        with tempfile.TemporaryDirectory() as folder:
+            work=Path(folder);state=dict(mode='flow',complete=True,stages=[dict(status='complete',returncode=0)],regionalGain=dict(serial_parallel_gate=True),regionalLoss=dict(serial_parallel_gate=True))
+            save(work/'regionalAcceptance.json',state);self.assertEqual(finalize(work,0),1)
+            state['regionalFlow']=dict(serial_parallel_gate=True)
+            save(work/'regionalAcceptance.json',state);self.assertEqual(finalize(work,0),0)
+
+    def test_parallel_inventory_difference_rejected(self):
+        from regional_acceptance import parse_flow,compare_flow
+        serial=parse_flow(self.text(1));parallel=parse_flow(self.text(2))
+        parallel['summary']['alphaChangeL1M3']*=2
+        with self.assertRaisesRegex(ValueError,'serial/MPI'):compare_flow(serial,parallel)
+
 if __name__=='__main__':
     unittest.main()

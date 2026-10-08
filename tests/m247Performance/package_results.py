@@ -59,7 +59,7 @@ BUILD_FILES += ('movingWindowReview.json','movingWindow_dynamicMeshDict','moving
     f'movingWindow_step{step}_{suffix}.log' for step in range(1,9) for suffix in ('quality','concavity'))
 
 BUILD_FILES += ('regionalAcceptance.json','regionalAcceptanceStatus.json','regionalBinary.txt')
-BUILD_FILES += tuple(f'{variant}_{suffix}' for variant in ('regionalGain','regionalLoss') for suffix in
+BUILD_FILES += tuple(f'{variant}_{suffix}' for variant in ('regionalGain','regionalLoss','regionalFlow') for suffix in
     ('thermalRegion_blockMesh.log','flowRegion_blockMesh.log','setFields.log','serial.log',
      'decompose.log','parallel.log','inputHashes.json','parallelInputHashes.json','fixtureInputs.json'))
 

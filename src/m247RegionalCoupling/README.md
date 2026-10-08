@@ -165,3 +165,41 @@ The optional second positional argument changes build jobs only; runtime remains
 Current172Python tests/Bash syntax pass; native compile/MPI runtime unverified.
 All-region decomposition follows the official OpenFOAM2512 selection interface:
 https://api.openfoam.com/2512/getAllRegionOptions_8H_source.html
+
+
+## Native result and local flow time-loop gate
+
+20261009-005127 archive confirmed native compile and serial/MPI2 interface PASS.
+16/80cells; energy residual<=1.573e-15J; constant/uniformT error0; pressure final
+maxdiv<=6.618e-12/s; input hashes unchanged.1.865s acceptance time excludes build.
+This validates interfaces, not LPBF production accuracy or acceleration.
+
+Run after pulling, in the Ubuntu OpenFOAM2512 shell:
+
+```bash
+./tests/m247Performance/RunRegionalAcceptance --flow
+```
+
+m247LocalFlowAudit.H now imports coarse alpha once and carries actual local fields
+through20steps*10us=200us. Uses native isoAdvector (clip false,snapTol0), its
+getRhoPhi for density-consistent mass transport, conservative rhoU transient/
+advection with mass-residual correction, phase-weighted viscosity diffusion and
+pressure projection. Density comes from transported alpha; pressure inverse
+coefficient comes from the momentum matrix diagonal. Nonincremental pressure
+projection corrects U with rAU*reconstruct(deltaPhi/rAUf). No externally frozen
+rho during the time loop. Physical boundary ledger excludes processor patches.
+
+Each step reports CFL, alpha extrema, metal volume/mass and signed boundary
+transfer/residual. Collector checks all20times,21pressure solves, cumulative
+metal ledger, meaningful interface movement, unchanged input files and serial/MPI
+inventories. Generated16/80cell fixture,2MPI ranks; build300s+sharedruntime600s.
+Review archive name M247_regional-flow-step-<timestamp>_review.tar.gz. Default
+interface command remains available; no need to rerun it separately now.
+
+This is fixed-domain cold two-phase laminar flow. It has no thermal evolution,
+phase relaxation, surface tension/recoil, optical/source generation, moving-region
+migration, or global time-loop correction. Passing does not yet establish regional
+LPBF closure, heat/moment advection compatibility or production speedup.177Python
+tests pass; new native time-loop/refactored projection compilation/MPI pending.
+Official isoAdvector alpha and consistent density-flux interfaces:
+https://api.openfoam.com/2512/isoAdvection_8H_source.html

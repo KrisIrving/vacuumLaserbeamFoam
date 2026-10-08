@@ -7,6 +7,7 @@
 #include "m247RegionalState.H"
 #include "m247LocalProjection.H"
 #include "m247RegionalSources.H"
+#include "m247LocalFlowAudit.H"
 using namespace Foam;
 scalarField auditSources(fvMesh& local,Time& time,const dictionary& c,
     const m247RegionalTransfer& transfer,const scalarField& globalConduction)
@@ -131,6 +132,8 @@ int main(int argc,char *argv[])
     fvMesh thermal(IOobject("thermalRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     fvMesh local(IOobject("flowRegion",runTime.timeName(),runTime,IOobject::MUST_READ));
     IOdictionary controls(IOobject("regionalTransferDict",runTime.constant(),runTime,IOobject::MUST_READ,IOobject::NO_WRITE));
+    if(controls.getOrDefault<bool>("localFlowStepAudit",false))
+    {m247LocalFlowAudit(thermal,local,runTime,controls);Info<<"End"<<endl;return 0;}
     if(controls.getOrDefault<bool>("sourceAudit",false)&&!controls.getOrDefault<bool>("mixtureAudit",false))
         FatalErrorInFunction<<"sourceAudit requires mixtureAudit"<<exit(FatalError);
     if(controls.getOrDefault<bool>("localProjectionAudit",false))m247LocalProjection(local,runTime,controls);

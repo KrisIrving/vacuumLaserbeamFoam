@@ -5,19 +5,18 @@
 #include "constrainPressure.H"
 namespace Foam
 {
-inline void m247LocalProjection(fvMesh& mesh,Time& time,const dictionary& c)
+inline void m247ProjectFlux(volVectorField& U,const volScalarField& rho,volScalarField& dp,
+    surfaceScalarField& phi,const volScalarField& rAU,const dictionary& c)
 {
+    fvMesh& mesh=const_cast<fvMesh&>(U.mesh());
     if(mesh.moving()||mesh.topoChanging())
-        FatalErrorInFunction<<"Projection prototype requires a fixed snapshot mesh"<<exit(FatalError);
-    const scalar dt=c.get<scalar>("auditDeltaT"),divTolerance=c.get<scalar>("projectionDivergenceTolerance");
+        FatalErrorInFunction<<"Projection requires a fixed mesh"<<exit(FatalError);
+    const scalar divTolerance=c.get<scalar>("projectionDivergenceTolerance");
     const label passes=c.get<label>("projectionPasses");
-    if(!std::isfinite(dt)||dt<=0||!std::isfinite(divTolerance)||divTolerance<=0||passes<1||passes>10)
-        FatalErrorInFunction<<"Invalid local projection controls"<<exit(FatalError);
-    volVectorField U(IOobject("U",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
-    volScalarField dp(IOobject("pRegionalCorrection",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
-    volScalarField rho(IOobject("rho",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
-    if(U.dimensions()!=dimVelocity||dp.dimensions()!=dimPressure||rho.dimensions()!=dimDensity)
-        FatalErrorInFunction<<"Local projection expects U, physical pressure correction, rho"<<exit(FatalError);
+    if(!std::isfinite(divTolerance)||divTolerance<=0||passes<1||passes>10
+        ||U.dimensions()!=dimVelocity||dp.dimensions()!=dimPressure||rho.dimensions()!=dimDensity
+        ||rAU.dimensions()!=dimTime/dimDensity)
+        FatalErrorInFunction<<"Invalid local pressure projection contract"<<exit(FatalError);
     // First prototype requires a Dirichlet pressure anchor; never pin an arbitrary MPI cell.
     if(dp.needReference())FatalErrorInFunction<<"Local pressure correction requires a fixedValue outlet anchor"<<exit(FatalError);
     forAll(mesh.boundary(),patchi)
@@ -31,18 +30,17 @@ inline void m247LocalProjection(fvMesh& mesh,Time& time,const dictionary& c)
         else if(!((ut=="fixedValue"&&pt=="fixedFluxPressure")||(ut=="zeroGradient"&&pt=="fixedValue")))
             FatalErrorInFunction<<"Unsupported regional U/pressure boundary pair on "<<patch.name()<<exit(FatalError);
     }
-    U.correctBoundaryConditions();rho.correctBoundaryConditions();
+    U.correctBoundaryConditions();
     forAll(rho,i)
-        if(!std::isfinite(rho[i])||rho[i]<=0||!std::isfinite(mag(U[i]))||!std::isfinite(dp[i]))
+        if(!std::isfinite(rho[i])||rho[i]<=0||!std::isfinite(mag(U[i]))||!std::isfinite(dp[i])||!std::isfinite(rAU[i])||rAU[i]<=0)
             FatalErrorInFunction<<"Invalid local projection fields"<<exit(FatalError);
     forAll(rho.boundaryField(),patchi)forAll(rho.boundaryField()[patchi],i)
         if(!std::isfinite(rho.boundaryField()[patchi][i])||rho.boundaryField()[patchi][i]<=0
             ||!std::isfinite(mag(U.boundaryField()[patchi][i]))||!std::isfinite(dp.boundaryField()[patchi][i]))
             FatalErrorInFunction<<"Invalid projection boundary data"<<exit(FatalError);
-    const volScalarField rAU("regionalRAU",dimensionedScalar("dt",dimTime,dt)/rho);
     const surfaceScalarField rAUf("regionalRAUf",fvc::interpolate(rAU));
     surfaceScalarField predictor("regionalPhiPredictor",fvc::flux(U));
-    surfaceScalarField phi("regionalPhi",predictor);
+    phi=predictor;
     mesh.setFluxRequired(dp.name());
     constrainPressure(dp,U,predictor,rAUf);
     scalar initialMax=0;
@@ -55,7 +53,7 @@ inline void m247LocalProjection(fvMesh& mesh,Time& time,const dictionary& c)
         pressureEquation.solve();
         if(pass==passes-1)phi=predictor-pressureEquation.flux();
     }
-    U+=fvc::reconstruct(phi-predictor);U.correctBoundaryConditions();
+    U+=rAU*fvc::reconstruct((phi-predictor)/rAUf);U.correctBoundaryConditions();
     const volScalarField div(fvc::div(phi));
     scalar maxDiv=0,l1=0,net=0,volume=0;
     forAll(div,i)
@@ -74,5 +72,18 @@ inline void m247LocalProjection(fvMesh& mesh,Time& time,const dictionary& c)
         <<" divergenceL1M3PerS="<<l1<<" boundaryNetM3PerS="<<net
         <<" passes="<<passes<<" productionApproved=0"<<endl;
 }
+inline void m247LocalProjection(fvMesh& mesh,Time& time,const dictionary& c)
+{
+    const scalar dt=c.get<scalar>("auditDeltaT");
+    if(!std::isfinite(dt)||dt<=0)FatalErrorInFunction<<"Invalid projection dt"<<exit(FatalError);
+    volVectorField U(IOobject("U",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+    volScalarField dp(IOobject("pRegionalCorrection",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+    volScalarField rho(IOobject("rho",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh);
+    rho.correctBoundaryConditions();
+    const volScalarField rAU("regionalRAU",dimensionedScalar("dt",dimTime,dt)/rho);
+    surfaceScalarField phi("regionalPhi",fvc::flux(U));
+    m247ProjectFlux(U,rho,dp,phi,rAU,c);
+}
+
 }
 #endif

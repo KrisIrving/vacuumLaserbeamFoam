@@ -89,6 +89,47 @@ regions (boxToCell { box (-1 -1 -1) (0.0005 1 1); fieldValues
         write(f'0/flowRegion/{name}',field(name,'volScalarField','1 -1 -3 0 0 0 0',str(value),zero))
 
 
+def prepare_flow_fixture(case):
+    prepare_fixture(case)
+    controls=case/'constant/regionalTransferDict'
+    controls.write_text(controls.read_text(encoding='utf-8')+'localFlowStepAudit true; flowSteps 20; flowDeltaT 1e-5; flowNuMetal 1.069182389937107e-6; flowNuGas 1.48e-5;\n',encoding='utf-8')
+    path=case/'system/controlDict';path.write_text(path.read_text(encoding='utf-8').replace('endTime 1e-9','endTime 0.0002').replace('deltaT 1e-9','deltaT 1e-5'),encoding='utf-8')
+    path=case/'system/flowRegion/fvSchemes';path.write_text(path.read_text(encoding='utf-8').replace('divSchemes { default Gauss linear; }','divSchemes { default none; div(rhoPhi,U) Gauss upwind; }'),encoding='utf-8')
+    path=case/'system/flowRegion/fvSolution';text=path.read_text(encoding='utf-8');text=text.replace('solvers\n{','solvers\n{ U { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-12; relTol 0; maxIter 1000; }\n alpha.metal { nAlphaBounds 3; isoFaceTol 1e-8; surfCellTol 1e-8; snapTol 0; clip false; writeIsoFaces false; writeSurfCells false; }');path.write_text(text,encoding='utf-8')
+    (case/'0/flowRegion/alpha.metal').write_text(field('alpha.metal','volScalarField','0 0 0 0 0 0 0','0',
+        'inlet { type fixedValue; value uniform 1; } outlet { type zeroGradient; } walls { type zeroGradient; }'),encoding='utf-8')
+
+
+def parse_flow(text):
+    if re.search(r'FOAM FATAL|Segmentation fault|MPI_ABORT',text) or not re.search(r'^End\s*$',text,re.M):raise ValueError('Native flow did not finish')
+    def rows(marker):
+        data=[{k:float(v) for k,v in re.findall(r'(\w+)=([-+\d.eE]+)',line)} for line in re.findall(r'^'+marker+r'\s+(.+)$',text,re.M)]
+        if not data or any(not math.isfinite(x) for row in data for x in row.values()):raise ValueError('Missing/nonfinite '+marker)
+        return data
+    steps=rows('M247_REGIONAL_FLOW_STEP');done=rows('M247_REGIONAL_FLOW_COMPLETE');projection=rows('M247_LOCAL_PROJECTION')
+    if len(steps)!=20 or len(done)!=1 or len(projection)!=21:raise ValueError('Incomplete flow/pressure step sequence')
+    required=('schema','step','time','courant','alphaMin','alphaMax','massKg','massResidualKg','volumeResidualM3','metalVolumeM3')
+    for i,row in enumerate(steps,1):
+        if any(k not in row for k in required) or row['schema']!=1 or row['step']!=i or not math.isclose(row['time'],i*1e-5,abs_tol=1e-14):raise ValueError('Flow time/index mismatch')
+        if not 0<=row['courant']<=.25 or row['alphaMin']<-1e-10 or row['alphaMax']>1+1e-10:raise ValueError('Flow CFL/VOF gate failed')
+        if not 0<=row['volumeResidualM3']<=1e-8*max(row['metalVolumeM3'],1e-20) or not 0<=row['massResidualKg']<=1e-8*max(row['massKg'],1e-20):raise ValueError('Flow mass/volume ledger failed')
+    for row in projection:
+        if row.get('schema')!=1 or row.get('productionApproved')!=0 or not 0<=row.get('finalMaxDiv',-1)<=1e-5 or abs(row.get('boundaryNetM3PerS',1))>6e-15:raise ValueError('Flow pressure gate failed')
+    summary=done[0]
+    keys=('schema','ranks','steps','initialMetalM3','finalMetalM3','cumulativeMetalOutM3','alphaChangeL1M3','maxVolumeResidualM3','maxMassResidualKg','productionApproved')
+    if any(k not in summary for k in keys) or summary['schema']!=1 or summary['steps']!=20 or summary['productionApproved']!=0:raise ValueError('Flow completion contract mismatch')
+    if summary['alphaChangeL1M3']<=1e-12:raise ValueError('VOF interface did not advance materially')
+    if abs(summary['finalMetalM3']-summary['initialMetalM3']+summary['cumulativeMetalOutM3'])>1e-8*summary['initialMetalM3']:raise ValueError('Cumulative flow volume ledger failed')
+    return {'steps':steps,'summary':summary,'projection':projection}
+
+
+def compare_flow(serial,parallel):
+    for data,ranks in ((serial,1),(parallel,2)):
+        if data['summary']['ranks']!=ranks:raise ValueError('Flow MPI size mismatch')
+    for key in ('initialMetalM3','finalMetalM3','cumulativeMetalOutM3','alphaChangeL1M3'):
+        if not math.isclose(serial['summary'][key],parallel['summary'][key],rel_tol=1e-6,abs_tol=1e-16):raise ValueError('Flow serial/MPI mismatch: '+key)
+
+
 def digest_case(case):
     # Include all original and processor input files; native audit must not write any.
     return {str(p.relative_to(case)):hashlib.sha256(p.read_bytes()).hexdigest()
@@ -155,12 +196,12 @@ def run_bounded(command,output,remaining):
                 process.wait(timeout=5)
         raise
 
-def execute(work,solver,budget=600):
+def execute(work,solver,budget=600,flow=False):
     if not math.isfinite(budget) or budget<=0:raise ValueError('Positive acceptance time budget required')
     work=Path(work).resolve();solver=Path(solver).resolve()
     if not solver.is_file():raise ValueError('Native audit binary missing')
     state={'schema':1,'complete':False,'production_approved':False,'stages':[],
-           'solver':str(solver),'solver_sha256':hashlib.sha256(solver.read_bytes()).hexdigest(),'budget_s':budget}
+           'mode':'flow' if flow else 'interfaces','solver':str(solver),'solver_sha256':hashlib.sha256(solver.read_bytes()).hexdigest(),'budget_s':budget}
     start=time.monotonic()
     def stage(name,command):
         remaining=budget-(time.monotonic()-start)
@@ -177,8 +218,10 @@ def execute(work,solver,budget=600):
                 row.update(status='failed',error=f'{type(error).__name__}: {error}');raise
             finally:save(work/'regionalAcceptance.json',state)
     try:
-        for variant,cooling in (('regionalGain',False),('regionalLoss',True)):
-            case=work/variant;prepare_fixture(case,cooling)
+        for variant,cooling in ((('regionalFlow',False),) if flow else (('regionalGain',False),('regionalLoss',True))):
+            case=work/variant
+            if flow:prepare_flow_fixture(case)
+            else:prepare_fixture(case,cooling)
             save(work/(variant+'_fixtureInputs.json'),{str(p.relative_to(case)):p.read_text(encoding='utf-8') for p in sorted(case.rglob('*')) if p.is_file()})
             for region in ('thermalRegion','flowRegion'):
                 stage(f'{variant}_{region}_blockMesh',['blockMesh','-case',case,'-region',region])
@@ -186,13 +229,14 @@ def execute(work,solver,budget=600):
             before=digest_case(case);save(work/(variant+'_inputHashes.json'),before)
             stage(f'{variant}_serial',[solver,'-case',case,'-time','0'])
             if digest_case(case)!=before:raise ValueError('Serial audit modified fixture inputs')
-            serial=parse_audit((work/(variant+'_serial.log')).read_text(encoding='utf-8',errors='replace'))
+            serial=(parse_flow if flow else parse_audit)((work/(variant+'_serial.log')).read_text(encoding='utf-8',errors='replace'))
             stage(f'{variant}_decompose',['decomposePar','-case',case,'-allRegions'])
             before=digest_case(case);save(work/(variant+'_parallelInputHashes.json'),before)
             stage(f'{variant}_parallel',['mpirun','-np','2',solver,'-case',case,'-time','0','-parallel'])
             if digest_case(case)!=before:raise ValueError('MPI audit modified fixture inputs')
-            parallel=parse_audit((work/(variant+'_parallel.log')).read_text(encoding='utf-8',errors='replace'))
-            compare_audits(serial,parallel,-.00024 if cooling else .00039)
+            parallel=(parse_flow if flow else parse_audit)((work/(variant+'_parallel.log')).read_text(encoding='utf-8',errors='replace'))
+            if flow:compare_flow(serial,parallel)
+            else:compare_audits(serial,parallel,-.00024 if cooling else .00039)
             state[variant]={'serial':serial,'parallel':parallel,'inputs_unchanged':True,'serial_parallel_gate':True}
         state['complete']=True
     except BaseException as error:
@@ -205,7 +249,7 @@ def execute(work,solver,budget=600):
 def finalize(work,requested_status):
     path=Path(work)/'regionalAcceptance.json'
     state=json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'schema':1,'complete':False,'error':'Native acceptance did not start'}
-    complete=state.get('complete') is True and bool(state.get('stages')) and all(row.get('status')=='complete' and row.get('returncode')==0 for row in state.get('stages',[])) and all(state.get(v,{}).get('serial_parallel_gate') is True for v in ('regionalGain','regionalLoss'))
+    complete=state.get('complete') is True and bool(state.get('stages')) and all(row.get('status')=='complete' and row.get('returncode')==0 for row in state.get('stages',[])) and all(state.get(v,{}).get('serial_parallel_gate') is True for v in (('regionalFlow',) if state.get('mode')=='flow' else ('regionalGain','regionalLoss')))
     status=requested_status if requested_status else (0 if complete else 1)
     save(Path(work)/'regionalAcceptanceStatus.json',{'schema':1,'complete':complete and status==0,'exit_code':status,'production_approved':False})
     return status
@@ -213,11 +257,11 @@ def finalize(work,requested_status):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--work',type=Path,required=True)
-    parser.add_argument('--solver',type=Path);parser.add_argument('--finalize',action='store_true');parser.add_argument('--requested-status',type=int,default=0)
+    parser.add_argument('--flow',action='store_true');parser.add_argument('--solver',type=Path);parser.add_argument('--finalize',action='store_true');parser.add_argument('--requested-status',type=int,default=0)
     args=parser.parse_args()
     if args.finalize:raise SystemExit(finalize(args.work,args.requested_status))
     if not args.solver:parser.error('--solver required')
-    try:execute(args.work,args.solver)
+    try:execute(args.work,args.solver,flow=args.flow)
     except (OSError,ValueError,RuntimeError,subprocess.TimeoutExpired,TimeoutError) as error:parser.exit(1,f'Regional acceptance failed: {error}\n')
     print('Native regional interface acceptance complete; production approved: False',flush=True)
 
