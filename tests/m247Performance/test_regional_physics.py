@@ -53,6 +53,13 @@ def cycle_log():
 
 
 class RegionalPhysicsTests(unittest.TestCase):
+    def test_ubuntu_entrypoint_has_lf_shebang(self):
+        wrapper=Path(__file__).with_name("RunRegionalAcceptance").read_bytes()
+        self.assertTrue(wrapper.startswith(b"#!/bin/bash\n"))
+        self.assertNotIn(b"\r",wrapper)
+        attributes=Path(__file__).resolve().parents[2]/".gitattributes"
+        self.assertIn("* text=auto eol=lf",attributes.read_text(encoding="utf-8"))
+
     def test_equilibrium_inverse_and_latent_plateau(self):
         for closure in (Equilibrium(),Equilibrium(520,520,1),Equilibrium(latent=0)):
             for t in (0,1500,1537,1537.001,1580,1630.999,1631,2000,4500):

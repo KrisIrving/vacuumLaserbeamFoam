@@ -1,3 +1,15 @@
+## 2026-10-09: fix Ubuntu CRLF interpreter failure
+
+RunRegionalAcceptance failed before starting: /bin/bash^M bad interpreter.
+Cause: Windows Python write_text used default newline translation; the uploaded
+extensionless shell script contained CRLF. Bash -n alone did not detect this
+kernel shebang failure. This was a developer packaging error, not Ubuntu setup.
+Normalize wrapper bytes to LF; add .gitattributes * text=auto eol=lf, explicit LF
+writes and regression checking raw shebang bytes/no CR. Existing CFD logic and
+parameters unchanged. Remote upload content is also normalized to LF.
+Native test remains pending; no successful simulation implied by syntax tests.
+Ubuntu can temporarily use sed -i 's/\r$//' on this wrapper, then rerun --physics.
+
 ## 2026-10-09: native thermal transport PASS; integrated conduction/phase cycle
 
 Reviewed M247_regional-thermal-transport-20261009-092319_review.tar.gz:

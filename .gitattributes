@@ -1,0 +1,2 @@
+# Keep automatically detected text portable to Ubuntu, including extensionless scripts.
+* text=auto eol=lf
