@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 import tempfile
 import unittest
-from local_melt_pair import compare_fields, plan_window, native_snapshot, active, subset_command
+from local_melt_pair import compare_fields, plan_window, native_snapshot, active, subset_command, resolved_case_paths, cut_initialization_gate
 from package_results import package
 
 
@@ -35,6 +35,27 @@ class LocalMeltPairTests(unittest.TestCase):
         for help_text in ('-case dir -patches names -overwrite','-case dir -patch name','-patch name -overwrite'):
             with self.subTest(help=help_text),self.assertRaises(ValueError):
                 subset_command(self.root,'0.00018',help_text,'startTime','0.00018')
+
+    def test_resolved_paths_reject_source_and_nested_work(self):
+        source=self.root/'source';source.mkdir()
+        for work in [source,source/'runs',self.root]:
+            with self.subTest(work=work),self.assertRaises(ValueError):resolved_case_paths(source,work)
+        a,b=resolved_case_paths(source,self.root/'work')
+        self.assertEqual(a,source.resolve());self.assertEqual(b,(self.root/'work').resolve())
+    def test_link_alias_cannot_bypass_source_overlap_guard(self):
+        source=self.root/'source';source.mkdir();alias=self.root/'mediaAlias'
+        try:alias.symlink_to(source,target_is_directory=True)
+        except OSError as e:self.skipTest('Host cannot create symlinks: '+str(e))
+        with self.assertRaises(ValueError):resolved_case_paths(alias,source/'runs')
+        self.assertEqual(resolved_case_paths(alias,self.root/'work')[0],source.resolve())
+    def test_cut_initializer_requires_all_fields_and_completed_native_record(self):
+        text=''
+        for field,kind in [('T','fixedValue'),('alpha.metal','fixedValue'),('epsilon1','fixedValue'),('U','fixedValue'),('p_rgh','fixedFluxPressure')]:
+            text+=f'M247_LOCAL_CUT_FIELD field={field} type={kind} faces=10 source=checkpointOwnerCells\n'
+        text+='M247_LOCAL_CUT_INITIALIZED schema=1 fields=5 faces=10 source=checkpointOwnerCells internalFieldsChanged=0\nEnd\n'
+        self.assertEqual(cut_initialization_gate(text,10)['fields'],5)
+        for bad in [text.replace('End',''),text.replace('fields=5','fields=4'),text.replace('field=T','field=missing'),text.replace('internalFieldsChanged=0','internalFieldsChanged=1')]:
+            with self.subTest(text=bad),self.assertRaises(ValueError):cut_initialization_gate(bad,10)
 
     def test_coordinate_order_independent_initial_identity(self):
         data=[cell(.0001),cell(.0002),cell(.0003)]

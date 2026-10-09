@@ -1,3 +1,45 @@
+## 2026-10-09 162747: native held cut initialization (LM03)
+
+Verified27 archive manifest SHA256/size entries. Build,180us reconstruction,
+selection and subsetMesh all completed. Native subset retained604800/756000
+cells at180us. Script failed reading boundaryField/localCut/value through
+foamDictionary before CFD; its stderr/patch dictionary were not archived, so
+absence of value vs dictionary read limitation is NOT established. This is a
+harness error, not evidence of a directory-link issue or physical instability.
+
+User confirms /media is a directory link to ~/OpenFOAM. Resolve source/work
+before overlap checks (already used); now record supplied and resolved paths.
+Treat aliases as the same physical tree. No copy/move of the user repository
+or original checkpoint; only distinct run copies are simulated.
+
+Replace fragile dictionary-value lookup/type edits with opt-in native
+m247LocalMeltAudit -initializeCut. Read actual binary/ASCII checkpoint fields,
+require180us and an inactive cut, initialize T/alpha/epsilon/U fixedValue and
+p_rgh fixedFluxPressure from NATIVE RETAINED OWNER CELL values. Never invent
+zero or assume subsetMesh writes a value entry. This explicitly defines a
+held owner-cell approximation; it is not claimed to preserve an unknown
+subset-interpolated boundary value or to implement global thermal coupling.
+
+Reread files with -verifyCut and check all five serialized types/values against
+owner cells; verify initial internal fields/coordinates/volumes unchanged,
+then compare to full-domain checkpoint before any decomposition/CFD. Native
+helper help output, initialization and verification logs are archived. Default
+helper behavior remains read-only. Solver physical equations are unchanged.
+
+207Python checks:206passed,1symlink test skipped (Windows cannot create links).
+Native C++ API reviewed against official fvPatchField factory signatures;
+actual v2512 compilation/initialization/CFD is pending Ubuntu, not claimed PASS.
+No forecasted speedup from20% fewer cells. Next run one fresh pair from the
+existing linked repository, without a separate /media source argument:
+  cd ~/OpenFOAM/kris-v2512/vacuumLaserbeamFoam-m247
+  git pull --ff-only origin feat/m247-material-port
+  ./tests/m247Performance/RunLocalMeltPair
+Send the automatic M247_local-melt-pair-<timestamp>_review.tar.gz on any outcome.
+
+Official API reviewed:
+https://api.openfoam.com/2406/fvPatchField_8H_source.html
+https://api.openfoam.com/2512/classFoam_1_1kaqRWallFunctionFvPatchScalarField-members.html
+
 ## 2026-10-09 111021: fix subsetMesh command-line incompatibility (LM02)
 
 Verified all26 review manifest sizes/SHA256 values. Build/reconstruction/native

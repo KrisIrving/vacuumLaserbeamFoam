@@ -160,16 +160,35 @@ def subset_command(case, checkpoint_name, help_text, start_from, start_time):
     return ['subsetMesh','localMeltCells','-case',str(case),'-patch','localCut','-overwrite']
 
 
+def resolved_case_paths(source,work):
+    source,work=Path(source).resolve(),Path(work).resolve()
+    if source==work or source in work.parents or work in source.parents:
+        raise ValueError('Output overlaps source after resolving directory links')
+    return source,work
+
+
+def cut_initialization_gate(text,faces):
+    records=parse_records(text,'M247_LOCAL_CUT_INITIALIZED')
+    if 'End' not in text or len(records)!=1 or records[0].get('schema')!=1 or records[0].get('fields')!=5 or records[0].get('faces')!=faces or records[0].get('internalFieldsChanged')!=0:
+        raise ValueError('Missing or incomplete native cut initialization')
+    for field,kind in [('T','fixedValue'),('alpha.metal','fixedValue'),('epsilon1','fixedValue'),('U','fixedValue'),('p_rgh','fixedFluxPressure')]:
+        if f'field={field} type={kind} faces={faces} source=checkpointOwnerCells' not in text:
+            raise ValueError('Missing cut field initialization: '+field)
+    return records[0]
+
+
 def execute(source,work,solver,audit,wall_hours=2):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
-    source,work,solver,audit=map(lambda p:Path(p).resolve(),(source,work,solver,audit))
-    if source==work or source in work.parents or work in source.parents:raise ValueError('Output overlaps source')
+    source_alias,work_alias=str(source),str(work)
+    source,work=resolved_case_paths(source,work)
+    solver,audit=Path(solver).resolve(),Path(audit).resolve()
     if not math.isfinite(wall_hours) or not 0<wall_hours<=4:raise ValueError('Per-case wall hours must be in(0,4]')
     if (work/'localMeltPairReview.json').exists():raise ValueError('Fresh work required')
     work.mkdir(parents=True,exist_ok=True)
     report=dict(schema=1,complete=False,production_approved=False,commands=[],source=str(source),
         solver_sha256=sha(solver),audit_sha256=sha(audit),start_s=.00018,end_s=.00019,ranks=48,
-        approximation='Fixed crop; T/alpha/epsilon/U cut values held from checkpoint, fixedFluxPressure p_rgh. No advancing global thermal reservoir or moving handoff.',
+        input_paths=dict(source_argument=source_alias,source_resolved=str(source),work_argument=work_alias,work_resolved=str(work)),
+        approximation='Fixed crop; T/alpha/epsilon/U cut values held from native checkpoint owner cells, fixedFluxPressure p_rgh. No advancing global thermal reservoir or moving handoff.',
         wall_hours_per_case=wall_hours)
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
@@ -184,13 +203,19 @@ def execute(source,work,solver,audit,wall_hours=2):
             row.update(status='failed',error=f'{type(error).__name__}: {error}');raise
         finally:row['elapsed_s']=time.monotonic()-start;persist()
         return row
-    def export(case,name,t):
-        row=stage(name,[audit,'-case',case,'-time',f'{t:.12g}','-output',work/(name+'.csv')])
+    def export(case,name,t,initialize=False,verify=False):
+        command=[audit,'-case',case,'-time',f'{t:.12g}','-output',work/(name+'.csv')]
+        if initialize:command.append('-initializeCut')
+        if verify:command.append('-verifyCut')
+        row=stage(name,command)
         return native_snapshot((work/(name+'.log')).read_text(encoding='utf-8'),t)
     persist()
     try:
         stage('subsetMesh_help',['subsetMesh','-help-full'],60)
         subset_help=(work/'subsetMesh_help.log').read_text(encoding='utf-8')
+        stage('localMeltAudit_help',[audit,'-help-full'],60)
+        audit_help=(work/'localMeltAudit_help.log').read_text(encoding='utf-8')
+        if any(not re.search(r'(?<![\w-])'+re.escape(option)+r'(?![\w-])',audit_help) for option in ('-initializeCut','-verifyCut')):raise ValueError('Rebuild required: native cut initialization/verification missing')
         before=source_digest(source);save(work/'localMeltSourceHashes.json',before)
         full=work/'fullMelt';local=work/'localMelt'
         meta=prepare(source,full,180,10,'rayTraversalCached',corrected_rays=True)
@@ -222,13 +247,13 @@ def execute(source,work,solver,audit,wall_hours=2):
         command=subset_command(local,meta['checkpoint'],subset_help,*start_values)
         report['subset_input_time']=dict(startFrom=start_values[0].strip(),startTime=start_values[1].strip(),checkpoint=meta['checkpoint']);persist()
         stage('localMelt_subset',command)
-        for field,kind in (('T','fixedValue'),('U','fixedValue'),('alpha.metal','fixedValue'),('epsilon1','fixedValue'),('p_rgh','fixedFluxPressure')):
-            p=local/meta['checkpoint']/field
-            # Preserve native-mapped nonuniform checkpoint patch value. Never invent zero.
-            value=subprocess.run(['foamDictionary',str(p),'-entry','boundaryField/localCut/value','-value'],capture_output=True,text=True,check=True).stdout
-            if not value.strip():raise ValueError('Subset patch lacks mapped initial value: '+field)
-            set_entry(p,'boundaryField/localCut/type',kind)
-        mapped=export(local,'localMelt_initial',.00018)
+        initialized=export(local,'localMelt_initializeCut',.00018,initialize=True)
+        report['cut_initialization']=cut_initialization_gate((work/'localMelt_initializeCut.log').read_text(encoding='utf-8'),initialized['cutFaces']);persist()
+        mapped=export(local,'localMelt_initial',.00018,verify=True)
+        verified=parse_records((work/'localMelt_initial.log').read_text(encoding='utf-8'),'M247_LOCAL_CUT_VERIFIED')
+        if len(verified)!=1 or verified[0].get('schema')!=1 or verified[0].get('fields')!=5 or verified[0].get('faces')!=mapped['cutFaces']:raise ValueError('Missing serialized cut verification')
+        report['cut_serialized_verification']=verified[0]
+        report['cut_initialization_internal_match']=compare_fields(work/'localMelt_initializeCut.csv',work/'localMelt_initial.csv',b,initial=True);persist()
         if mapped['cells']!=plan['selected_cells'] or not mapped['cutFaces']:raise ValueError('Subset geometry/count mismatch')
         if mapped['activeCutFaces']:raise ValueError('Initial crop cuts active metal; safe window rejected before CFD')
         report['initial_field_match']=compare_fields(work/'fullMelt_initial.csv',work/'localMelt_initial.csv',b,initial=True);persist()
