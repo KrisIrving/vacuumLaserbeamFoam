@@ -1,0 +1,51 @@
+#!/bin/bash
+# Repair only mesh patch metadata on a fresh copy. No CFD or field edits.
+set -e
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947/localMelt}
+[[ -d "$SOURCE/constant/polyMesh" && -d "$SOURCE/0.00018" ]] || { echo "Missing existing localMelt preparation"; exit 1; }
+SOURCE=$(cd "$SOURCE" && pwd -P)
+TAG=local-melt-mesh-repair-$(date +%Y%m%d-%H%M%S)
+WORK="$(pwd -P)/tests/m247Performance/runs/$TAG"
+mkdir "$WORK"
+CASE="$WORK/localMelt"
+mkdir "$CASE"
+for item in constant system 0.00018; do cp -a "$SOURCE/$item" "$CASE/$item"; done
+# Only named small review files are packaged, not the large copied case.
+package() {
+    code=$?
+    trap - EXIT
+    printf 'exit=%s\nNo CFD advanced. Fields are unchanged and not ready for CFD.\n' "$code" > "$WORK/status.txt"
+    (cd "$WORK" && tar -czf "M247_${TAG}_review.tar.gz" status.txt paths.txt *.log *_boundary)
+    echo "Review archive: $WORK/M247_${TAG}_review.tar.gz"
+    exit "$code"
+}
+trap package EXIT
+printf 'Input physical directory: %s\nNew copy: %s\n' "$SOURCE" "$CASE" > "$WORK/paths.txt"
+cp "$CASE/constant/polyMesh/boundary" "$WORK/before_boundary"
+cat > "$CASE/system/changeDictionaryDict" <<'DICT'
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    object changeDictionaryDict;
+}
+boundary
+{
+    localCut
+    {
+        type patch;
+        inGroups ();
+    }
+}
+DICT
+# Official utility handles the polyBoundaryMesh list and keeps face addressing.
+changeDictionary -case "$CASE" -time 0.00018 > "$WORK/changeDictionary.log" 2>&1
+cp "$CASE/constant/polyMesh/boundary" "$WORK/after_boundary"
+checkMesh -case "$CASE" -time 0.00018 -allTopology -allGeometry -noFunctionObjects > "$WORK/checkMesh.log" 2>&1
+# checkMesh can return success and Mesh OK even when an empty patch makes it 2D.
+grep -Fq '3 geometric (non-empty/wedge) directions (1 1 1)' "$WORK/checkMesh.log"
+grep -Fq '3 solution (non-empty) directions (1 1 1)' "$WORK/checkMesh.log"
+! grep -Fq 'Total number of faces on empty patches' "$WORK/checkMesh.log"
+echo "Mesh repair checked. Fields unchanged; no CFD launched."

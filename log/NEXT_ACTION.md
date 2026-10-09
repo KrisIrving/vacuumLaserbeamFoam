@@ -1,3 +1,30 @@
+## 2026-10-09 201214: diagnosed empty localCut (LM04); official mesh repair only
+
+Preparation archive shows localCut nFaces6300, mesh type empty and inGroups(empty).
+All five primary field patch names include localCut; links and checkpoint are
+correct. checkMesh returns0 and Mesh OK BUT reports2 geometric/solution directions
+(1 0 1) and incompatible empty-face count. This is NOT an acceptable3D mesh.
+Empty fvPatch has no active finite-volume face cells, explaining cutFaces0 in
+the native guard; empty field has no value, explaining earlier dictionary error.
+The earlier assumption that a new subset patch is an ordinary patch was wrong.
+
+RepairLocalMeltMesh copies constant/system/180us into a fresh work directory,
+uses official changeDictionary with explicit boundary/localCut type patch and
+empty inGroups, then official checkMesh. Requires3 geometric AND solution
+directions, no incompatible empty-face warning; packages before/after boundary
+and utility logs. No rebuild, custom initializer, field edits, solver, timeout,
+kill or input cleanup. It does not claim a fully prepared CFD case: field empty
+BCs and held reservoir initialization must be corrected with standard utilities
+before any solver run. RunLocalMeltPair remains suspended.
+
+Command from current linked repository:
+  git pull --ff-only origin feat/m247-material-port
+  bash tests/m247Performance/RepairLocalMeltMesh
+Send one M247_local-melt-mesh-repair-<timestamp>_review.tar.gz.
+Native official utility execution remains Ubuntu verification; syntax is checked
+locally. No physical accuracy/speedup claim from this preparation check.
+Official source: https://api.openfoam.com/2512/changeDictionary_8C_source.html
+
 ## 2026-10-09 164947: suspend repeated pair; official read-only preparation audit
 
 Build/linked helper succeeded; subsetMesh succeeded. No CFD advanced.
