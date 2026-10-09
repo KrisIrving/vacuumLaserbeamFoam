@@ -16,7 +16,6 @@ import time
 from collect_probe import parse_records, read_probe, METRICS
 from collect_thermal_validation import residual_gate
 from prepare_probe import prepare, set_entry, checkpoint, snapshot_digest
-from regional_acceptance import run_bounded
 from region_audit import sha
 from local_refinement import mesh_ok
 
@@ -138,6 +137,7 @@ def source_digest(source):
     entries={}
     for name in ('constant','system'):
         entries[name]=snapshot_digest(source/name)
+    if (source/'0.00018').is_dir():entries['serial/checkpoint']=snapshot_digest(source/'0.00018')
     ranks=sorted(p for p in source.iterdir() if p.is_dir() and p.name.startswith('processor') and p.name[9:].isdigit())
     for rank in ranks:
         entries[rank.name+'/checkpoint']=snapshot_digest(checkpoint(rank,.00018))
@@ -177,11 +177,14 @@ def cut_initialization_gate(text,faces):
     return records[0]
 
 
-def execute(source,work,solver,audit,wall_hours=2):
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
     solver,audit=Path(solver).resolve(),Path(audit).resolve()
+    if prepared_local is not None:
+        prepared_local,_=resolved_case_paths(prepared_local,work)
+        if prepared_local==source:raise ValueError("Full and local input paths resolve to the same case")
     if not math.isfinite(wall_hours) or not 0<wall_hours<=4:raise ValueError('Per-case wall hours must be in(0,4]')
     if (work/'localMeltPairReview.json').exists():raise ValueError('Fresh work required')
     work.mkdir(parents=True,exist_ok=True)
@@ -189,14 +192,14 @@ def execute(source,work,solver,audit,wall_hours=2):
         solver_sha256=sha(solver),audit_sha256=sha(audit),start_s=.00018,end_s=.00019,ranks=48,
         input_paths=dict(source_argument=source_alias,source_resolved=str(source),work_argument=work_alias,work_resolved=str(work)),
         approximation='Fixed crop; T/alpha/epsilon/U cut values held from native checkpoint owner cells, fixedFluxPressure p_rgh. No advancing global thermal reservoir or moving handoff.',
-        wall_hours_per_case=wall_hours)
+        wall_hours_per_case=None,process_policy="Foreground normal completion; no automatic timeout or kill")
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
         command=list(map(str,command));row=dict(name=name,command=command,status='running');report['commands'].append(row);persist()
         print('Starting real melt stage:',name,flush=True);start=time.monotonic()
         try:
             with (work/(name+'.log')).open('x',encoding='utf-8') as stream:
-                code=run_bounded(command,stream,timeout)
+                code=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=False).returncode
             row.update(returncode=code,status='complete' if code==0 else 'failed')
             if code:raise RuntimeError(f'{name} returned{code}')
         except BaseException as error:
@@ -211,55 +214,90 @@ def execute(source,work,solver,audit,wall_hours=2):
         return native_snapshot((work/(name+'.log')).read_text(encoding='utf-8'),t)
     persist()
     try:
-        stage('subsetMesh_help',['subsetMesh','-help-full'],60)
-        subset_help=(work/'subsetMesh_help.log').read_text(encoding='utf-8')
-        stage('localMeltAudit_help',[audit,'-help-full'],60)
-        audit_help=(work/'localMeltAudit_help.log').read_text(encoding='utf-8')
-        if any(not re.search(r'(?<![\w-])'+re.escape(option)+r'(?![\w-])',audit_help) for option in ('-initializeCut','-verifyCut')):raise ValueError('Rebuild required: native cut initialization/verification missing')
-        before=source_digest(source);save(work/'localMeltSourceHashes.json',before)
-        full=work/'fullMelt';local=work/'localMelt'
-        meta=prepare(source,full,180,10,'rayTraversalCached',corrected_rays=True)
-        if meta['ranks']!=48 or (full/'constant/dynamicMeshDict').exists():raise ValueError('Requires fixed original48-rank8um checkpoint')
-        set_entry(full/'system/controlDict','writePrecision',17)
-        set_entry(full/'system/controlDict','localMeltBoundaryAudit','true')
-        set_entry(full/'system/controlDict','writeCompression','off')
-        set_entry(full/'system/controlDict','writeFormat','ascii')
-        stage('fullMelt_reconstructInitial',['reconstructPar','-case',full,'-time','0.00018','-noFunctionObjects'])
-        initial=export(full,'fullMelt_initial',.00018)
-        if initial['cells']!=756000:raise ValueError('Requires original756000-cell mesh')
-        # Use the established case path parser; require actual un-clamped path coverage.
-        import importlib.util
-        script=ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/scripts/extractMovingKeyholeDepth.py'
-        spec=importlib.util.spec_from_file_location('m247_keyhole',script);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-        path=module.read_path_table(full/'constant/timeVsLaserPosition')
-        positions=[module.laser_position(path,t) for t in (.00018,.000185,.00019)]+[r[1:] for r in path if .00018<=r[0]<=.00019]
-        report['window']={}
-        try:plan=plan_window(work/'fullMelt_initial.csv',initial,positions,details=report['window'])
-        finally:persist()
-        local.mkdir()
-        for name in ('constant','system',meta['checkpoint']):shutil.copytree(full/name,local/name)
-        b=plan['bounds'];box='('+ ' '.join(f'{b[d+"min"]:.17g}' for d in ('x','y','z'))+') ('+' '.join(f'{b[d+"max"]:.17g}' for d in ('x','y','z'))+')'
-        selection='FoamFile {version 2.0; format ascii; class dictionary; object topoSetDict;}\nactions ({name localMeltCells; type cellSet; action new; source boxToCell; box '+box+';});\n'
-        (local/'system/topoSetDict').write_text(selection,encoding='utf-8',newline='\n');(work/'localMelt_selectionDict').write_text(selection,encoding='utf-8',newline='\n')
-        stage('localMelt_select',['topoSet','-case',local,'-time','0.00018','-noFunctionObjects'])
-        control=local/'system/controlDict'
-        start_values=[subprocess.run(['foamDictionary',str(control),'-entry',entry,'-value'],capture_output=True,text=True,check=True).stdout for entry in ('startFrom','startTime')]
-        command=subset_command(local,meta['checkpoint'],subset_help,*start_values)
-        report['subset_input_time']=dict(startFrom=start_values[0].strip(),startTime=start_values[1].strip(),checkpoint=meta['checkpoint']);persist()
-        stage('localMelt_subset',command)
-        initialized=export(local,'localMelt_initializeCut',.00018,initialize=True)
-        report['cut_initialization']=cut_initialization_gate((work/'localMelt_initializeCut.log').read_text(encoding='utf-8'),initialized['cutFaces']);persist()
-        mapped=export(local,'localMelt_initial',.00018,verify=True)
-        verified=parse_records((work/'localMelt_initial.log').read_text(encoding='utf-8'),'M247_LOCAL_CUT_VERIFIED')
-        if len(verified)!=1 or verified[0].get('schema')!=1 or verified[0].get('fields')!=5 or verified[0].get('faces')!=mapped['cutFaces']:raise ValueError('Missing serialized cut verification')
-        report['cut_serialized_verification']=verified[0]
-        report['cut_initialization_internal_match']=compare_fields(work/'localMelt_initializeCut.csv',work/'localMelt_initial.csv',b,initial=True);persist()
-        if mapped['cells']!=plan['selected_cells'] or not mapped['cutFaces']:raise ValueError('Subset geometry/count mismatch')
-        if mapped['activeCutFaces']:raise ValueError('Initial crop cuts active metal; safe window rejected before CFD')
-        report['initial_field_match']=compare_fields(work/'fullMelt_initial.csv',work/'localMelt_initial.csv',b,initial=True);persist()
+        if prepared_local is not None:
+            before=source_digest(source);local_before=source_digest(prepared_local)
+            save(work/'localMeltSourceHashes.json',dict(full=before,local=local_before))
+            full=work/'fullMelt';local=work/'localMelt'
+            meta=json.loads((source/'probe.json').read_text(encoding='utf-8'))
+            if meta.get('ranks')!=48 or abs(meta.get('start_s',0)-.00018)>1e-14 or abs(meta.get('end_s',0)-.00019)>1e-14:
+                raise ValueError('Prepared full-case metadata must describe180..190us/48ranks')
+            for src,dst in ((source,full),(prepared_local,local)):
+                dst.mkdir()
+                for item in ('constant','system','0.00018'):
+                    shutil.copytree(src/item,dst/item)
+                if (dst/'constant/dynamicMeshDict').exists():raise ValueError('Fixed prepared mesh required')
+                for k,v in dict(startFrom='startTime',startTime='.00018',stopAt='endTime',endTime='.00019',writeControl='adjustableRunTime',writeInterval='5e-6',purgeWrite=0,writePrecision=17,writeCompression='off',writeFormat='ascii',localMeltBoundaryAudit='true').items():
+                    set_entry(dst/'system/controlDict',k,v)
+            # Require identical physics/numerical input settings, allowing only
+            # additional preparation dictionaries in the local system directory.
+            for path in (full/'constant').iterdir():
+                if path.is_file() and (not (local/'constant'/path.name).is_file() or sha(path)!=sha(local/'constant'/path.name)):
+                    raise ValueError('Prepared constant settings differ: '+path.name)
+            for name in ('fvSolution','fvSchemes'):
+                if sha(full/'system'/name)!=sha(local/'system'/name):raise ValueError('Prepared numerical settings differ: '+name)
+            initial=export(full,'fullMelt_initial',.00018)
+            mapped=export(local,'localMelt_initial',.00018,verify=True)
+            if initial['cells']!=756000 or mapped['cells']!=604800 or mapped['cutFaces']!=6300 or mapped['activeCutFaces']:
+                raise ValueError('Prepared full/local mesh or cold-cut mismatch')
+            b={k:mapped[k] for k in ('xmin','xmax','ymin','ymax','zmin','zmax')}
+            report['window']=dict(bounds=b,selected_cells=mapped['cells'],prepared_input=str(prepared_local))
+            report['initial_field_match']=compare_fields(work/'fullMelt_initial.csv',work/'localMelt_initial.csv',b,initial=True)
+            import importlib.util
+            script=ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/scripts/extractMovingKeyholeDepth.py'
+            persist()
+        else:
+            stage('subsetMesh_help',['subsetMesh','-help-full'],60)
+            subset_help=(work/'subsetMesh_help.log').read_text(encoding='utf-8')
+            stage('localMeltAudit_help',[audit,'-help-full'],60)
+            audit_help=(work/'localMeltAudit_help.log').read_text(encoding='utf-8')
+            if any(not re.search(r'(?<![\w-])'+re.escape(option)+r'(?![\w-])',audit_help) for option in ('-initializeCut','-verifyCut')):raise ValueError('Rebuild required: native cut initialization/verification missing')
+            before=source_digest(source);save(work/'localMeltSourceHashes.json',before)
+            full=work/'fullMelt';local=work/'localMelt'
+            meta=prepare(source,full,180,10,'rayTraversalCached',corrected_rays=True)
+            if meta['ranks']!=48 or (full/'constant/dynamicMeshDict').exists():raise ValueError('Requires fixed original48-rank8um checkpoint')
+            set_entry(full/'system/controlDict','writePrecision',17)
+            set_entry(full/'system/controlDict','localMeltBoundaryAudit','true')
+            set_entry(full/'system/controlDict','writeCompression','off')
+            set_entry(full/'system/controlDict','writeFormat','ascii')
+            stage('fullMelt_reconstructInitial',['reconstructPar','-case',full,'-time','0.00018','-noFunctionObjects'])
+            initial=export(full,'fullMelt_initial',.00018)
+            if initial['cells']!=756000:raise ValueError('Requires original756000-cell mesh')
+            # Use the established case path parser; require actual un-clamped path coverage.
+            import importlib.util
+            script=ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/scripts/extractMovingKeyholeDepth.py'
+            spec=importlib.util.spec_from_file_location('m247_keyhole',script);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            path=module.read_path_table(full/'constant/timeVsLaserPosition')
+            positions=[module.laser_position(path,t) for t in (.00018,.000185,.00019)]+[r[1:] for r in path if .00018<=r[0]<=.00019]
+            report['window']={}
+            try:plan=plan_window(work/'fullMelt_initial.csv',initial,positions,details=report['window'])
+            finally:persist()
+            local.mkdir()
+            for name in ('constant','system',meta['checkpoint']):shutil.copytree(full/name,local/name)
+            b=plan['bounds'];box='('+ ' '.join(f'{b[d+"min"]:.17g}' for d in ('x','y','z'))+') ('+' '.join(f'{b[d+"max"]:.17g}' for d in ('x','y','z'))+')'
+            selection='FoamFile {version 2.0; format ascii; class dictionary; object topoSetDict;}\nactions ({name localMeltCells; type cellSet; action new; source boxToCell; box '+box+';});\n'
+            (local/'system/topoSetDict').write_text(selection,encoding='utf-8',newline='\n');(work/'localMelt_selectionDict').write_text(selection,encoding='utf-8',newline='\n')
+            stage('localMelt_select',['topoSet','-case',local,'-time','0.00018','-noFunctionObjects'])
+            control=local/'system/controlDict'
+            start_values=[subprocess.run(['foamDictionary',str(control),'-entry',entry,'-value'],capture_output=True,text=True,check=True).stdout for entry in ('startFrom','startTime')]
+            command=subset_command(local,meta['checkpoint'],subset_help,*start_values)
+            report['subset_input_time']=dict(startFrom=start_values[0].strip(),startTime=start_values[1].strip(),checkpoint=meta['checkpoint']);persist()
+            stage('localMelt_subset',command)
+            initialized=export(local,'localMelt_initializeCut',.00018,initialize=True)
+            report['cut_initialization']=cut_initialization_gate((work/'localMelt_initializeCut.log').read_text(encoding='utf-8'),initialized['cutFaces']);persist()
+            mapped=export(local,'localMelt_initial',.00018,verify=True)
+            verified=parse_records((work/'localMelt_initial.log').read_text(encoding='utf-8'),'M247_LOCAL_CUT_VERIFIED')
+            if len(verified)!=1 or verified[0].get('schema')!=1 or verified[0].get('fields')!=5 or verified[0].get('faces')!=mapped['cutFaces']:raise ValueError('Missing serialized cut verification')
+            report['cut_serialized_verification']=verified[0]
+            report['cut_initialization_internal_match']=compare_fields(work/'localMelt_initializeCut.csv',work/'localMelt_initial.csv',b,initial=True);persist()
+            if mapped['cells']!=plan['selected_cells'] or not mapped['cutFaces']:raise ValueError('Subset geometry/count mismatch')
+            if mapped['activeCutFaces']:raise ValueError('Initial crop cuts active metal; safe window rejected before CFD')
+            report['initial_field_match']=compare_fields(work/'fullMelt_initial.csv',work/'localMelt_initial.csv',b,initial=True);persist()
         for variant,case in (('fullMelt',full),('localMelt',local)):
             stage(variant+'_checkMesh',['checkMesh','-case',case,'-time','0.00018','-allTopology','-allGeometry','-noFunctionObjects'])
-            mesh_ok((work/(variant+'_checkMesh.log')).read_text(encoding='utf-8'))
+            mesh_text=(work/(variant+'_checkMesh.log')).read_text(encoding='utf-8')
+            mesh_ok(mesh_text)
+            if any(x not in mesh_text for x in ('3 geometric (non-empty/wedge) directions (1 1 1)','3 solution (non-empty) directions (1 1 1)')) or 'Total number of faces on empty patches' in mesh_text:
+                raise ValueError('Real local melt comparison requires verified3D mesh')
             # Regenerate both decompositions with the same algorithm, on copies only.
             for p in list(case.iterdir()):
                 if p.is_dir() and p.name.startswith('processor') and p.name[9:].isdigit():shutil.rmtree(p)
@@ -273,7 +311,7 @@ def execute(source,work,solver,audit,wall_hours=2):
             finally:
                 last=report['commands'][-1]
                 save(case/'run.json',dict(solver=str(solver),solver_sha256=sha(solver),laser_library_sha256=sha(Path(__import__('os').environ['FOAM_USER_LIBBIN'])/'liblaserHeatSource.so'),elapsed_wall_s=time.monotonic()-started,
-                     command=list(map(str,cmd)),returncode=last.get('returncode',-1),forced_stop=last['status']!='complete',wall_budget_stop=last['status']!='complete'))
+                     command=list(map(str,cmd)),returncode=last.get('returncode',-1),forced_stop=False,wall_budget_stop=False))
                 shutil.copyfile(work/(variant+'_solver.log'),case/'log.vacuumLaserbeamFoam')
             _,summary,diagnostics=read_probe(case)
             report[variant]=dict(performance=summary,diagnostics=diagnostics,thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,md,summary['steps']));persist()
@@ -305,22 +343,22 @@ def execute(source,work,solver,audit,wall_hours=2):
             depth_difference_um=float(c['keyhole_depth_um'])-float(a['keyhole_depth_um']),reference_connected=a['surface_connected'],candidate_connected=c['surface_connected'],
             reference_bottom_support=int(a['bottom_support_vertices']),candidate_bottom_support=int(c['bottom_support_vertices'])) for a,c in zip(*keyhole)]
         report['measurement_quality_gate']=report['fullMelt']['thermal_gate'] and report['localMelt']['thermal_gate'] and report['boundary']['active_material_clear'] and all(r['reference_connected']==r['candidate_connected']=='yes' and r['reference_bottom_support']>0 and r['candidate_bottom_support']>0 for r in report['keyhole_comparisons'])
-        report['source_unchanged']=source_digest(source)==before
+        report['source_unchanged']=source_digest(source)==before and (prepared_local is None or source_digest(prepared_local)==local_before)
         if not report['source_unchanged']:raise ValueError('Source inputs changed')
         report['complete']=True
         report['interpretation']='Completed measurement, not production acceptance. Evaluate field/keyhole/power differences against measured speed; no arbitrary physical error tolerance silently approves it.'
         persist();return report
     except BaseException as error:
         if 'before' in locals():
-            try:report['source_unchanged']=source_digest(source)==before
+            try:report['source_unchanged']=source_digest(source)==before and (prepared_local is None or source_digest(prepared_local)==local_before)
             except Exception as check:report['source_verification_error']=str(check)
         report['error']=f'{type(error).__name__}: {error}';persist();raise
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path)
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 

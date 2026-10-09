@@ -1,0 +1,36 @@
+#!/bin/bash
+# Resume verified serial preparations on fresh copies. Normal foreground utilities.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+FULL=${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947/fullMelt}
+LOCAL=${2:-tests/m247Performance/runs/local-melt-fields-20261009-211303/localMelt}
+for case in "$FULL" "$LOCAL"; do
+    [[ -d "$case/0.00018" && -d "$case/constant/polyMesh" ]] || { echo "Missing prepared serial case: $case"; exit 1; }
+done
+for tool in python3 foamDictionary checkMesh decomposePar reconstructPar postProcess mpirun; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
+done
+SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/vacuumLaserbeamFoam
+AUDIT=$FOAM_USER_APPBIN/m247LocalMeltAudit
+[[ -x "$SOLVER" && -x "$AUDIT" ]] || { echo "Missing existing solver/audit; no automatic rebuild"; exit 1; }
+WORK=tests/m247Performance/runs/local-melt-prepared-pair-$(date +%Y%m%d-%H%M%S)
+mkdir "$WORK"
+WORK=$(cd "$WORK" && pwd -P)
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+printf 'Full input: %s\nLocal input: %s\n180..190us,48ranks,normal completion; no timeout/kill/rebuild\n' "$FULL" "$LOCAL" > "$WORK/buildEnvironment.txt"
+git rev-parse HEAD >> "$WORK/buildEnvironment.txt"
+sha256sum "$SOLVER" "$AUDIT" "${FOAM_USER_LIBBIN:?}/liblaserHeatSource.so" > "$WORK/localMeltPairBinary.txt"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 - "$SOLVER" <<'PY'
+from pathlib import Path
+import sys
+if b'M247_LOCAL_MELT_BOUNDARY' not in Path(sys.argv[1]).read_bytes():
+    raise SystemExit('Existing solver lacks cut-boundary diagnostics; rebuild needed before CFD')
+PY
+python3 tests/m247Performance/local_melt_pair.py --source "$FULL" --prepared-local "$LOCAL" --work "$WORK" --solver "$SOLVER" --audit "$AUDIT" 2>&1 | tee "$WORK/collection.log"

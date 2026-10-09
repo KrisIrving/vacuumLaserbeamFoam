@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 import tempfile
 import unittest
-from local_melt_pair import compare_fields, plan_window, native_snapshot, active, subset_command, resolved_case_paths, cut_initialization_gate
+from local_melt_pair import compare_fields, plan_window, native_snapshot, active, subset_command, resolved_case_paths, cut_initialization_gate, source_digest
 from package_results import package
 
 
@@ -23,6 +23,13 @@ class LocalMeltPairTests(unittest.TestCase):
         self.bounds=dict(xmin=0,xmax=.0002,ymin=0,ymax=.001,zmin=-.001,zmax=.001)
         self.reference=self.root/'reference.csv';self.candidate=self.root/'candidate.csv'
     def tearDown(self):self.temp.cleanup()
+    def test_serial_prepared_source_digest_covers_restart_values(self):
+        for name in ('constant','system','0.00018'):(self.root/name).mkdir()
+        (self.root/'0.00018/T').write_text('checkpoint1')
+        before=source_digest(self.root)
+        (self.root/'0.00018/T').write_text('checkpoint2')
+        self.assertNotEqual(before,source_digest(self.root))
+
     def test_subset_uses_control_time_without_unsupported_selection_flags(self):
         cmd=subset_command(self.root,'0.00018','-case dir -patch name -overwrite','startTime;','0.00018;')
         self.assertNotIn('-time',cmd);self.assertNotIn('-latestTime',cmd);self.assertNotIn('-resultTime',cmd)

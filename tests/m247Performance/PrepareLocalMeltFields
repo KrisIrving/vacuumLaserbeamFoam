@@ -114,7 +114,7 @@ snapshot "$WORK/retained_after.sha256"
 cmp "$WORK/retained_before.sha256" "$WORK/retained_after.sha256" > "$WORK/retainedComparison.log" 2>&1
 (cd "$SOURCE" && find constant system 0.00018 -type f -exec sha256sum {} + | sort) > "$WORK/source_after.sha256"
 cmp "$WORK/source_before.sha256" "$WORK/source_after.sha256" > "$WORK/sourceComparison.log" 2>&1
-STAGE=allFieldReadCheck
+STAGE=volumeFieldReadCheck
 patchSummary -case "$CASE" -time 0.00018 > "$WORK/patchSummary.log" 2>&1
 STAGE=heldValueAndColdCutVerification
 # Existing native reader performs no field writes with -verifyCut.

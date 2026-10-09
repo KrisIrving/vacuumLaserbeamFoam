@@ -1,3 +1,34 @@
+## 2026-10-09 211303: checkpoint field preparation PASS; run real prepared pair
+
+Uploaded M247_local-melt-fields-20261009-211303: exit0,stage=prepared;
+all retained canonical hashes and source hashes identical, no errors.
+Five held BC value errors0;6300cutfaces,activeCutFaces0;
+cutMetalTmax1343.150000424K,epsilon0,Umax8.7143e-11m/s.
+This gives143.85K initial margin below the1487K solidus threshold.
+patchSummary reads18volume fields; it does NOT list surface fields.
+setExprBoundaryFields successfully wrote phi/alphaPhi cut values; their
+solver restart compatibility still needs the real run, not a claimed
+all-field native validation. No CFD advanced, no measured speedup yet.
+
+Next: git pull --ff-only origin feat/m247-material-port
+      bash tests/m247Performance/RunPreparedLocalMeltPair
+Use existing164947/fullMelt serial reference and verified211303/localMelt.
+Fresh copies only, matched constants/fvSolution/fvSchemes, native initial
+retained-field comparison,3D mesh gates, same scotch48ranks, same180..190us.
+Normal foreground decomposePar/mpirun/reconstructPar/postProcess; no
+forced timeout/kill/rebuild. Binary diagnostics marker required before CFD.
+Source hashes now cover serial180us fields as well as decomposed inputs.
+Output: solver timings/module costs, thermal residual/limit gate,
+185/190us retained-field/ROI inventories and connected keyhole depth,
+per-step cold-cut/flux diagnostics. Production approval remainsfalse.
+Return one M247_local-melt-prepared-pair-<timestamp>_review.tar.gz, even
+on failure. Native CFD still requires Ubuntu; local Python tests18cases,
+17passed and1Windows symlink permission skip; Bash syntax/LF checked.
+Do not rerun old RunLocalMeltPair preparation/rebuild wrapper.
+A20% cell reduction alone cannot establish the acceleration needed for
+long tracks; use this direct accuracy/cost result to choose larger local
+reductions/moving-window coupling next, instead of more screening.
+
 ## 2026-10-09 202509: official mesh repair PASS; prepare checkpoint field boundaries
 
 Ubuntu review M247_local-melt-mesh-repair-20261009-202509: exit0,
