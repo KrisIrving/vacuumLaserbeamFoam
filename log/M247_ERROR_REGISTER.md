@@ -1,3 +1,31 @@
+## 2026-10-09 164947: suspend repeated pair; official read-only preparation audit
+
+Build/linked helper succeeded; subsetMesh succeeded. No CFD advanced.
+Initializer rejected a combined guard (wrong time, missing cut, or active cut).
+The fatal message did not expose each condition; do NOT guess which condition
+failed or relax the guard. Original input hashes remain unchanged. User requests
+standard official commands, no aggressive command/process controls.
+
+Do not rerun RunLocalMeltPair yet. Existing initializer/timeout/forced-stop driver
+is experimental and is superseded pending preparation diagnosis and redesign.
+The intended test is same180..190us full/local physical difference and cost;
+none of the latest preparation archives proves a physical speedup.
+
+CollectLocalMeltPreparation uses only official checkMesh and foamDictionary for
+read-only diagnosis of EXISTING fullMelt/localMelt copies. Records constant and
+180us boundary files, patch names, controlDict, utility help and exit statuses.
+No rebuild, native initializer, field edits, solver launch, timeout, kill or
+source cleanup. New uniquely named collection directory/archive; directory
+links resolved with pwd -P. Invoke from current linked repository:
+  bash tests/m247Performance/CollectLocalMeltPreparation
+Send automatic M247_local-melt-preparation-<timestamp>_review.tar.gz.
+
+Check which mesh instance/patch actually loads before redesigning preparation.
+Prefer standard OpenFOAM utilities and explicit dictionaries for future writes;
+normal foreground mpirun execution with logs; no hard timeout/automatic kill.
+Compile success is not native/physics validation; prior206Python PASS did not
+cover this OpenFOAM mesh/field situation. This collection is NOT a CFD test.
+
 ## 2026-10-09 162747: native held cut initialization (LM03)
 
 Verified27 archive manifest SHA256/size entries. Build,180us reconstruction,

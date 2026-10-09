@@ -1,0 +1,38 @@
+#!/bin/bash
+# Read-only official-utility diagnostics of an existing failed preparation.
+# No rebuild, field edits, solver launches, timeout or process termination.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+WORK=${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947}
+[[ -d "$WORK/localMelt" && -d "$WORK/fullMelt" ]] || { echo "Expected existing fullMelt/localMelt under: $WORK"; exit 1; }
+WORK=$(cd "$WORK" && pwd -P) || exit 1
+TAG=M247_local-melt-preparation-$(date +%Y%m%d-%H%M%S)
+REVIEW="$WORK/$TAG"
+mkdir "$REVIEW" || exit 1
+printf 'Supplied run: %s\nResolved run: %s\nNo CFD advanced; no input files edited.\n' "${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947}" "$WORK" > "$REVIEW/paths.txt"
+for tool in checkMesh foamDictionary; do
+    command -v "$tool" > "$REVIEW/${tool}_path.txt" 2>&1 || { echo "Missing $tool; load OpenFOAM environment"; exit 1; }
+    "$tool" -help-full > "$REVIEW/${tool}_help.txt" 2>&1
+ done
+for variant in fullMelt localMelt; do
+    CASE="$WORK/$variant"
+    checkMesh -case "$CASE" -time 0.00018 -allTopology -allGeometry -noFunctionObjects > "$REVIEW/${variant}_checkMesh.log" 2>&1
+    printf '%s checkMesh exit=%s\n' "$variant" "$?" >> "$REVIEW/status.txt"
+    for relative in constant/polyMesh/boundary 0.00018/polyMesh/boundary system/controlDict; do
+        if [[ -f "$CASE/$relative" ]]; then
+            NAME=${relative//\//_}
+            cp "$CASE/$relative" "$REVIEW/${variant}_$NAME" || exit 1
+        fi
+    done
+    for field in T alpha.metal epsilon1 U p_rgh; do
+        foamDictionary "$CASE/0.00018/$field" -entry boundaryField -keywords > "$REVIEW/${variant}_${field}_patchNames.txt" 2>&1
+        printf '%s %s patch query exit=%s\n' "$variant" "$field" "$?" >> "$REVIEW/status.txt"
+    done
+ done
+for name in localMeltPairReview.json localMelt_subset.log localMelt_initializeCut.log; do
+    if [[ -f "$WORK/$name" ]]; then cp "$WORK/$name" "$REVIEW/$name" || exit 1; fi
+ done
+ARCHIVE="$WORK/${TAG}_review.tar.gz"
+tar -czf "$ARCHIVE" -C "$WORK" "$TAG" || exit 1
+echo "Review archive: $ARCHIVE"
+echo "Send this single archive. Collection only; no CFD advanced."
