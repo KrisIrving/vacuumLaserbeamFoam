@@ -1,0 +1,124 @@
+#!/bin/bash
+# Official field edits on a fresh copy; read-only native verification; no CFD.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tests/m247Performance/runs/local-melt-mesh-repair-20261009-202509/localMelt}
+[[ -d "$SOURCE/constant/polyMesh" && -d "$SOURCE/0.00018" ]] || { echo "Missing repaired local case: $SOURCE"; exit 1; }
+SOURCE=$(cd "$SOURCE" && pwd -P)
+for tool in foamDictionary setExprBoundaryFields checkMesh patchSummary m247LocalMeltAudit; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; no case edited"; exit 1; }
+done
+TAG=local-melt-fields-$(date +%Y%m%d-%H%M%S)
+WORK="$(pwd -P)/tests/m247Performance/runs/$TAG"
+mkdir "$WORK"
+CASE="$WORK/localMelt"
+mkdir "$CASE"
+for item in constant system 0.00018; do cp -a "$SOURCE/$item" "$CASE/$item"; done
+STAGE=copy
+package() {
+    code=$?
+    trap - EXIT
+    printf 'exit=%s\nstage=%s\nNo CFD advanced; productionApproved=false\n' "$code" "$STAGE" > "$WORK/status.txt"
+    cp "$CASE/system/setExprBoundaryFieldsDict" "$WORK/" 2>/dev/null || true
+    shopt -s nullglob
+    files=("$WORK/status.txt" "$WORK/paths.txt" "$WORK/"*.log "$WORK/"*.sha256 "$WORK/"*.tsv "$WORK/"*Dict)
+    names=()
+    for file in "${files[@]}"; do names+=("${file##*/}"); done
+    (cd "$WORK" && tar -czf "M247_${TAG}_review.tar.gz" "${names[@]}")
+    cat "$WORK/errors.log" >&2
+    echo "Review archive: $WORK/M247_${TAG}_review.tar.gz"
+    exit "$code"
+}
+trap package EXIT
+exec 2> "$WORK/errors.log"
+printf 'Input physical directory: %s\nNew copy: %s\n' "$SOURCE" "$CASE" > "$WORK/paths.txt"
+# Canonical hashes compare actual 17-digit values, independent of file formatting.
+# Other patches, dimensions, mesh and the original source must remain unchanged.
+snapshot() {
+    local dest=$1 name patch
+    : > "$dest"
+    (cd "$CASE/constant/polyMesh" && find . -type f -exec sha256sum {} + | sort) >> "$dest"
+    for name in "${FIELDS[@]}"; do
+        for entry in dimensions internalField; do
+            printf '%s/%s ' "$name" "$entry" >> "$dest"
+            foamDictionary "$CASE/0.00018/$name" -precision 17 -entry "$entry" -value | sha256sum >> "$dest"
+        done
+        for patch in bottomWall atmosphere sideWalls; do
+            printf '%s/%s ' "$name" "$patch" >> "$dest"
+            foamDictionary "$CASE/0.00018/$name" -precision 17 -entry "boundaryField/$patch" -value | sha256sum >> "$dest"
+        done
+    done
+}
+STAGE=installedUtilityHelp
+for tool in foamDictionary setExprBoundaryFields checkMesh patchSummary m247LocalMeltAudit; do
+    "$tool" -help-full > "$WORK/${tool}_help.log" 2>&1
+done
+grep -Fq -- '-verifyCut' "$WORK/m247LocalMeltAudit_help.log"
+STAGE=meshGate
+checkMesh -case "$CASE" -time 0.00018 -allTopology -allGeometry -noFunctionObjects > "$WORK/checkMesh.log" 2>&1
+grep -Fq '3 geometric (non-empty/wedge) directions (1 1 1)' "$WORK/checkMesh.log"
+grep -Fq '3 solution (non-empty) directions (1 1 1)' "$WORK/checkMesh.log"
+grep -Fq 'Mesh OK' "$WORK/checkMesh.log"
+! grep -Fq 'Total number of faces on empty patches' "$WORK/checkMesh.log"
+STAGE=inventory
+FIELDS=()
+: > "$WORK/fields.tsv"
+for path in "$CASE/0.00018/"*; do
+    [[ -f "$path" ]] || continue
+    name=${path##*/}
+    kind=$(foamDictionary "$path" -entry FoamFile/class -value)
+    case "$kind" in
+        volScalarField|volVectorField) ;;
+        surfaceScalarField) [[ "$name" == phi || "$name" == alphaPhi0.metal ]] || { echo "Unsupported surface field $name"; exit 1; } ;;
+        *) echo "Unsupported checkpoint object $name ($kind)"; exit 1 ;;
+    esac
+    FIELDS+=("$name")
+    printf '%s\t%s\n' "$name" "$kind" >> "$WORK/fields.tsv"
+done
+for name in T alpha.metal epsilon1 U p_rgh phi alphaPhi0.metal; do
+    [[ -f "$CASE/0.00018/$name" ]] || { echo "Missing required field $name"; exit 1; }
+done
+(cd "$SOURCE" && find constant system 0.00018 -type f -exec sha256sum {} + | sort) > "$WORK/source_before.sha256"
+snapshot "$WORK/retained_before.sha256"
+STAGE=temporaryReadableBoundaries
+foamDictionary "$CASE/system/controlDict" -precision 17 -entry writePrecision -set 17 > "$WORK/controlPrecision.log" 2>&1
+while IFS=$'\t' read -r name kind; do
+    if [[ "$kind" == surfaceScalarField ]]; then
+        bc='{ type calculated; value uniform 0; }'
+    else
+        bc='{ type zeroGradient; }'
+    fi
+    foamDictionary "$CASE/0.00018/$name" -precision 17 -entry boundaryField/localCut -set "$bc" >> "$WORK/boundaryEdits.log" 2>&1
+done < "$WORK/fields.tsv"
+# Values are frozen from checkpoint owner cells, not arbitrary uniform values.
+cat > "$CASE/system/setExprBoundaryFieldsDict" <<'DICT'
+FoamFile { version 2.0; format ascii; class dictionary; object setExprBoundaryFieldsDict; }
+DICT
+for name in T alpha.metal epsilon1 U p_rgh; do
+    printf '%s { field %s; expressions ( { patch localCut; target value; expression "internalField(%s)"; } ); }\n' "$name" "$name" "$name" >> "$CASE/system/setExprBoundaryFieldsDict"
+done
+cat >> "$CASE/system/setExprBoundaryFieldsDict" <<'DICT'
+phi { field phi; expressions ( { patch localCut; target value; expression "internalField(U) & face()"; } ); }
+alphaPhi { field alphaPhi0.metal; expressions ( { patch localCut; target value; expression "internalField(alpha.metal) * (internalField(U) & face())"; } ); }
+DICT
+STAGE=checkpointBoundaryValues
+setExprBoundaryFields -case "$CASE" -time 0.00018 > "$WORK/setExprBoundaryFields.log" 2>&1
+STAGE=heldBoundaryTypes
+for name in T alpha.metal epsilon1 U p_rgh; do
+    kind=fixedValue
+    [[ "$name" != p_rgh ]] || kind=fixedFluxPressure
+    foamDictionary "$CASE/0.00018/$name" -precision 17 -entry boundaryField/localCut/type -set "$kind" >> "$WORK/boundaryEdits.log" 2>&1
+done
+STAGE=unchangedRetainedData
+snapshot "$WORK/retained_after.sha256"
+cmp "$WORK/retained_before.sha256" "$WORK/retained_after.sha256" > "$WORK/retainedComparison.log" 2>&1
+(cd "$SOURCE" && find constant system 0.00018 -type f -exec sha256sum {} + | sort) > "$WORK/source_after.sha256"
+cmp "$WORK/source_before.sha256" "$WORK/source_after.sha256" > "$WORK/sourceComparison.log" 2>&1
+STAGE=allFieldReadCheck
+patchSummary -case "$CASE" -time 0.00018 > "$WORK/patchSummary.log" 2>&1
+STAGE=heldValueAndColdCutVerification
+# Existing native reader performs no field writes with -verifyCut.
+m247LocalMeltAudit -case "$CASE" -time 0.00018 -verifyCut -output "$WORK/verifiedCheckpoint.csv" > "$WORK/verifyCut.log" 2>&1
+grep -Fq 'M247_LOCAL_CUT_VERIFIED schema=1 fields=5 faces=6300' "$WORK/verifyCut.log"
+STAGE=prepared
+printf 'Prepared copy: %s\nNo CFD advanced. Held-cut approximation still requires full/local physical comparison.\n' "$CASE"

@@ -1,3 +1,37 @@
+## 2026-10-09 202509: official mesh repair PASS; prepare checkpoint field boundaries
+
+Ubuntu review M247_local-melt-mesh-repair-20261009-202509: exit0,
+604800 cells, 3 geometric and solution directions, Mesh OK; localCut6300
+faces/startFace1830240 preserved. Only empty->patch and inGroups() changed.
+20% fewer cells than756000 is a mesh reduction, NOT measured speedup.
+No CFD advanced. Field empty boundary conditions still require repair.
+
+Next: bash tests/m247Performance/PrepareLocalMeltFields
+Default source is the successful202509 repaired copy. Copies constant/system/
+180us into a fresh physical path; source remains unchanged. Official
+foamDictionary replaces all localCut BC dictionaries with readable temporary
+BCs; official setExprBoundaryFields initializes five primary held values from
+internalField(field). Surface cut flux is explicitly initialized as U_owner dot
+Sf, alphaPhi as alpha_owner times flux; this is an initialization approximation,
+not a reproduced original cut flux or validated conservative handoff.
+Final primary types: T/alpha.metal/epsilon1/U fixedValue, p_rgh fixedFluxPressure.
+Other checkpoint volume fields use zeroGradient; surface fields calculated.
+
+Checks: actual3D mesh, all checkpoint classes supported, mandatory fields;
+17-digit canonical hashes of internal fields/dimensions/other three boundaries
+and mesh unchanged; original source hashes unchanged; official patchSummary
+reads fields; existing read-only m247LocalMeltAudit -verifyCut verifies five
+serialized held values and cold inactive cut. No custom field-writing helper,
+rebuild, solver, forced process stop or input cleanup. Keep RunLocalMeltPair
+suspended. This step prepares fields only; full/local180-190us comparison is
+still needed before any physical accuracy or runtime claim. Bash syntax/LF
+verified here; actual v2512 utility execution requires Ubuntu.
+
+Official sources checked:
+https://api.openfoam.com/2512/setExprBoundaryFields_8C_source.html
+https://api.openfoam.com/2512/foamDictionary_8C_source.html
+https://www.openfoam.com/index.php/news/main-news/openfoam-v2106/pre-processing
+
 ## 2026-10-09 201214: diagnosed empty localCut (LM04); official mesh repair only
 
 Preparation archive shows localCut nFaces6300, mesh type empty and inGroups(empty).
