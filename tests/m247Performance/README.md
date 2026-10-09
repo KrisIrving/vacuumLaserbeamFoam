@@ -1,3 +1,16 @@
+## Selection correction after101823 early stop
+
+The fixed-local measurement keeps all active seeds and96um padding, including
+faraway fast material. x/z may legitimately saturate the compact source domain.
+The crop can now remove a cold lower reservoir while retaining the original
+atmospheric top. The original bottom BC is then replaced by held checkpoint
+values at localCut, an explicit measured approximation. No other selection
+threshold or safety gate relaxed. Bounds/counts for each seed category are
+included even on selection failure. No saving means a rejected crop, not PASS.
+
+Afterpull rerun one fresh ./tests/m247Performance/RunLocalMeltPair; do not reuse
+or overwrite the failed directory.101823 advanced no CFD and showed no speedup.
+
 ## Real full-domain versus fixed-local melt-pool measurement
 
 ```bash

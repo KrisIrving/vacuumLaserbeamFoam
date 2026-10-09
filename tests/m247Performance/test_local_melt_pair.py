@@ -57,8 +57,30 @@ class LocalMeltPairTests(unittest.TestCase):
         self.assertGreaterEqual(r['bounds']['xmax'],.0005+180e-6)
     def test_no_reduction_is_rejected(self):
         write(self.reference,[cell(i*8e-6,1700) for i in range(100)])
-        snapshot=dict(cells=100,xmin=0,xmax=.0008,ymin=0,ymax=.001,zmin=-.001,zmax=.001)
-        with self.assertRaises(ValueError):plan_window(self.reference,snapshot,[(.0004,0,0)])
+        snapshot=dict(cells=100,xmin=0,xmax=.0008,ymin=.00045,ymax=.001,zmin=-.00005,zmax=.00005)
+        details={}
+        with self.assertRaises(ValueError):plan_window(self.reference,snapshot,[(.0004,0,0)],details=details)
+        self.assertEqual(details['selected_cells'],100)
+        self.assertEqual(details['seed_categories']['thermal_phase']['cells'],100)
+    def test_fast_spread_saturates_xz_but_cold_bottom_can_be_removed(self):
+        data=[]
+        for y in (.0001,.0002,.0003,.0004,.0005,.0006,.0007,.0008):
+            for x in (-.00048,-.00024,0,.00024):
+                for z in (-.00028,0,.00028):
+                    r=cell(x,300,alpha=1);r['y']=y;r['z']=z
+                    if y>=.0004:r['Ux']=2
+                    data.append(r)
+        write(self.reference,data)
+        snapshot=dict(cells=96,xmin=-.00052,xmax=.00032,ymin=0,ymax=.00096,zmin=-.00032,zmax=.00032)
+        plan=plan_window(self.reference,snapshot,[(.00008,.000959,0)])
+        self.assertEqual(plan['bounds']['xmin'],snapshot['xmin'])
+        self.assertEqual(plan['bounds']['zmax'],snapshot['zmax'])
+        self.assertGreater(plan['bounds']['ymin'],0)
+        self.assertEqual(plan['bounds']['ymax'],snapshot['ymax'])
+        self.assertLess(plan['selected_cells'],96)
+        for r in data:
+            if active(r):self.assertGreaterEqual(r['y'],plan['bounds']['ymin']+96e-6-1e-15)
+
     def test_native_schema_requires_end_and_expected_time(self):
         text='M247_LOCAL_MELT_SNAPSHOT schema=1 time=.00018 cells=100 xmin=0 xmax=1 ymin=0 ymax=1 zmin=0 zmax=1 cutFaces=10 activeCutFaces=0 cutMetalTmax=300 cutMetalEpsilonMax=0 cutUmax=.1 productionApproved=0\nEnd\n'
         self.assertEqual(native_snapshot(text,.00018)['cells'],100)

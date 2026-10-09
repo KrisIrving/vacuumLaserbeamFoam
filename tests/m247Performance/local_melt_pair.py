@@ -52,26 +52,41 @@ def active(r):
     return (r['alpha']>=.05 and (r['T']>=1487 or r['epsilon']>=1e-6)) or (r['alpha']>=.01 and speed>=1) or speed>=10
 
 
-def plan_window(path,snapshot,positions,halo=96e-6):
-    # Full y height preserves the original atmospheric and bottom boundaries.
+def plan_window(path,snapshot,positions,halo=96e-6,details=None):
+    # Preserve atmosphere and every active seed; the cold lower reservoir may be cropped.
+    if not math.isfinite(halo) or halo<=0:raise ValueError('Positive metric buffer required')
     bounds={d+s:snapshot[d+s] for d in ('x','y','z') for s in ('min','max')}
-    lo={d:math.inf for d in ('x','z')};hi={d:-math.inf for d in ('x','z')};count=0
+    lo={d:math.inf for d in ('x','y','z')};hi={d:-math.inf for d in lo};count=0
+    reasons={name:dict(cells=0,bounds={d+s:None for d in lo for s in ('min','max')}) for name in ('thermal_phase','metal_flow','fast_any_phase')}
     for r in rows(path):
-        if active(r):
+        speed=math.sqrt(sum(r[d]**2 for d in ('Ux','Uy','Uz')))
+        flags=(r['alpha']>=.05 and (r['T']>=1487 or r['epsilon']>=1e-6),r['alpha']>=.01 and speed>=1,speed>=10)
+        for name,flag in zip(reasons,flags):
+            if flag:
+                q=reasons[name];q['cells']+=1
+                for d in lo:
+                    for side,op in (('min',min),('max',max)):
+                        old=q['bounds'][d+side];q['bounds'][d+side]=r[d] if old is None else op(old,r[d])
+        if any(flags):
             count+=1
             for d in lo:lo[d]=min(lo[d],r[d]);hi[d]=max(hi[d],r[d])
     if not count:raise ValueError('No active real melt-pool state found')
     for p in positions:
-        for d,index in (('x',0),('z',2)):
+        for d,index in (('x',0),('y',1),('z',2)):
             lo[d]=min(lo[d],p[index]);hi[d]=max(hi[d],p[index])
     for d in lo:
         bounds[d+'min']=max(bounds[d+'min'],lo[d]-halo)
-        bounds[d+'max']=min(bounds[d+'max'],hi[d]+halo)
+        if d!='y':bounds[d+'max']=min(bounds[d+'max'],hi[d]+halo)
     selected=sum(inside(r,bounds) for r in rows(path))
+    result=dict(bounds=bounds,active_seed_cells=count,selected_cells=selected,
+        full_cells=int(snapshot['cells']),halo_m=halo,cell_fraction=selected/snapshot['cells'],
+        seed_categories=reasons,original_bounds={d+s:snapshot[d+s] for d in lo for s in ('min','max')},
+        preserved_original_boundaries=[d+s for d in lo for s in ('min','max') if bounds[d+s]==snapshot[d+s]],
+        policy='all active material/gas-jet seeds plus laser path and96um metric padding; preserve original atmosphere; permit cold lower-reservoir cut',
+        note='No seed discarded and no buffer reduced. Extrema are cell centres; native cut-face audit is still required.')
+    if details is not None:details.update(result)
     if not 48<selected<snapshot['cells']:raise ValueError('Safe active envelope does not reduce the mesh; no claimed acceleration')
-    return dict(bounds=bounds,active_seed_cells=count,selected_cells=selected,
-                full_cells=int(snapshot['cells']),halo_m=halo,cell_fraction=selected/snapshot['cells'],
-                policy='full-height active material/gas-jet envelope plus laser path and96um padding')
+    return result
 
 
 def compare_fields(reference,candidate,bounds,initial=False):
@@ -175,7 +190,9 @@ def execute(source,work,solver,audit,wall_hours=2):
         spec=importlib.util.spec_from_file_location('m247_keyhole',script);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         path=module.read_path_table(full/'constant/timeVsLaserPosition')
         positions=[module.laser_position(path,t) for t in (.00018,.000185,.00019)]+[r[1:] for r in path if .00018<=r[0]<=.00019]
-        plan=plan_window(work/'fullMelt_initial.csv',initial,positions);report['window']=plan;persist()
+        report['window']={}
+        try:plan=plan_window(work/'fullMelt_initial.csv',initial,positions,details=report['window'])
+        finally:persist()
         local.mkdir()
         for name in ('constant','system',meta['checkpoint']):shutil.copytree(full/name,local/name)
         b=plan['bounds'];box='('+ ' '.join(f'{b[d+"min"]:.17g}' for d in ('x','y','z'))+') ('+' '.join(f'{b[d+"max"]:.17g}' for d in ('x','y','z'))+')'

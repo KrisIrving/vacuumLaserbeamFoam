@@ -1,3 +1,32 @@
+## 2026-10-09 101823: real-pair no-reduction selection fixed
+
+Verified17manifest hashes/sizes. Rebuild,180us reconstruction and native CSV
+read completed; no CFD launched. Source hashes unchanged. No physical difference
+or speedup exists yet. Missing solver log/run.json are expected for this stop.
+
+Root cause: prior same180us spatial audit already showed fast material envelope
+x[-456,248]um,z[-271,271]um. Adding96um gives bounds beyond the original
+x[-520,320]um,z[-320,320]um. Fullheight policy therefore prevented any cell saving.
+This should have been identified before requesting the native pair. Current
+archive omitted seed-category bounds because plan raised before recording them.
+
+Keep identical active predicates,96um padding and all active/spatter/gas seeds.
+Permit cropping the cold lower reservoir below activeymin-96um; preserve original
+atmosphere/top. Original bottom is replaced by a held-checkpoint cut boundary,
+so this is a new explicit approximation measured by the same real pair, not a
+claim of equivalent BC or large acceleration. Padding is not relaxed. Native
+initial/per-step cut checks remain mandatory. If active state reaches original
+bottom the no-saving rejection remains; do not silently drop active particles.
+Selection now records per-category counts and xyz bounds, selectedcell fraction,
+original bounds and retained physical boundaries even if selection is rejected.
+
+201Python regressions PASS including dispersedfast material spanning x/z with
+retained buffer and cold-bottom reduction; no nativeC++/solver changes this fix.
+Run one fresh ./tests/m247Performance/RunLocalMeltPair afterpull. Same180..190us
+physical pair, no parameter screening. Gains likely limited on this compact
+existing8um domain; measuredcost must decide, not cellratio alone. Full moving
+local/global coupling remains the structural target for1.5..2mm tracks.
+
 ## 2026-10-09: real melt pair preventive checks
 
 Use native OpenFOAM reader for binary restart; no Python binary-field parsing.
