@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
         performance.stop(vacuumPerformance::fieldWrite);
 
         performance.start(vacuumPerformance::diagnostics);
+        #include "localMeltBoundaryAudit.H"
         if (isA<m247MovingRefineFvMesh>(mesh))
         {
             refCast<m247MovingRefineFvMesh>(mesh).reportPilotState();

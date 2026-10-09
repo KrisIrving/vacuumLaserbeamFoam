@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um}
+WORK=${2:-tests/m247Performance/runs/local-melt-pair-$(date +%Y%m%d-%H%M%S)}
+JOBS=${3:-8}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "Positive build JOBS required" >&2; exit 1; }
+[[ ! -e "$WORK" ]] || { echo "Choose fresh WORK: $WORK" >&2; exit 1; }
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd)
+bundle_on_exit() {
+    local status=$?
+    trap - EXIT
+    local checked=0
+    python3 - "$WORK" "$status" <<'PY' || checked=$?
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1]);status=int(sys.argv[2]);file=p/'localMeltPairReview.json'
+r=json.loads(file.read_text()) if file.exists() else {}
+complete=status==0 and r.get('complete') is True and bool(r.get('commands')) and all(c.get('status')=='complete' and c.get('returncode')==0 for c in r['commands'])
+(p/'localMeltPairStatus.json').write_text(json.dumps(dict(complete=complete,exit_code=status if status else (0 if complete else 1),production_approved=False),indent=2)+'\n')
+raise SystemExit(status if status else (0 if complete else 1))
+PY
+    status=$checked
+    if ! python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$status"; then
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    exit "$status"
+}
+trap bundle_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+{
+    echo "WM_PROJECT_DIR=${WM_PROJECT_DIR:-unset}; source=$SOURCE"
+    echo "Real8um full/local physical model pair,180..190us,48ranks; two2h solver budgets"
+    git rev-parse HEAD || true
+} > "$WORK/buildEnvironment.txt"
+for tool in python3 timeout foamDictionary reconstructPar topoSet subsetMesh checkMesh decomposePar postProcess mpirun wmake wclean; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first" >&2; exit 1; }
+done
+# Refresh and rebuild shared optics before any consumer. New code defaults off.
+timeout 900s bash src/laserHeatSource/Allwmake -j "$JOBS" 2>&1 | tee "$WORK/build.log"
+timeout 900s bash -c 'cd applications/solvers/vacuumLaserbeamFoam; wclean; wmake -j "$1"' _ "$JOBS" 2>&1 | tee -a "$WORK/build.log"
+timeout 300s bash -c 'cd tests/m247Performance/localMeltAudit; wclean; wmake -j "$1"' _ "$JOBS" 2>&1 | tee -a "$WORK/build.log"
+SOLVER=${FOAM_USER_APPBIN:?Source OpenFOAM}/vacuumLaserbeamFoam
+AUDIT=$FOAM_USER_APPBIN/m247LocalMeltAudit
+sha256sum "$SOLVER" "$AUDIT" "${FOAM_USER_LIBBIN:?}/liblaserHeatSource.so" > "$WORK/localMeltPairBinary.txt"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 tests/m247Performance/local_melt_pair.py --source "$SOURCE" --work "$WORK" --solver "$SOLVER" --audit "$AUDIT" 2>&1 | tee "$WORK/collection.log"

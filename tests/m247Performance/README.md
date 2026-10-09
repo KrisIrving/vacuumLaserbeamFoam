@@ -1,3 +1,28 @@
+## Real full-domain versus fixed-local melt-pool measurement
+
+```bash
+./tests/m247Performance/RunLocalMeltPair
+# Optional original sourcecase on the data disk:
+# ./tests/m247Performance/RunLocalMeltPair /media/kris/one/OpenFOAM/kris-v2512/vacuumLaserbeamFoam-m247/tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um
+```
+One pair,180..190us at8um and48MPIranks. Uses complete existing physical solver
+and the same reconstructed180us checkpoint; experimental regional heat closure
+is not substituted. One data-driven fullheight crop covers active states plus
+laser path and96um padding. Initial retained fields/volumes must match exactly
+to roundoff. Cut fields are held checkpoint values (explicit approximation).
+Per-step cut state/flux, same-coordinate volume-weighted field differences,
+ROI metal/liquid inventories, molten cell-centre extents, surface-connected
+keyhole depths and all existing solver stage timers are collected.
+
+Builds optics,solver and m247LocalMeltAudit. Two2h solver budgets; preparation
+and postprocess each command bounded30minutes, builds15/15/5minutes. Timeout
+kills MPI group and always preserves failure archive. Successful completion
+means measurements exist, not physical acceptance or production approval.
+Send only M247_local-melt-pair-<timestamp>_review.tar.gz. Native snapshotCSV and
+fields remain on Ubuntu. Original case is copied and hashes checked; never run
+or subset in place. Fixed crop does not include advancing global thermal or
+moving-window costs; these remain necessary for a full1.5..2mm track.
+
 ## Integrated local conduction and melting/solidification cycle
 
 After updating feat/m247-material-port, run:

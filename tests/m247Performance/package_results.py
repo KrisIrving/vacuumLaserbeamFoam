@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import tarfile
 from prepare_probe import VARIANTS
-VARIANTS = VARIANTS+('movingCFD',)
+VARIANTS = VARIANTS+('movingCFD','fullMelt','localMelt')
 
 FILES = {
     'log.vacuumLaserbeamFoam': 'solver.log',
@@ -62,6 +62,11 @@ BUILD_FILES += ('regionalAcceptance.json','regionalAcceptanceStatus.json','regio
 BUILD_FILES += tuple(f'{variant}_{suffix}' for variant in ('regionalGain','regionalLoss','regionalFlow') for suffix in
     ('thermalRegion_blockMesh.log','flowRegion_blockMesh.log','setFields.log','serial.log',
      'decompose.log','parallel.log','inputHashes.json','parallelInputHashes.json','fixtureInputs.json'))
+
+BUILD_FILES += ('localMeltPairReview.json','localMeltPairStatus.json','localMeltSourceHashes.json','localMelt_selectionDict','localMeltPairBinary.txt')
+BUILD_FILES += tuple(f'{variant}_{stage}.log' for variant in ('fullMelt','localMelt') for stage in
+    ('reconstructInitial','initial','select','subset','checkMesh','decompose','solver','reconstructFinal','mid','final','interface','keyhole'))
+BUILD_FILES += ('fullMelt_keyhole.csv','localMelt_keyhole.csv')
 
 def package(work, output=None, exit_code=None):
     work = Path(work).resolve()

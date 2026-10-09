@@ -1,3 +1,18 @@
+## 2026-10-09: real melt pair preventive checks
+
+Use native OpenFOAM reader for binary restart; no Python binary-field parsing.
+Crop on copies, native mapped cut values retained, no silent zero inlet fields.
+Reject empty/full/no-saving selection and any active metal on initialcut.
+Per-step cut audit detects latercontact; geometry/field mismatch blocks CFD.
+Compare retained cells by physical coordinates, not unrelated processor indices;
+volume-weighted norms and sameROI liquid inventory exclude removed cold material.
+Gas numericalepsilon belowalpha.05 cannot seed the whole powderbed as melted.
+Source hashes checked, including failed runs where possible. Native qualityFAIL
+not waived. Bounds apply to entire laser interval. Complete status requires all
+commands succeeded; failures package incomplete evidence. Entire MPI group kill,
+no helper-process timeout orphan. Shell bytes/uploadsLF checked; explicitLFwrites.
+Native compile/physics/cost not markedPASS from offline200tests.
+
 ## 2026-10-09: fix Ubuntu CRLF interpreter failure
 
 RunRegionalAcceptance failed before starting: /bin/bash^M bad interpreter.
