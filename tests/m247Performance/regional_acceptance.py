@@ -117,7 +117,42 @@ def prepare_thermal_fixture(case):
     p=case/'system/flowRegion/fvSolution';s=p.read_text(encoding='utf-8').replace('solvers\n{','solvers\n{ "regional.*" { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-12; relTol 0; maxIter 1000; }');p.write_text(s,encoding='utf-8')
 
 
-def parse_thermal(text):
+def prepare_physics_fixture(case):
+    prepare_thermal_fixture(case)
+    c=case/'constant/regionalTransferDict'
+    c.write_text(c.read_text(encoding='utf-8')+'regionalThermophysics true; kappaLiquid 35; kappaGas 0.04; phaseEnergyTolerance 1e-10; phaseCorrectors 60; cycleHeatRate 3e13; cycleReferenceCapacity 6280500;\n',encoding='utf-8')
+    p=case/'0/thermalRegion/T';p.write_text(p.read_text(encoding='utf-8').replace('uniform 1580','uniform 1500'),encoding='utf-8')
+    p=case/'system/thermalRegion/setFieldsDict';p.write_text(p.read_text(encoding='utf-8').replace('epsilon1 1','epsilon1 0'),encoding='utf-8')
+    values={'regionalSensible':6280500*1500,'regionalLatent':0,'regionalLatentReserve':1192500000}
+    for name,value in values.items():
+        p=case/f'0/flowRegion/{name}'
+        p.write_text(field(name,'volScalarField','1 -1 -2 0 0 0 0',str(value),
+            f'inlet {{ type fixedValue; value uniform {value}; }} outlet {{ type zeroGradient; }} walls {{ type zeroGradient; }}'),encoding='utf-8')
+    (case/'0/flowRegion/regionalTemperature').write_text(field('regionalTemperature','volScalarField','0 0 0 1 0 0 0','1500',
+        'inlet { type zeroGradient; } outlet { type zeroGradient; } walls { type zeroGradient; }'),encoding='utf-8')
+
+
+def parse_physics(text):
+    thermal=parse_thermal(text,physics=True)
+    lines=re.findall(r'^M247_CONDUCTION_PHASE\s+(.+)$',text,re.M)
+    if len(lines)!=20:raise ValueError('Incomplete conduction/phase sequence')
+    phase=[]
+    for i,line in enumerate(lines,1):
+        r={k:float(v) for k,v in re.findall(r'(\w+)=([-+\d.eE]+)',line)}
+        keys=('schema','time','correctors','energyRelativeError','liquidMin','liquidMax','liquidCapacityFraction','latentRedistributedJ','conductionRedistributedJ','conductiveBoundaryOutJ','productionApproved')
+        if any(k not in r for k in keys) or any(not math.isfinite(v) for v in r.values()):raise ValueError('Invalid phase diagnostics')
+        if r['schema']!=1 or r['productionApproved']!=0 or not math.isclose(r['time'],i*1e-5,abs_tol=1e-14):raise ValueError('Phase time/schema mismatch')
+        if not 1<=r['correctors']<=60 or not 0<=r['energyRelativeError']<=1e-10 or not 0<=r['liquidMin']<=r['liquidMax']<=1 or not 0<=r['liquidCapacityFraction']<=1 or r['latentRedistributedJ']<0 or r['conductionRedistributedJ']<0:raise ValueError('Phase nonlinear/bounds gate failed')
+        if abs(r['conductiveBoundaryOutJ'])>1e-10:raise ValueError('Adiabatic conduction boundary ledger failed')
+        phase.append(r)
+    if sum(r['conductionRedistributedJ'] for r in phase)<=1e-12:raise ValueError('Conduction did not redistribute heat')
+    peak=max(r['liquidCapacityFraction'] for r in phase[:10])
+    if peak<.5 or phase[-1]['liquidCapacityFraction']>peak-.25:raise ValueError('Heating/cooling did not exercise melting and solidification')
+    if thermal[9]['cumulativeSourceJ']<=0 or thermal[-1]['cumulativeSourceJ']>=thermal[9]['cumulativeSourceJ']:raise ValueError('Heat source did not reverse')
+    return {'thermal':thermal,'phase':phase}
+
+
+def parse_thermal(text,physics=False):
     lines=re.findall(r'^M247_THERMAL_TRANSPORT\s+(.+)$',text,re.M)
     if len(lines)!=20:raise ValueError('Incomplete thermal transport steps')
     rows=[]
@@ -125,12 +160,12 @@ def parse_thermal(text):
     for i,line in enumerate(lines,1):
         r={k:float(v) for k,v in re.findall(r'(\w+)=([-+\d.eE]+)',line)}
         if any(k not in r for k in keys) or any(not math.isfinite(v) for v in r.values()):raise ValueError('Invalid thermal diagnostics')
-        if r['schema']!=1 or r['step']!=i or r['phaseRelaxation']!=0 or r['conduction']!=0 or r['productionApproved']!=0:raise ValueError('Thermal contract changed')
+        if r['schema']!=1 or r['step']!=i or r['phaseRelaxation']!=int(physics) or r['conduction']!=int(physics) or r['productionApproved']!=0:raise ValueError('Thermal contract changed')
         if r['Tmin']<=0 or r['Tmax']<r['Tmin'] or not 0<=r['inverseRelativeError']<=1e-10:raise ValueError('Thermal inverse failed')
         if not 0<=r['residualJ']<=1e-8*r['initialEnergyJ']:raise ValueError('Thermal energy ledger failed')
         expected=r['energyJ']-r['initialEnergyJ']+r['cumulativeBoundaryOutJ']-r['cumulativeSourceJ']
         if abs(expected)>1e-8*r['initialEnergyJ']:raise ValueError('Thermal totals do not close')
-        if not math.isclose(r['cumulativeSourceJ'],i*6e-8,rel_tol=1e-9,abs_tol=1e-15):raise ValueError('Unexpected thermal source energy')
+        if not physics and not math.isclose(r['cumulativeSourceJ'],i*6e-8,rel_tol=1e-9,abs_tol=1e-15):raise ValueError('Unexpected thermal source energy')
         rows.append(r)
     return rows
 
@@ -231,13 +266,14 @@ def run_bounded(command,output,remaining):
                 process.wait(timeout=5)
         raise
 
-def execute(work,solver,budget=600,flow=False,heat=False):
+def execute(work,solver,budget=600,flow=False,heat=False,physics=False):
+    if physics:heat=True
     if heat:flow=True
     if not math.isfinite(budget) or budget<=0:raise ValueError('Positive acceptance time budget required')
     work=Path(work).resolve();solver=Path(solver).resolve()
     if not solver.is_file():raise ValueError('Native audit binary missing')
     state={'schema':1,'complete':False,'production_approved':False,'stages':[],
-           'mode':'flow' if flow else 'interfaces','thermal_transport':heat,'solver':str(solver),'solver_sha256':hashlib.sha256(solver.read_bytes()).hexdigest(),'budget_s':budget}
+           'mode':'flow' if flow else 'interfaces','thermal_transport':heat,'thermophysics':physics,'solver':str(solver),'solver_sha256':hashlib.sha256(solver.read_bytes()).hexdigest(),'budget_s':budget}
     start=time.monotonic()
     def stage(name,command):
         remaining=budget-(time.monotonic()-start)
@@ -256,7 +292,8 @@ def execute(work,solver,budget=600,flow=False,heat=False):
     try:
         for variant,cooling in ((('regionalFlow',False),) if flow else (('regionalGain',False),('regionalLoss',True))):
             case=work/variant
-            if heat:prepare_thermal_fixture(case)
+            if physics:prepare_physics_fixture(case)
+            elif heat:prepare_thermal_fixture(case)
             elif flow:prepare_flow_fixture(case)
             else:prepare_fixture(case,cooling)
             save(work/(variant+'_fixtureInputs.json'),{str(p.relative_to(case)):p.read_text(encoding='utf-8') for p in sorted(case.rglob('*')) if p.is_file()})
@@ -273,13 +310,19 @@ def execute(work,solver,budget=600,flow=False,heat=False):
             if digest_case(case)!=before:raise ValueError('MPI audit modified fixture inputs')
             parallel=(parse_flow if flow else parse_audit)((work/(variant+'_parallel.log')).read_text(encoding='utf-8',errors='replace'))
             if heat:
-                serial['thermal']=parse_thermal((work/(variant+'_serial.log')).read_text(encoding='utf-8'))
-                parallel['thermal']=parse_thermal((work/(variant+'_parallel.log')).read_text(encoding='utf-8'))
+                serial['thermal']=parse_thermal((work/(variant+'_serial.log')).read_text(encoding='utf-8'),physics=physics)
+                parallel['thermal']=parse_thermal((work/(variant+'_parallel.log')).read_text(encoding='utf-8'),physics=physics)
+                if physics:
+                    serial['phase']=parse_physics((work/(variant+'_serial.log')).read_text(encoding='utf-8'))['phase']
+                    parallel['phase']=parse_physics((work/(variant+'_parallel.log')).read_text(encoding='utf-8'))['phase']
+                    for a,b in zip(serial['phase'],parallel['phase']):
+                        for key in ('liquidMin','liquidMax','liquidCapacityFraction','latentRedistributedJ','conductionRedistributedJ'):
+                            if not math.isclose(a[key],b[key],rel_tol=1e-5,abs_tol=1e-7):raise ValueError('Phase serial/MPI disagreement: '+key)
                 for key in ('initialEnergyJ','energyJ','cumulativeSourceJ','cumulativeBoundaryOutJ'):
                     if not math.isclose(serial['thermal'][-1][key],parallel['thermal'][-1][key],rel_tol=1e-6,abs_tol=1e-10):raise ValueError('Thermal serial/MPI disagreement: '+key)
             if flow:compare_flow(serial,parallel)
             else:compare_audits(serial,parallel,-.00024 if cooling else .00039)
-            state[variant]={'serial':serial,'parallel':parallel,'inputs_unchanged':True,'serial_parallel_gate':True,'thermal_transport_gate':heat}
+            state[variant]={'serial':serial,'parallel':parallel,'inputs_unchanged':True,'serial_parallel_gate':True,'thermal_transport_gate':heat,'thermophysics_gate':physics}
         state['complete']=True
     except BaseException as error:
         state['error']=f'{type(error).__name__}: {error}';raise
@@ -293,6 +336,7 @@ def finalize(work,requested_status):
     state=json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'schema':1,'complete':False,'error':'Native acceptance did not start'}
     complete=state.get('complete') is True and bool(state.get('stages')) and all(row.get('status')=='complete' and row.get('returncode')==0 for row in state.get('stages',[])) and all(state.get(v,{}).get('serial_parallel_gate') is True for v in (('regionalFlow',) if state.get('mode')=='flow' else ('regionalGain','regionalLoss')))
     if state.get('thermal_transport') and state.get('regionalFlow',{}).get('thermal_transport_gate') is not True:complete=False
+    if state.get('thermophysics') and state.get('regionalFlow',{}).get('thermophysics_gate') is not True:complete=False
     status=requested_status if requested_status else (0 if complete else 1)
     save(Path(work)/'regionalAcceptanceStatus.json',{'schema':1,'complete':complete and status==0,'exit_code':status,'production_approved':False})
     return status
@@ -300,13 +344,13 @@ def finalize(work,requested_status):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--work',type=Path,required=True)
-    parser.add_argument('--heat',action='store_true');parser.add_argument('--flow',action='store_true');parser.add_argument('--solver',type=Path);parser.add_argument('--finalize',action='store_true');parser.add_argument('--requested-status',type=int,default=0)
+    parser.add_argument('--physics',action='store_true');parser.add_argument('--heat',action='store_true');parser.add_argument('--flow',action='store_true');parser.add_argument('--solver',type=Path);parser.add_argument('--finalize',action='store_true');parser.add_argument('--requested-status',type=int,default=0)
     args=parser.parse_args()
     if args.finalize:raise SystemExit(finalize(args.work,args.requested_status))
     if not args.solver:parser.error('--solver required')
-    try:execute(args.work,args.solver,flow=args.flow,heat=args.heat)
+    try:execute(args.work,args.solver,flow=args.flow,heat=args.heat,physics=args.physics)
     except (OSError,ValueError,RuntimeError,subprocess.TimeoutExpired,TimeoutError) as error:parser.exit(1,f'Regional acceptance failed: {error}\n')
-    print('Native regional '+('thermal transport' if args.heat else 'flow step' if args.flow else 'interface')+' acceptance complete; production approved: False',flush=True)
+    print('Native regional '+('conduction/phase cycle' if args.physics else 'thermal transport' if args.heat else 'flow step' if args.flow else 'interface')+' acceptance complete; production approved: False',flush=True)
 
 
 if __name__=='__main__':main()

@@ -1,13 +1,17 @@
-// Conservative passive thermodynamic moments. No conduction or phase relaxation.
+// Conservative transported moments with optional implicit conduction/phase closure.
 #ifndef m247ThermalTransport_H
 #define m247ThermalTransport_H
 #include "m247RegionalState.H"
+#include "m247ConductionPhase.H"
 #include <initializer_list>
 namespace Foam
 {
 class m247ThermalTransport
 {
     fvMesh& mesh_;
+    dictionary controls_;
+    bool physics_;
+    autoPtr<volScalarField> temperature_;
     scalar ts_,tl_;
     volScalarField sensible_,latent_,reserve_,cs_,cl_,source_;
     scalar cumulativeSource_=0,maxResidual_=0,initialEnergy_=0,cumulativeBoundary_=0;
@@ -37,7 +41,7 @@ class m247ThermalTransport
     }
 public:
     m247ThermalTransport(fvMesh& thermal,fvMesh& mesh,Time& time,const dictionary& c)
-    :mesh_(mesh),ts_(c.get<scalar>("Tsolidus")),tl_(c.get<scalar>("Tliquidus")),
+    :mesh_(mesh),controls_(c),physics_(c.getOrDefault<bool>("regionalThermophysics",false)),ts_(c.get<scalar>("Tsolidus")),tl_(c.get<scalar>("Tliquidus")),
      sensible_(IOobject("regionalSensible",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh),
      latent_(IOobject("regionalLatent",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh),
      reserve_(IOobject("regionalLatentReserve",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh),
@@ -71,12 +75,34 @@ public:
         {f->correctBoundaryConditions();f->oldTime();mesh_.setFluxRequired(f->name());}
         forAll(source_,i)if(!std::isfinite(source_[i]))FatalErrorInFunction<<"Invalid heat source"<<exit(FatalError);
         initialEnergy_=integral(sensible_)+integral(latent_);
+        if(physics_)
+        {
+            temperature_.reset(new volScalarField(IOobject("regionalTemperature",time.timeName(),mesh,IOobject::MUST_READ,IOobject::NO_WRITE),mesh));
+            if(temperature_().dimensions()!=dimTemperature)FatalErrorInFunction<<"Invalid local temperature dimensions"<<exit(FatalError);
+        }
     }
     void advance(const surfaceScalarField& phi,scalar dt,label step)
     {
+        if(physics_)
+        {
+            // Manufactured cycle only: material-scaled heating then cooling.
+            const scalar rate=controls_.get<scalar>("cycleHeatRate"),reference=controls_.get<scalar>("cycleReferenceCapacity");
+            if(!std::isfinite(rate)||rate<=0||!std::isfinite(reference)||reference<=0)
+                FatalErrorInFunction<<"Invalid manufactured heat cycle controls"<<exit(FatalError);
+            const scalar sign=step<=10?1:-1;
+            forAll(source_,i)source_[i]=sign*rate*cs_[i]/reference;
+        }
         cumulativeBoundary_+=transport(sensible_,phi,dt,true);
         cumulativeBoundary_+=transport(latent_,phi,dt,false);
         transport(reserve_,phi,dt,false);transport(cs_,phi,dt,false);transport(cl_,phi,dt,false);
+        if(physics_)
+        {
+            scalarField energy(sensible_.size()),capacity(sensible_.size());
+            forAll(energy,i){energy[i]=sensible_[i]+latent_[i];capacity[i]=latent_[i]+reserve_[i];}
+            cumulativeBoundary_+=m247ConductionPhase(temperature_(),cs_,cl_,capacity,energy,ts_,tl_,dt,controls_,
+                sensible_.primitiveFieldRef(),latent_.primitiveFieldRef(),reserve_.primitiveFieldRef());
+            for(volScalarField* f:{&sensible_,&latent_,&reserve_})f->correctBoundaryConditions();
+        }
         scalar lo=GREAT,hi=-GREAT,maxInverse=0;
         forAll(sensible_,i)
         {
@@ -95,7 +121,7 @@ public:
             <<" initialEnergyJ="<<initialEnergy_<<" energyJ="<<energy<<" cumulativeBoundaryOutJ="<<cumulativeBoundary_
             <<" cumulativeSourceJ="<<cumulativeSource_<<" residualJ="<<residual
             <<" maxStepResidualJ="<<maxResidual_<<" inverseRelativeError="<<maxInverse
-            <<" phaseRelaxation=0 conduction=0 productionApproved=0"<<endl;
+            <<" phaseRelaxation="<<physics_<<" conduction="<<physics_<<" productionApproved=0"<<endl;
     }
 };
 }

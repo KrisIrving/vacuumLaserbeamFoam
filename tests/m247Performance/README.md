@@ -1,3 +1,21 @@
+## Integrated local conduction and melting/solidification cycle
+
+After updating feat/m247-material-port, run:
+```bash
+./tests/m247Performance/RunRegionalAcceptance --physics
+```
+Builds the native utility, then runs one generated20-step heating/cooling fixture
+in serial and MPI2. Existing pressure, VOF/mass and passive transport gates are
+combined with nonlinear conduction, capacity-weighted melting/solidification,
+energy and unchanged-input gates. No parameter sweep. Build budget300s and
+shared runtime budget600s; always packages one uniquely named
+M247_regional-thermophysics-<timestamp>_review.tar.gz, including incomplete failures.
+
+This is experimental common Ts/Tl equilibrium enthalpy with prescribed heat,
+not the complete LPBF solver. True optics, surface/recoil forces, evaporation,
+thermal feedback into flow and moving/global exchange are still required.
+The old --heat passive transport and --flow cold flow modes remain available.
+
 # M247 mature-state performance pair
 
 Current development step: rebuild and run `RunPhaseBlendProbe`, a default-off continuous phase-temperature override experiment with two transition widths and the hard-rule reference. See [PHASE_BLEND_PROBE.md](PHASE_BLEND_PROBE.md). This changes the mixed-cell closure and remains unapproved; all three runs use matching tight convergence settings and one review archive.

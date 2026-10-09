@@ -1,3 +1,16 @@
+## 2026-10-09: conduction/phase integration checks
+
+Prevented owner-only processor conductivity values: use processor field patches
+and correctBoundaryConditions before every conduction matrix assembly.
+Prevented a false nonlinear PASS when enthalpy is linear but conductivity changes:
+convergence includes relative temperature change as well as energy consistency.
+Prevented gas-only melting acceptance: gate capacity-weighted liquid inventory,
+not temperature extrema. Require actual internal conductive energy redistribution.
+Local analytic check found2e13W/m3 over100us only reaches1628.8787K in pure metal;
+raised manufactured cycle to3e13 to cross liquidus. This is fixture sizing, not
+physical laser calibration. Final equilibrium remap preserves total energy.
+189 tests/Bash syntax pass; native C++ build/run pending, never recorded as PASS.
+
 
 ## 2026-10-09 091028: native local flow PASS; passive thermodynamic transport
 
