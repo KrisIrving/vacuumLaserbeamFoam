@@ -5,6 +5,7 @@
 #include "isoAdvection.H"
 #include "m247LocalProjection.H"
 #include "m247RegionalTransfer.H"
+#include "m247ThermalTransport.H"
 namespace Foam
 {
 inline scalar m247BoundaryFlux(const surfaceScalarField& flux)
@@ -48,6 +49,8 @@ inline void m247LocalFlowAudit(fvMesh& thermal,fvMesh& mesh,Time& time,const dic
     }
     reduce(initialVolume,sumOp<scalar>());
     scalar cumulativeMetalOut=0,maxVolumeResidual=0,maxMassResidual=0;
+    autoPtr<m247ThermalTransport> moments;
+    if(c.getOrDefault<bool>("thermalTransportAudit",false))moments.reset(new m247ThermalTransport(thermal,mesh,time,c));
     time.setDeltaT(dt);alpha.oldTime();rho.oldTime();U.oldTime();
     for(label step=1;step<=steps;++step)
     {
@@ -60,6 +63,7 @@ inline void m247LocalFlowAudit(fvMesh& thermal,fvMesh& mesh,Time& time,const dic
         reduce(courant,maxOp<scalar>());
         if(!std::isfinite(courant)||courant>0.25)FatalErrorInFunction<<"Regional flow Courant guard failed"<<exit(FatalError);
         ++time;
+        if(moments.valid())moments().advance(phi,dt,step);
         advector.advect(zeroField(),zeroField());
         rho=alpha*rm+(1-alpha)*rg;rho.correctBoundaryConditions();
         rhoPhi=advector.getRhoPhi(rm,rg);

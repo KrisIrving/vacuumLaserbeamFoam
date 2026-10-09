@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 MODE=()
 TAG=regional-acceptance
+if [[ "${1:-}" == "--heat" ]]; then MODE=(--heat); TAG=regional-thermal-transport; shift; fi
 if [[ "${1:-}" == "--flow" ]]; then MODE=(--flow); TAG=regional-flow-step; shift; fi
 WORK=${1:-tests/m247Performance/runs/${TAG}-$(date +%Y%m%d-%H%M%S)}
 JOBS=${2:-2}

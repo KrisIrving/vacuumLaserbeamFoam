@@ -1990,5 +1990,41 @@ class RegionalFlowAcceptanceTests(unittest.TestCase):
         parallel['summary']['alphaChangeL1M3']*=2
         with self.assertRaisesRegex(ValueError,'serial/MPI'):compare_flow(serial,parallel)
 
+class RegionalThermalTransportTests(unittest.TestCase):
+    def text(self):
+        return '\n'.join(f'M247_THERMAL_TRANSPORT schema=1 step={i} Tmin=1580 Tmax=1582 initialEnergyJ=3 energyJ={3+i*6e-8} cumulativeBoundaryOutJ=0 cumulativeSourceJ={i*6e-8} residualJ=1e-14 inverseRelativeError=1e-15 phaseRelaxation=0 conduction=0 productionApproved=0' for i in range(1,21))
+
+    def test_energy_source_steps_and_inverse_gates(self):
+        from regional_acceptance import parse_thermal
+        rows=parse_thermal(self.text());self.assertEqual(len(rows),20)
+        self.assertAlmostEqual(rows[-1]['cumulativeSourceJ'],1.2e-6)
+        for bad in (self.text().replace('step=20','step=19'),self.text().replace('inverseRelativeError=1e-15','inverseRelativeError=1e-3'),self.text().replace('conduction=0','conduction=1'),self.text().replace('initialEnergyJ=3','initialEnergyJ=4')):
+            with self.assertRaises(ValueError):parse_thermal(bad)
+
+    def test_latent_reserve_keeps_transport_bounds_without_subtracting_large_energies(self):
+        from regional_enthalpy import CapacityEnthalpy
+        sensible,latent,reserve=2e9,1.2e9,.001
+        closure=CapacityEnthalpy(1537,1631,5e6,6e6,latent+reserve)
+        t=closure.temperature(sensible+latent,latent)
+        self.assertGreater(t,0);self.assertLessEqual(closure.epsilon(latent),1)
+        self.assertAlmostEqual(closure.density(t,latent),sensible+latent,delta=1e-5)
+
+    def test_thermal_fixture_defines_boundary_carriers_and_upwind_flux(self):
+        from regional_acceptance import prepare_thermal_fixture
+        with tempfile.TemporaryDirectory() as folder:
+            case=Path(folder)/'heat';prepare_thermal_fixture(case)
+            for name in ('regionalSensible','regionalLatent','regionalLatentReserve','regionalCs','regionalCl','regionalHeatGain'):
+                self.assertTrue((case/'0/flowRegion'/name).is_file())
+            self.assertIn('thermalTransportAudit true',(case/'constant/regionalTransferDict').read_text())
+            self.assertIn('div(phi,regionalSensible)',(case/'system/flowRegion/fvSchemes').read_text())
+
+    def test_thermal_completion_requires_explicit_transport_gate(self):
+        from regional_acceptance import save,finalize
+        with tempfile.TemporaryDirectory() as folder:
+            work=Path(folder);state=dict(mode='flow',thermal_transport=True,complete=True,stages=[dict(status='complete',returncode=0)],regionalFlow=dict(serial_parallel_gate=True))
+            save(work/'regionalAcceptance.json',state);self.assertEqual(finalize(work,0),1)
+            state['regionalFlow']['thermal_transport_gate']=True
+            save(work/'regionalAcceptance.json',state);self.assertEqual(finalize(work,0),0)
+
 if __name__=='__main__':
     unittest.main()

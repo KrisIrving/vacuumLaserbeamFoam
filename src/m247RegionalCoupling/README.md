@@ -203,3 +203,40 @@ LPBF closure, heat/moment advection compatibility or production speedup.177Pytho
 tests pass; new native time-loop/refactored projection compilation/MPI pending.
 Official isoAdvector alpha and consistent density-flux interfaces:
 https://api.openfoam.com/2512/isoAdvection_8H_source.html
+
+
+## Native cold-flow result; passive moment transport gate
+
+20261009-091028 native build +20steps serial/MPI2 passed, all input hashes unchanged.
+Metal3e-10 ->3.2e-10m3 matches2e-11m3 net inflow; maximum mass residual1.102e-21kg,
+volume residual1.584e-25m3. Alpha roundoff excess<=9.9e-14 falls inside1e-10 gate.
+Runtime0.992s excludes build; no production performance inference from this fixture.
+
+```bash
+./tests/m247Performance/RunRegionalAcceptance --heat
+```
+
+This activates m247ThermalTransport along with the cold-flow loop. Initial coarse
+T/alpha/epsilon create mapped sensible energy, latent inventory, latent reserve,
+and solid/liquid cp-capacity moments. Each carrier uses conservative implicit
+Euler/upwind with the existing divergence-free pre-advection phi. Flux returned by
+each FV matrix supplies its physical boundary ledger (processor faces excluded).
+Latent capacity=inventory+reserve; both are nonnegative transported quantities.
+No fraction clipping or equilibrium reset. Moment capacities are independent of
+isoAdvector's sharper alpha; their physical compatibility remains a later coupled
+thermal/material validation task. Inlet thermodynamic carriers impose metal1580K,
+fully liquid latent state; outlet/walls zeroGradient. Five explicit div scheme keys
+avoid ambiguous regex parentheses in fvSchemes. Prescribed source Q1e7W/m3 adds
+1.2e-6J over20*10us to the6e-10m3 domain. Source changes sensible energy only.
+
+M247_THERMAL_TRANSPORT reports each step's T range, initial/current energy, cumulative
+signed boundary outflow, heat input, residual and inverse error. Collector requires
+20reports, known source integral, field/global energy closure and serial/MPI totals.
+Native source fixture is deliberately NONEQUILIBRIUM; this gate has conduction=0,
+phaseRelaxation=0, no thermal-flow feedback, actual laser/evap/radiation, or moving/
+global energy correction. It validates passive thermodynamic transport only. Do not
+present it as a melting/solidification benchmark or completed regional LPBF solver.
+
+Single archive M247_regional-thermal-transport-<timestamp>_review.tar.gz even on
+failure. Existing300s build +600s shared runtime caps retained; generated smallcase
+only.181Python tests pass; new moment-transport C++ compilation/MPI pendingUbuntu.
