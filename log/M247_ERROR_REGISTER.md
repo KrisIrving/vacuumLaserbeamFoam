@@ -1,3 +1,36 @@
+## 2026-10-09 111021: fix subsetMesh command-line incompatibility (LM02)
+
+Verified all26 review manifest sizes/SHA256 values. Build/reconstruction/native
+initial export/topoSet completed; subsetMesh failed during argument parsing:
+Invalid option: -time. No CFD advanced; source hashes unchanged. This is a
+harness developer error, not a physical instability or Ubuntu setup problem.
+
+Selection now retains604800 of756000 cells (80%), cutting only the cold lower
+reservoir. Active seeds24867, minimum retained y196um with96um padding.
+This establishes20% fewer cells, NOT a measured speedup or physical acceptance.
+The compact domain may have limited gains; do not weaken active/buffer gates.
+
+Remove unsupported -time from subsetMesh. Its input time comes from controlDict
+startFrom=startTime/startTime=0.00018, now checked immediately before cropping.
+Do not replace it with -resultTime (output time only) or unverified -latestTime.
+Keep -patch localCut/-overwrite. OpenCFD2506 source creates a missing named
+patch; actual2512 run and mapped values remain guarded by native audit.
+Capture installed subsetMesh -help-full before preparation and validate required
+options. Include this help log in every review package when present.
+
+204Python regression tests PASS. Checks cover wrong/implicit/nonfinite input
+times and missing required CLI options. Native subset execution still requires
+Ubuntu. Run ONE fresh:
+  git pull --ff-only origin feat/m247-material-port
+  ./tests/m247Performance/RunLocalMeltPair
+The wrapper rebuilds/copies; unchanged180..190us/48ranks/2h per solver budget.
+Send automatic M247_local-melt-pair-<timestamp>_review.tar.gz even on failure.
+No separate small CFD screening or production acceleration claim.
+
+Official source reviewed:
+https://api.openfoam.com/2506/subsetMesh_8C_source.html
+User2512 log is the direct evidence that -time is unsupported.
+
 ## 2026-10-09 101823: real-pair no-reduction selection fixed
 
 Verified17manifest hashes/sizes. Rebuild,180us reconstruction and native CSV

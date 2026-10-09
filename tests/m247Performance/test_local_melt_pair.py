@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 import tempfile
 import unittest
-from local_melt_pair import compare_fields, plan_window, native_snapshot, active
+from local_melt_pair import compare_fields, plan_window, native_snapshot, active, subset_command
 from package_results import package
 
 
@@ -23,6 +23,19 @@ class LocalMeltPairTests(unittest.TestCase):
         self.bounds=dict(xmin=0,xmax=.0002,ymin=0,ymax=.001,zmin=-.001,zmax=.001)
         self.reference=self.root/'reference.csv';self.candidate=self.root/'candidate.csv'
     def tearDown(self):self.temp.cleanup()
+    def test_subset_uses_control_time_without_unsupported_selection_flags(self):
+        cmd=subset_command(self.root,'0.00018','-case dir -patch name -overwrite','startTime;','0.00018;')
+        self.assertNotIn('-time',cmd);self.assertNotIn('-latestTime',cmd);self.assertNotIn('-resultTime',cmd)
+        self.assertEqual(cmd[cmd.index('-patch')+1],'localCut')
+    def test_subset_rejects_wrong_or_implicit_checkpoint_before_mutation(self):
+        for mode,time in [('latestTime','0.00018'),('startTime','0'),('startTime','nan')]:
+            with self.subTest(mode=mode,time=time),self.assertRaises(ValueError):
+                subset_command(self.root,'0.00018','-case dir -patch name -overwrite',mode,time)
+    def test_subset_requires_installed_options_with_exact_option_names(self):
+        for help_text in ('-case dir -patches names -overwrite','-case dir -patch name','-patch name -overwrite'):
+            with self.subTest(help=help_text),self.assertRaises(ValueError):
+                subset_command(self.root,'0.00018',help_text,'startTime','0.00018')
+
     def test_coordinate_order_independent_initial_identity(self):
         data=[cell(.0001),cell(.0002),cell(.0003)]
         write(self.reference,data);write(self.candidate,data[:2][::-1])

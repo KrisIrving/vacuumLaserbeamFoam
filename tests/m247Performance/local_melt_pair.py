@@ -8,6 +8,7 @@ import csv
 import json
 import math
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -144,6 +145,21 @@ def source_digest(source):
     return entries
 
 
+def subset_command(case, checkpoint_name, help_text, start_from, start_time):
+    # subsetMesh reads the controlDict start time; v2512 has no -time option.
+    # -resultTime controls output only and must not select the input checkpoint.
+    for option in ('-case', '-patch', '-overwrite'):
+        if not re.search(r'(?<![\w-])'+re.escape(option)+r'(?![\w-])', help_text):
+            raise ValueError('subsetMesh lacks required option: '+option)
+    if start_from.strip().rstrip(';') != 'startTime':
+        raise ValueError('subsetMesh requires explicit startFrom startTime')
+    value=float(start_time.strip().rstrip(';'))
+    expected=float(checkpoint_name)
+    if not math.isfinite(value) or abs(value-expected)>1e-14:
+        raise ValueError('subsetMesh controlDict startTime differs from checkpoint')
+    return ['subsetMesh','localMeltCells','-case',str(case),'-patch','localCut','-overwrite']
+
+
 def execute(source,work,solver,audit,wall_hours=2):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
     source,work,solver,audit=map(lambda p:Path(p).resolve(),(source,work,solver,audit))
@@ -173,6 +189,8 @@ def execute(source,work,solver,audit,wall_hours=2):
         return native_snapshot((work/(name+'.log')).read_text(encoding='utf-8'),t)
     persist()
     try:
+        stage('subsetMesh_help',['subsetMesh','-help-full'],60)
+        subset_help=(work/'subsetMesh_help.log').read_text(encoding='utf-8')
         before=source_digest(source);save(work/'localMeltSourceHashes.json',before)
         full=work/'fullMelt';local=work/'localMelt'
         meta=prepare(source,full,180,10,'rayTraversalCached',corrected_rays=True)
@@ -199,7 +217,11 @@ def execute(source,work,solver,audit,wall_hours=2):
         selection='FoamFile {version 2.0; format ascii; class dictionary; object topoSetDict;}\nactions ({name localMeltCells; type cellSet; action new; source boxToCell; box '+box+';});\n'
         (local/'system/topoSetDict').write_text(selection,encoding='utf-8',newline='\n');(work/'localMelt_selectionDict').write_text(selection,encoding='utf-8',newline='\n')
         stage('localMelt_select',['topoSet','-case',local,'-time','0.00018','-noFunctionObjects'])
-        stage('localMelt_subset',['subsetMesh','localMeltCells','-case',local,'-time','0.00018','-patch','localCut','-overwrite'])
+        control=local/'system/controlDict'
+        start_values=[subprocess.run(['foamDictionary',str(control),'-entry',entry,'-value'],capture_output=True,text=True,check=True).stdout for entry in ('startFrom','startTime')]
+        command=subset_command(local,meta['checkpoint'],subset_help,*start_values)
+        report['subset_input_time']=dict(startFrom=start_values[0].strip(),startTime=start_values[1].strip(),checkpoint=meta['checkpoint']);persist()
+        stage('localMelt_subset',command)
         for field,kind in (('T','fixedValue'),('U','fixedValue'),('alpha.metal','fixedValue'),('epsilon1','fixedValue'),('p_rgh','fixedFluxPressure')):
             p=local/meta['checkpoint']/field
             # Preserve native-mapped nonuniform checkpoint patch value. Never invent zero.
