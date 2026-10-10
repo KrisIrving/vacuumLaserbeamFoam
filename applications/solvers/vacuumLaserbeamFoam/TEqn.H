@@ -11,6 +11,22 @@
     rhoCp = rho*cp;
     rhophicp = fvc::interpolate(cp)*rhoPhi;
 
+    // rhoCp/rhophicp are assigned above and stay fixed through this corrector
+    // loop. Cache only their explicit transport correction, never T-dependent
+    // radiation, evaporation, damping, or latent-heat terms.
+    const bool thermalInvariantCache =
+        runTime.controlDict().getOrDefault<bool>("thermalInvariantCache", false);
+    autoPtr<volScalarField> thermalTransportCorrection;
+    if (thermalInvariantCache)
+    {
+        thermalTransportCorrection.reset
+        (
+            new volScalarField(fvc::ddt(rhoCp) + fvc::div(rhophicp))
+        );
+    }
+    Info<< "THERMAL_INVARIANT_CACHE schema=1 time=" << runTime.value()
+        << " enabled=" << label(thermalInvariantCache) << endl;
+
     if (boundedEnthalpyCorrection)
     {
         label invalid = 0;
@@ -89,7 +105,9 @@
             (
                 fvm::ddt(rhoCp,T)
               + fvm::div(rhophicp, T)
-              - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
+              - (thermalInvariantCache
+                ? fvm::Sp(thermalTransportCorrection(), T)
+                : fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T))
               - fvm::laplacian(kappa, T)
               + fvm::Sp(tRadImplicit()*interfaceDelta, T)
               //- (tau && gradU) // Viscous dissipation
@@ -111,7 +129,9 @@
             (
                 fvm::ddt(rhoCp,T)
               + fvm::div(rhophicp, T)
-              - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T)
+              - (thermalInvariantCache
+                ? fvm::Sp(thermalTransportCorrection(), T)
+                : fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhophicp), T))
               - fvm::laplacian(kappa, T)
               //- (tau && gradU) // Viscous dissipation
              ==

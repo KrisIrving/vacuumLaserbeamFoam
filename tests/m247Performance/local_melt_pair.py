@@ -177,15 +177,25 @@ def cut_initialization_gate(text,faces):
     return records[0]
 
 
-def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False):
+def cache_equivalence_gate(report):
+    return (report['measurement_quality_gate']
+        and all(v['max_abs']==0 for snapshot in report['field_comparisons'].values() for v in snapshot['fields'].values())
+        and all(x['absolute_difference']==0 for x in report['diagnostic_differences'])
+        and report['fullMelt']['performance']['steps']==report['localMelt']['performance']['steps']
+        and report['fullMelt']['performance']['thermal_correctors_per_step']==report['localMelt']['performance']['thermal_correctors_per_step'])
+
+
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
-    if refresh_pair:prepared_local=source
+    if refresh_pair and thermal_cache_pair:raise ValueError("Select only one full-domain experiment")
+    full_domain_pair=refresh_pair or thermal_cache_pair
+    if full_domain_pair:prepared_local=source
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
     solver,audit=Path(solver).resolve(),Path(audit).resolve()
     if prepared_local is not None:
         prepared_local,_=resolved_case_paths(prepared_local,work)
-        if prepared_local==source and not refresh_pair:raise ValueError("Full and local input paths resolve to the same case")
+        if prepared_local==source and not full_domain_pair:raise ValueError("Full and local input paths resolve to the same case")
     if not math.isfinite(wall_hours) or not 0<wall_hours<=4:raise ValueError('Per-case wall hours must be in(0,4]')
     if (work/'localMeltPairReview.json').exists():raise ValueError('Fresh work required')
     work.mkdir(parents=True,exist_ok=True)
@@ -197,6 +207,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
     if refresh_pair:
         report['comparison_kind']='same full mesh/partition; bounded laser refresh vs every-call optics'
         report['approximation']='Candidate holds deposition between guarded updates(interval2,age25ns,alphaChange0.1,motion0.25cells); all CFD/thermal steps retained. Default baseline interval1.'
+    if thermal_cache_pair:
+        report['comparison_kind']='same full mesh/partition; invariant thermal coefficient cache'
+        report['approximation']='None intended: every-step laser, original thermal residuals/cap; only fixed explicit coefficient reused within each TEqn call.'
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
         command=list(map(str,command));row=dict(name=name,command=command,status='running');report['commands'].append(row);persist()
@@ -232,8 +245,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                 if (dst/'constant/dynamicMeshDict').exists():raise ValueError('Fixed prepared mesh required')
                 for k,v in dict(startFrom='startTime',startTime='.00018',stopAt='endTime',endTime='.00019',writeControl='adjustableRunTime',writeInterval='5e-6',purgeWrite=0,writePrecision=17,writeCompression='off',writeFormat='ascii',localMeltBoundaryAudit='true').items():
                     set_entry(dst/'system/controlDict',k,v)
-                if refresh_pair:
-                    for k,v in dict(laserRefreshIntervalSteps=1 if dst==full else 2,laserRefreshMaxAge='25e-9',laserRefreshMaxAlphaChange='.1',laserRefreshMaxCellDisplacement='.25').items():
+                if full_domain_pair:
+                    set_entry(dst/'system/controlDict','thermalInvariantCache','true' if thermal_cache_pair and dst==local else 'false')
+                    for k,v in dict(laserRefreshIntervalSteps=2 if refresh_pair and dst==local else 1,laserRefreshMaxAge='25e-9',laserRefreshMaxAlphaChange='.1',laserRefreshMaxCellDisplacement='.25').items():
                         set_entry(dst/'system/controlDict',k,v)
             # Require identical physics/numerical input settings, allowing only
             # additional preparation dictionaries in the local system directory.
@@ -243,8 +257,8 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             for name in ('fvSolution','fvSchemes'):
                 if sha(full/'system'/name)!=sha(local/'system'/name):raise ValueError('Prepared numerical settings differ: '+name)
             initial=export(full,'fullMelt_initial',.00018)
-            mapped=export(local,'localMelt_initial',.00018,verify=not refresh_pair)
-            if initial['cells']!=756000 or mapped['cells']!=(756000 if refresh_pair else 604800) or mapped['cutFaces']!=(0 if refresh_pair else 6300) or mapped['activeCutFaces']:
+            mapped=export(local,'localMelt_initial',.00018,verify=not full_domain_pair)
+            if initial['cells']!=756000 or mapped['cells']!=(756000 if full_domain_pair else 604800) or mapped['cutFaces']!=(0 if full_domain_pair else 6300) or mapped['activeCutFaces']:
                 raise ValueError('Prepared full/local mesh or cold-cut mismatch')
             b={k:mapped[k] for k in ('xmin','xmax','ymin','ymax','zmin','zmax')}
             report['window']=dict(bounds=b,selected_cells=mapped['cells'],prepared_input=str(prepared_local))
@@ -310,11 +324,11 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                 if p.is_dir() and p.name.startswith('processor') and p.name[9:].isdigit():shutil.rmtree(p)
             set_entry(case/'system/decomposeParDict','numberOfSubdomains','48');set_entry(case/'system/decomposeParDict','method','scotch')
             stage(variant+'_decompose',['decomposePar','-case',case,'-time','0.00018','-noFunctionObjects'])
-            if refresh_pair and variant=='localMelt':
+            if full_domain_pair and variant=='localMelt':
                 addresses=[]
                 for rank in range(48):
                     name=f'processor{rank}/constant/polyMesh/cellProcAddressing'
-                    if sha(full/name)!=sha(local/name):raise ValueError('Laser refresh pair decomposition differs on rank'+str(rank))
+                    if sha(full/name)!=sha(local/name):raise ValueError('Full-domain pair decomposition differs on rank'+str(rank))
                     addresses.append(sha(full/name))
                 report['identical_cell_partition_sha256']=addresses
                 persist()
@@ -330,9 +344,15 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                 shutil.copyfile(work/(variant+'_solver.log'),case/'log.vacuumLaserbeamFoam')
             _,summary,diagnostics=read_probe(case)
             report[variant]=dict(performance=summary,diagnostics=diagnostics,thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,md,summary['steps']))
-            if refresh_pair:
+            if full_domain_pair:
                 from laser_refresh_review import collect_refresh
-                report[variant]['laser_refresh']=collect_refresh(case,md,summary,1 if variant=='fullMelt' else 2)
+                report[variant]['laser_refresh']=collect_refresh(case,md,summary,2 if refresh_pair and variant=='localMelt' else 1)
+            if thermal_cache_pair:
+                cached=parse_records((case/'log.vacuumLaserbeamFoam').read_text(encoding='utf-8'),'THERMAL_INVARIANT_CACHE')
+                expected=int(variant=='localMelt')
+                if len(cached)!=summary['steps'] or any(x.get('schema')!=1 or x.get('enabled')!=expected for x in cached):
+                    raise ValueError('Missing/mismatched thermal cache diagnostics')
+                report[variant]['thermal_cache_records']=len(cached)
             persist()
             stage(variant+'_reconstructFinal',['reconstructPar','-case',case,'-time','0.000185,0.00019','-noFunctionObjects'])
             report[variant]['snapshots']=[export(case,variant+'_'+label,t) for label,t in (('mid',.000185),('final',.00019))]
@@ -342,14 +362,14 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
         report['field_comparisons']={label:compare_fields(work/('fullMelt_'+label+'.csv'),work/('localMelt_'+label+'.csv'),b) for label in ('mid','final')}
         a,c=report['fullMelt'],report['localMelt'];ad,cd=a['diagnostics'],c['diagnostics']
         if len(ad)!=len(cd) or any(abs(x['time']-y['time'])>1e-12 for x,y in zip(ad,cd)):raise ValueError('Physical sample times differ')
-        report['diagnostic_scope_note']='Tmax/Umax/powers are whole respective domains; interface area and other integrated quantities change with crop extent. Same-ROI field/inventory comparisons are authoritative for retained material.'
+        report['diagnostic_scope_note']=('All diagnostics compare identical full domains.' if full_domain_pair else 'Tmax/Umax/powers are whole respective domains; interface area and other integrated quantities change with crop extent. Same-ROI field/inventory comparisons are authoritative for retained material.')
         report['diagnostic_differences']=[dict(time=x['time'],metric=k,reference=x[k],candidate=y[k],absolute_difference=abs(y[k]-x[k]),relative_difference=abs(y[k]-x[k])/abs(x[k]) if x[k] else None) for x,y in zip(ad,cd) for k in METRICS]
         report['cost']=dict(solver_wall_speedup=a['performance']['job_wall_s']/c['performance']['job_wall_s'],
             loop_speedup=a['performance']['interval_rank_max_sum_s']/c['performance']['interval_rank_max_sum_s'],
-            note='Same48ranks/resolution/physical duration; solver wall includes initialization and writes. Prep/build/postprocess separately timed. Fixed crop excludes future global-thermal/moving costs.')
+            note='Same48ranks/resolution/physical duration; solver wall includes initialization and writes. Prep/build/postprocess separately timed. No global-thermal/moving cost measured.')
         boundary=parse_records((local/'log.vacuumLaserbeamFoam').read_text(encoding='utf-8'),'M247_LOCAL_MELT_BOUNDARY')
         required=('schema','time','cutFaces','activeCutFaces','cutMetalTmax','cutMetalEpsilonMax','cutUmax','cutNetFluxM3PerS','productionApproved')
-        if refresh_pair:
+        if full_domain_pair:
             report['boundary']=dict(active_material_clear=True,note='No cut boundary: identical full domains; no regional acceptance claim')
         else:
             if len(boundary)!=c['performance']['steps'] or any(any(k not in r for k in required) or r['schema']!=1 or r['cutFaces']<=0 for r in boundary):raise ValueError('Missing per-step cut-boundary audit')
@@ -365,6 +385,8 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             depth_difference_um=float(c['keyhole_depth_um'])-float(a['keyhole_depth_um']),reference_connected=a['surface_connected'],candidate_connected=c['surface_connected'],
             reference_bottom_support=int(a['bottom_support_vertices']),candidate_bottom_support=int(c['bottom_support_vertices'])) for a,c in zip(*keyhole)]
         report['measurement_quality_gate']=report['fullMelt']['thermal_gate'] and report['localMelt']['thermal_gate'] and report['boundary']['active_material_clear'] and all(r['reference_connected']==r['candidate_connected']=='yes' and r['reference_bottom_support']>0 and r['candidate_bottom_support']>0 for r in report['keyhole_comparisons'])
+        if thermal_cache_pair:
+            report['thermal_cache_equivalence_gate']=cache_equivalence_gate(report)
         report['source_unchanged']=source_digest(source)==before and (prepared_local is None or source_digest(prepared_local)==local_before)
         if not report['source_unchanged']:raise ValueError('Source inputs changed')
         report['complete']=True
@@ -378,9 +400,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true')
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true')
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 
