@@ -41,3 +41,23 @@ including any failure. Normal completion, no timeout/kill/wclean/rebuild. Baseli
 ~27minutes; pair anticipated~45minutes plus preparation/localization, no timing
 guarantee. With optical51.7% of total, quarter optical cost alone would yield
 ~1.63x overall speed, not4x. This is a conditional estimate, not measured speed.
+
+## 20261010-202035 measured result and next stage
+
+10us pair:1735.52->1052.49s,1.649x; laser857.50->220.95s. User budget passes
+at185/190us. Final depth0.779%, liquid inventory0.0105%,Tmax5.331% differences.
+Local interface T errors still exceed2000K; accepted macro metrics do not
+establish local field accuracy. Native384-ray candidate is now a measured
+accelerator, pending longer validation. No smaller sampling sweep requested.
+
+```bash
+git pull --ff-only origin feat/m247-material-port
+bash tests/m247Performance/RunRaySamplingLongPair
+```
+
+Runs180..200us20us same-checkpoint pair with190/200us outputs and the SAME
+384-ray setting/budget. No rebuild. Expected~90minutes plus preparation and
+localization; one M247_ray-sampling-long-pair-*_review.tar.gz. Ends at current
+laser-path/power table endpoint200us. It does not extend clamped350W into
+cooling; an explicit beam-off protocol is needed for the later solidification
+stage. This is still8um validation,not24h4um or full1.5..2mm production approval.

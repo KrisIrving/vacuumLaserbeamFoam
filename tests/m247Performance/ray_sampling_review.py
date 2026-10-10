@@ -12,7 +12,7 @@ def validate_ray_count(profile,updates,rays):
 
 def error_summary(report):
     snapshots=[]
-    for label,time in (('mid',.000185),('final',.00019)):
+    for label,time in zip(('mid','final'),report.get('sample_times_s',(.000185,.00019))):
         inventory=report['field_comparisons'][label]['inventories']
         a=inventory['reference']['liquid_volume_m3'];b=inventory['candidate']['liquid_volume_m3']
         depth=next(x for x in report['keyhole_comparisons'] if abs(x['time_s']-time)<1e-12)

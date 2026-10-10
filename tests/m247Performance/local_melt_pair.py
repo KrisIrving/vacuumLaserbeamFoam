@@ -185,10 +185,14 @@ def cache_equivalence_gate(report):
         and report['fullMelt']['performance']['thermal_correctors_per_step']==report['localMelt']['performance']['thermal_correctors_per_step'])
 
 
-def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False,packed_pair=False,sampling_pair=False):
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False,packed_pair=False,sampling_pair=False,sampling_long=False):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
     if sum((refresh_pair,thermal_cache_pair,packed_pair,sampling_pair))>1:raise ValueError("Select only one full-domain experiment")
     full_domain_pair=refresh_pair or thermal_cache_pair or packed_pair or sampling_pair
+    if sampling_long and not sampling_pair:raise ValueError('Long sampling schedule requires sampling experiment')
+    end_s=.0002 if sampling_long else .00019
+    sample_times=(.00019,.0002) if sampling_long else (.000185,.00019)
+    sample_arg=','.join(f'{t:.12g}' for t in sample_times)
     if full_domain_pair:prepared_local=source
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
@@ -200,7 +204,7 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
     if (work/'localMeltPairReview.json').exists():raise ValueError('Fresh work required')
     work.mkdir(parents=True,exist_ok=True)
     report=dict(schema=1,complete=False,production_approved=False,commands=[],source=str(source),
-        solver_sha256=sha(solver),audit_sha256=sha(audit),start_s=.00018,end_s=.00019,ranks=48,
+        solver_sha256=sha(solver),audit_sha256=sha(audit),start_s=.00018,end_s=end_s,sample_times_s=sample_times,ranks=48,
         input_paths=dict(source_argument=source_alias,source_resolved=str(source),work_argument=work_alias,work_resolved=str(work)),
         approximation='Fixed crop; T/alpha/epsilon/U cut values held from native checkpoint owner cells, fixedFluxPressure p_rgh. No advancing global thermal reservoir or moving handoff.',
         wall_hours_per_case=None,process_policy="Foreground normal completion; no automatic timeout or kill")
@@ -244,12 +248,13 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             meta=json.loads((source/'probe.json').read_text(encoding='utf-8'))
             if meta.get('ranks')!=48 or abs(meta.get('start_s',0)-.00018)>1e-14 or abs(meta.get('end_s',0)-.00019)>1e-14:
                 raise ValueError('Prepared full-case metadata must describe180..190us/48ranks')
+            meta=dict(meta,end_s=end_s,duration_us=20 if sampling_long else 10)
             for src,dst in ((source,full),(prepared_local,local)):
                 dst.mkdir()
                 for item in ('constant','system','0.00018'):
                     shutil.copytree(src/item,dst/item)
                 if (dst/'constant/dynamicMeshDict').exists():raise ValueError('Fixed prepared mesh required')
-                for k,v in dict(startFrom='startTime',startTime='.00018',stopAt='endTime',endTime='.00019',writeControl='adjustableRunTime',writeInterval='5e-6',purgeWrite=0,writePrecision=17,writeCompression='off',writeFormat='ascii',localMeltBoundaryAudit='true').items():
+                for k,v in dict(startFrom='startTime',startTime='.00018',stopAt='endTime',endTime=f'{end_s:.12g}',writeControl='adjustableRunTime',writeInterval='10e-6' if sampling_long else '5e-6',purgeWrite=0,writePrecision=17,writeCompression='off',writeFormat='ascii',localMeltBoundaryAudit='true').items():
                     set_entry(dst/'system/controlDict',k,v)
                 if full_domain_pair:
                     set_entry(dst/'system/controlDict','thermalInvariantCache','true' if thermal_cache_pair and dst==local else 'false')
@@ -416,9 +421,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                     raise ValueError('Missing/mismatched thermal cache diagnostics')
                 report[variant]['thermal_cache_records']=len(cached)
             persist()
-            stage(variant+'_reconstructFinal',['reconstructPar','-case',case,'-time','0.000185,0.00019','-noFunctionObjects'])
-            report[variant]['snapshots']=[export(case,variant+'_'+label,t) for label,t in (('mid',.000185),('final',.00019))]
-            stage(variant+'_interface',['postProcess','-case',case,'-fields','(alpha.metal)','-dict',ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/system/movingKeyholeInterfaceDict','-time','0.000185,0.00019'])
+            stage(variant+'_reconstructFinal',['reconstructPar','-case',case,'-time',sample_arg,'-noFunctionObjects'])
+            report[variant]['snapshots']=[export(case,variant+'_'+label,t) for label,t in zip(('mid','final'),sample_times)]
+            stage(variant+'_interface',['postProcess','-case',case,'-fields','(alpha.metal)','-dict',ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/system/movingKeyholeInterfaceDict','-time',sample_arg])
             stage(variant+'_keyhole',['python3',script,'--post-processing',case/'postProcessing/movingKeyholeInterface','--laser-path',case/'constant/timeVsLaserPosition','--surface-y','600e-6','--surface-band','8e-6','--trailing-window','160e-6','--forward-window','80e-6','--half-width-z','100e-6','--output',work/(variant+'_keyhole.csv')])
             persist()
         report['field_comparisons']={label:compare_fields(work/('fullMelt_'+label+'.csv'),work/('localMelt_'+label+'.csv'),b) for label in ('mid','final')}
@@ -441,7 +446,7 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
         for variant in ('fullMelt','localMelt'):
             with (work/(variant+'_keyhole.csv')).open(encoding='utf-8',newline='') as f:
                 samples=list(csv.DictReader(f))
-            if len(samples)!=2 or any(abs(float(r['time_s'])-t)>1e-12 for r,t in zip(samples,(.000185,.00019))):raise ValueError('Incomplete keyhole sample times')
+            if len(samples)!=2 or any(abs(float(r['time_s'])-t)>1e-12 for r,t in zip(samples,sample_times)):raise ValueError('Incomplete keyhole sample times')
             keyhole.append(samples)
         report['keyhole_comparisons']=[dict(time_s=float(a['time_s']),reference_depth_um=float(a['keyhole_depth_um']),candidate_depth_um=float(c['keyhole_depth_um']),
             depth_difference_um=float(c['keyhole_depth_um'])-float(a['keyhole_depth_um']),reference_connected=a['surface_connected'],candidate_connected=c['surface_connected'],
@@ -472,9 +477,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true');p.add_argument('--packed-ray-pair',action='store_true');p.add_argument('--ray-sampling-pair',action='store_true')
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true');p.add_argument('--packed-ray-pair',action='store_true');p.add_argument('--ray-sampling-pair',action='store_true');p.add_argument('--ray-sampling-long-pair',action='store_true')
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair,a.packed_ray_pair,a.ray_sampling_pair)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair,a.packed_ray_pair,a.ray_sampling_pair or a.ray_sampling_long_pair,a.ray_sampling_long_pair)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 
