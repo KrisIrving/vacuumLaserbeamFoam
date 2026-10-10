@@ -63,7 +63,8 @@ BUILD_FILES += tuple(f'{variant}_{suffix}' for variant in ('regionalGain','regio
     ('thermalRegion_blockMesh.log','flowRegion_blockMesh.log','setFields.log','serial.log',
      'decompose.log','parallel.log','inputHashes.json','parallelInputHashes.json','fixtureInputs.json'))
 
-BUILD_FILES += ('localMeltLocalization.json',)
+BUILD_FILES += ('localMeltLocalization.json','rayWireCheck.log')
+BUILD_FILES += tuple(f'{variant}_{stage}.log' for variant in ('fullMelt','localMelt') for stage in ('frozenCapture','frozenTrace','frozenReconstruct'))
 BUILD_FILES += ('localMeltAudit_help.log','localMelt_initializeCut.log','subsetMesh_help.log','localMeltPairReview.json','localMeltPairStatus.json','localMeltSourceHashes.json','localMelt_selectionDict','localMeltPairBinary.txt')
 BUILD_FILES += tuple(f'{variant}_{stage}.log' for variant in ('fullMelt','localMelt') for stage in
     ('reconstructInitial','initial','select','subset','checkMesh','decompose','solver','reconstructFinal','mid','final','interface','keyhole'))

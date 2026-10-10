@@ -1,0 +1,46 @@
+#!/bin/bash
+# Same full mesh/partition; bit-preserving optical broadcast, every-step optics.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947/fullMelt}
+JOBS=${2:-8}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "Positive build jobs required"; exit 1; }
+[[ -d "$SOURCE/0.00018" && -f "$SOURCE/probe.json" ]] || { echo "Missing prepared full reference: $SOURCE"; exit 1; }
+for tool in python3 foamDictionary checkMesh decomposePar reconstructPar postProcess mpirun wmake; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
+done
+WORK=tests/m247Performance/runs/packed-ray-pair-$(date +%Y%m%d-%H%M%S)
+mkdir "$WORK"
+WORK=$(cd "$WORK" && pwd -P)
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+printf 'Same full756000cell case,180..190us48ranks; every-step optics; baseline streamed broadcast/candidate packed broadcast.\nNo automatic timeout or kill. Numerical equivalence and speed pending validation.\n' > "$WORK/buildEnvironment.txt"
+git rev-parse HEAD >> "$WORK/buildEnvironment.txt"
+# Rebuild only changed optics library, dependent solver, and native wire checker.
+(cd src/laserHeatSource && wmakeLnInclude -u . && test -r lnInclude/packedRayBroadcast.H && wmake -j "$JOBS" libso) 2>&1 | tee "$WORK/build.log"
+(cd applications/solvers/vacuumLaserbeamFoam && wmake -j "$JOBS") 2>&1 | tee -a "$WORK/build.log"
+(cd tests/m247Performance/rayWireCheck && wmake -j "$JOBS") 2>&1 | tee -a "$WORK/build.log"
+SOLVER=${FOAM_USER_APPBIN:?}/vacuumLaserbeamFoam
+AUDIT=$FOAM_USER_APPBIN/m247LocalMeltAudit
+sha256sum "$SOLVER" "$AUDIT" "${FOAM_USER_LIBBIN:?}/liblaserHeatSource.so" > "$WORK/localMeltPairBinary.txt"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 - "$FOAM_USER_LIBBIN/liblaserHeatSource.so" <<'PY'
+from pathlib import Path
+import sys
+if b'PACKED_RAY_BROADCAST schema=1 enabled=' not in Path(sys.argv[1]).read_bytes():
+    raise SystemExit('Rebuilt solver lacks packed ray diagnostics; no CFD launched')
+PY
+mpirun -np 48 "$FOAM_USER_APPBIN/m247RayWireCheck" -case "$SOURCE" -parallel 2>&1 | tee "$WORK/rayWireCheck.log"
+python3 - "$WORK/rayWireCheck.log" <<'PYCHECK'
+from pathlib import Path
+import sys
+import re
+if len(re.findall(r'^RAY_WIRE_CHECK schema=1 ranks=48 cases=4 failures=0$',Path(sys.argv[1]).read_text(),re.M))!=1:
+    raise SystemExit('Missing native MPI wire roundtrip PASS; no CFD launched')
+PYCHECK
+python3 tests/m247Performance/local_melt_pair.py --source "$SOURCE" --packed-ray-pair --work "$WORK" --solver "$SOLVER" --audit "$AUDIT" 2>&1 | tee "$WORK/collection.log"

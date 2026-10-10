@@ -185,10 +185,10 @@ def cache_equivalence_gate(report):
         and report['fullMelt']['performance']['thermal_correctors_per_step']==report['localMelt']['performance']['thermal_correctors_per_step'])
 
 
-def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False):
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False,packed_pair=False):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
-    if refresh_pair and thermal_cache_pair:raise ValueError("Select only one full-domain experiment")
-    full_domain_pair=refresh_pair or thermal_cache_pair
+    if sum((refresh_pair,thermal_cache_pair,packed_pair))>1:raise ValueError("Select only one full-domain experiment")
+    full_domain_pair=refresh_pair or thermal_cache_pair or packed_pair
     if full_domain_pair:prepared_local=source
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
@@ -210,6 +210,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
     if thermal_cache_pair:
         report['comparison_kind']='same full mesh/partition; invariant thermal coefficient cache'
         report['approximation']='None intended: every-step laser, original thermal residuals/cap; only fixed explicit coefficient reused within each TEqn call.'
+    if packed_pair:
+        report['comparison_kind']='same full mesh/partition; packed ray broadcast'
+        report['approximation']='None intended: unchanged gather/order/tracing/deposition/termination, every-step optics; only final broadcast payload representation differs.'
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
         command=list(map(str,command));row=dict(name=name,command=command,status='running');report['commands'].append(row);persist()
@@ -249,11 +252,19 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                     set_entry(dst/'system/controlDict','thermalInvariantCache','true' if thermal_cache_pair and dst==local else 'false')
                     for k,v in dict(laserRefreshIntervalSteps=2 if refresh_pair and dst==local else 1,laserRefreshMaxAge='25e-9',laserRefreshMaxAlphaChange='.1',laserRefreshMaxCellDisplacement='.25').items():
                         set_entry(dst/'system/controlDict',k,v)
+                if packed_pair:
+                    set_entry(dst/'constant/LaserProperties','recordRayPaths','false')
+                    set_entry(dst/'constant/LaserProperties','packedRayBroadcast','true' if dst==local else 'false')
+                    set_entry(dst/'system/controlDict','frozenLaserProbe','off')
             # Require identical physics/numerical input settings, allowing only
             # additional preparation dictionaries in the local system directory.
             for path in (full/'constant').iterdir():
                 if path.is_file() and (not (local/'constant'/path.name).is_file() or sha(path)!=sha(local/'constant'/path.name)):
-                    raise ValueError('Prepared constant settings differ: '+path.name)
+                    if packed_pair and path.name=='LaserProperties':
+                        from packed_broadcast_review import normalized_optical_settings
+                        if normalized_optical_settings(path.read_text())!=normalized_optical_settings((local/'constant'/path.name).read_text()):
+                            raise ValueError('Optical physics settings differ beyond payload switch')
+                    else:raise ValueError('Prepared constant settings differ: '+path.name)
             for name in ('fvSolution','fvSchemes'):
                 if sha(full/'system'/name)!=sha(local/'system'/name):raise ValueError('Prepared numerical settings differ: '+name)
             initial=export(full,'fullMelt_initial',.00018)
@@ -313,7 +324,18 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             if mapped['cells']!=plan['selected_cells'] or not mapped['cutFaces']:raise ValueError('Subset geometry/count mismatch')
             if mapped['activeCutFaces']:raise ValueError('Initial crop cuts active metal; safe window rejected before CFD')
             report['initial_field_match']=compare_fields(work/'fullMelt_initial.csv',work/'localMelt_initial.csv',b,initial=True);persist()
-        for variant,case in (('fullMelt',full),('localMelt',local)):
+        if packed_pair:
+            from collect_thermal_validation import field_differences
+            from packed_broadcast_review import frozen_trace,require_exact_fields,validate_mode,require_same_work
+            inputs=('frozenAlphaInput','frozenNormalInput','frozenResistivityInput')
+            for variant,case in (('fullMelt',full),('localMelt',local)):
+                set_entry(case/'system/controlDict','frozenLaserProbe','capture')
+                stage(variant+'_frozenCapture',[solver,'-case',case])
+                set_entry(case/'system/controlDict','frozenLaserProbe','trace')
+            frozen_inputs=field_differences(full,local,None,.00018,field_names=inputs,vector_fields=('frozenNormalInput',))
+            require_exact_fields(frozen_inputs)
+            report['frozen_broadcast_preflight']=dict(inputs=frozen_inputs,traces={},passed=False);persist()
+        def decompose_case(variant,case):
             stage(variant+'_checkMesh',['checkMesh','-case',case,'-time','0.00018','-allTopology','-allGeometry','-noFunctionObjects'])
             mesh_text=(work/(variant+'_checkMesh.log')).read_text(encoding='utf-8')
             mesh_ok(mesh_text)
@@ -332,6 +354,26 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                     addresses.append(sha(full/name))
                 report['identical_cell_partition_sha256']=addresses
                 persist()
+        if packed_pair:
+            for variant,case in (('fullMelt',full),('localMelt',local)):
+                decompose_case(variant,case)
+                cmd=['mpirun','-np','48',solver,'-case',case,'-parallel']
+                if packed_pair:
+                    stage(variant+'_frozenTrace',cmd)
+                    report['frozen_broadcast_preflight']['traces'][variant]=frozen_trace((work/(variant+'_frozenTrace.log')).read_text(),variant=='localMelt')
+                    stage(variant+'_frozenReconstruct',['reconstructPar','-case',case,'-time','0.00018','-fields','(Deposition rayQ)','-noFunctionObjects'])
+                    set_entry(case/'system/controlDict','frozenLaserProbe','off')
+                    if variant=='localMelt':
+                        outputs=field_differences(full,local,None,.00018,field_names=('Deposition','rayQ'),vector_fields=())
+                        require_exact_fields(outputs)
+                        traces=report['frozen_broadcast_preflight']['traces']
+                        require_same_work(traces['fullMelt']['profile'],traces['localMelt']['profile'])
+                        if traces['fullMelt']['diagnostics']['depositedPower']!=traces['localMelt']['diagnostics']['depositedPower']:
+                            raise ValueError('Frozen deposited powers differ')
+                        report['frozen_broadcast_preflight'].update(outputs=outputs,passed=True)
+                    persist()
+        for variant,case in (('fullMelt',full),('localMelt',local)):
+            if not packed_pair:decompose_case(variant,case)
             md=dict(meta,variant=variant,window_bounds=b,cut_boundary_policy=report['approximation']);save(case/'probe.json',md)
             cmd=['mpirun','-np','48',solver,'-case',case,'-parallel']
             started=time.monotonic()
@@ -347,6 +389,8 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             if full_domain_pair:
                 from laser_refresh_review import collect_refresh
                 report[variant]['laser_refresh']=collect_refresh(case,md,summary,2 if refresh_pair and variant=='localMelt' else 1)
+            if packed_pair:
+                validate_mode((case/'log.vacuumLaserbeamFoam').read_text(),variant=='localMelt')
             if thermal_cache_pair:
                 cached=parse_records((case/'log.vacuumLaserbeamFoam').read_text(encoding='utf-8'),'THERMAL_INVARIANT_CACHE')
                 expected=int(variant=='localMelt')
@@ -387,6 +431,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
         report['measurement_quality_gate']=report['fullMelt']['thermal_gate'] and report['localMelt']['thermal_gate'] and report['boundary']['active_material_clear'] and all(r['reference_connected']==r['candidate_connected']=='yes' and r['reference_bottom_support']>0 and r['candidate_bottom_support']>0 for r in report['keyhole_comparisons'])
         if thermal_cache_pair:
             report['thermal_cache_equivalence_gate']=cache_equivalence_gate(report)
+        if packed_pair:
+            report['packed_broadcast_equivalence_gate']=(cache_equivalence_gate(report) and report['frozen_broadcast_preflight']['passed']
+                and report['fullMelt']['laser_refresh']['optics']['counts']==report['localMelt']['laser_refresh']['optics']['counts'])
         report['source_unchanged']=source_digest(source)==before and (prepared_local is None or source_digest(prepared_local)==local_before)
         if not report['source_unchanged']:raise ValueError('Source inputs changed')
         report['complete']=True
@@ -400,9 +447,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true')
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true');p.add_argument('--packed-ray-pair',action='store_true')
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair,a.packed_ray_pair)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 

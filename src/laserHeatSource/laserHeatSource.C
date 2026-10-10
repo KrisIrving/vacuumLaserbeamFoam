@@ -21,6 +21,7 @@ License
 #include "fvc.H"
 #include "constants.H"
 #include "findLocalCell.H"
+#include "packedRayBroadcast.H"
 #include "SortableList.H"
 #include "globalIndex.H"
 
@@ -378,6 +379,7 @@ laserHeatSource::laserHeatSource
       : lookupOrDefault<Switch>("Radial_Polar_HS", true)
     ),
     recordRayPaths_(lookupOrDefault<Switch>("recordRayPaths", true)),
+    packedRayBroadcast_(lookupOrDefault<Switch>("packedRayBroadcast", false)),
     cachedRayTraversal_(lookupOrDefault<Switch>("cachedRayTraversal", false)),
     cartesianRaySeedSearch_(lookupOrDefault<Switch>("cartesianRaySeedSearch", false)),
     preserveRayHandoffSample_(lookupOrDefault<Switch>("preserveRayHandoffSample", false)),
@@ -392,6 +394,11 @@ laserHeatSource::laserHeatSource
     globalBB_(mesh.bounds())  // Initialize with local bounds first
 {
     Info<< "radialPolarHeatSource = " << radialPolarHeatSource_ << endl;
+    Info<< "PACKED_RAY_BROADCAST schema=1 enabled="
+        << label(packedRayBroadcast_) << endl;
+    if (packedRayBroadcast_ && recordRayPaths_)
+        FatalErrorInFunction << "packedRayBroadcast requires recordRayPaths false"
+            << exit(FatalError);
     Info<< "RAY_TRAVERSAL_DIAGNOSTICS schema=1 cached="
         << label(cachedRayTraversal_) << endl;
     Info<< "CARTESIAN_SEED_DIAGNOSTICS schema=1 enabled="
@@ -1301,7 +1308,8 @@ void laserHeatSource::updateDeposition
         Pstream::combineGather(remainingGlobalRays, combineRayLists(&laserProfiler_));
         laserProfiler_.stopDetail(laserPerformance::gather);
         laserProfiler_.startDetail(laserPerformance::broadcast);
-        Pstream::broadcast(remainingGlobalRays);
+        if (packedRayBroadcast_) broadcastPackedRays(remainingGlobalRays);
+        else Pstream::broadcast(remainingGlobalRays);
         laserProfiler_.stopDetail(laserPerformance::broadcast);
         laserProfiler_.stop(laserPerformance::exchange);
 
