@@ -1,0 +1,34 @@
+#!/bin/bash
+# Same full mesh/partition; reduced angular sampling, every-step optics.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tests/m247Performance/runs/local-melt-pair-20261009-164947/fullMelt}
+[[ -d "$SOURCE/0.00018" && -f "$SOURCE/probe.json" ]] || { echo "Missing prepared full reference: $SOURCE"; exit 1; }
+for tool in python3 foamDictionary checkMesh decomposePar reconstructPar postProcess mpirun; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
+done
+WORK=tests/m247Performance/runs/ray-sampling-pair-$(date +%Y%m%d-%H%M%S)
+mkdir "$WORK"
+WORK=$(cd "$WORK" && pwd -P)
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/package_results.py --work "$WORK" --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+printf 'Same full756000cell case,180..190us48ranks; every-step optics; 1536 vs384 rays: nRadial16, nAngular96 vs24.\nNo automatic timeout or kill. Approximate optics: physical errors and speed reported; no production approval.\n' > "$WORK/buildEnvironment.txt"
+git rev-parse HEAD >> "$WORK/buildEnvironment.txt"
+# Uses existing compiled solver; sampling controls already exist. No rebuild.
+printf 'No build required: optical angular sampling controls already exist.\n' > "$WORK/build.log"
+SOLVER=${FOAM_USER_APPBIN:?}/vacuumLaserbeamFoam
+AUDIT=$FOAM_USER_APPBIN/m247LocalMeltAudit
+sha256sum "$SOLVER" "$AUDIT" "${FOAM_USER_LIBBIN:?}/liblaserHeatSource.so" > "$WORK/localMeltPairBinary.txt"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 - "$SOLVER" <<'PY'
+from pathlib import Path
+import sys
+if b'LASER_REFRESH_DIAGNOSTICS schema=1 time=' not in Path(sys.argv[1]).read_bytes():
+    raise SystemExit('Rebuilt solver lacks every-step laser refresh diagnostics; no CFD launched')
+PY
+python3 tests/m247Performance/local_melt_pair.py --source "$SOURCE" --ray-sampling-pair --work "$WORK" --solver "$SOLVER" --audit "$AUDIT" 2>&1 | tee "$WORK/collection.log"

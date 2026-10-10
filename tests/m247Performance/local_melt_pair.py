@@ -185,10 +185,10 @@ def cache_equivalence_gate(report):
         and report['fullMelt']['performance']['thermal_correctors_per_step']==report['localMelt']['performance']['thermal_correctors_per_step'])
 
 
-def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False,packed_pair=False):
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False,thermal_cache_pair=False,packed_pair=False,sampling_pair=False):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
-    if sum((refresh_pair,thermal_cache_pair,packed_pair))>1:raise ValueError("Select only one full-domain experiment")
-    full_domain_pair=refresh_pair or thermal_cache_pair or packed_pair
+    if sum((refresh_pair,thermal_cache_pair,packed_pair,sampling_pair))>1:raise ValueError("Select only one full-domain experiment")
+    full_domain_pair=refresh_pair or thermal_cache_pair or packed_pair or sampling_pair
     if full_domain_pair:prepared_local=source
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
@@ -213,6 +213,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
     if packed_pair:
         report['comparison_kind']='same full mesh/partition; packed ray broadcast'
         report['approximation']='None intended: unchanged gather/order/tracing/deposition/termination, every-step optics; only final broadcast payload representation differs.'
+    if sampling_pair:
+        report['comparison_kind']='same full mesh/partition; 1536 vs384 angularly coarsened rays'
+        report['approximation']='Radial16 retained, angular96->24, every-step optics; unchanged ray stepping/handoff/absorption/cutoff/CFD. Reduced angular coverage explicitly sacrifices optical sampling accuracy.'
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
         command=list(map(str,command));row=dict(name=name,command=command,status='running');report['commands'].append(row);persist()
@@ -256,6 +259,14 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                     set_entry(dst/'constant/LaserProperties','recordRayPaths','false')
                     set_entry(dst/'constant/LaserProperties','packedRayBroadcast','true' if dst==local else 'false')
                     set_entry(dst/'system/controlDict','frozenLaserProbe','off')
+                if sampling_pair:
+                    optical=dst/'constant/LaserProperties'
+                    for name,wanted in (('nRadial',16),('nAngular',96)):
+                        value=subprocess.run(['foamDictionary',str(optical),'-entry',name,'-value'],capture_output=True,text=True,check=True).stdout.strip().rstrip(';')
+                        if value!=str(wanted):raise ValueError('Sampling baseline requires nRadial16/nAngular96')
+                    for name,value in dict(nAngular=96 if dst==full else 24,recordRayPaths='false',packedRayBroadcast='false').items():
+                        set_entry(optical,name,value)
+                    set_entry(dst/'system/controlDict','frozenLaserProbe','off')
             # Require identical physics/numerical input settings, allowing only
             # additional preparation dictionaries in the local system directory.
             for path in (full/'constant').iterdir():
@@ -264,6 +275,10 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
                         from packed_broadcast_review import normalized_optical_settings
                         if normalized_optical_settings(path.read_text())!=normalized_optical_settings((local/'constant'/path.name).read_text()):
                             raise ValueError('Optical physics settings differ beyond payload switch')
+                    elif sampling_pair and path.name=='LaserProperties':
+                        from ray_sampling_review import normalized_settings
+                        if normalized_settings(path.read_text())!=normalized_settings((local/'constant'/path.name).read_text()):
+                            raise ValueError('Sampling pair changed other optical settings')
                     else:raise ValueError('Prepared constant settings differ: '+path.name)
             for name in ('fvSolution','fvSchemes'):
                 if sha(full/'system'/name)!=sha(local/'system'/name):raise ValueError('Prepared numerical settings differ: '+name)
@@ -389,6 +404,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
             if full_domain_pair:
                 from laser_refresh_review import collect_refresh
                 report[variant]['laser_refresh']=collect_refresh(case,md,summary,2 if refresh_pair and variant=='localMelt' else 1)
+            if sampling_pair:
+                from ray_sampling_review import validate_ray_count
+                validate_ray_count(report[variant]['laser_refresh']['optics'],report[variant]['laser_refresh']['updates'],1536 if variant=='fullMelt' else 384)
             if packed_pair:
                 validate_mode((case/'log.vacuumLaserbeamFoam').read_text(),variant=='localMelt')
             if thermal_cache_pair:
@@ -434,6 +452,13 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
         if packed_pair:
             report['packed_broadcast_equivalence_gate']=(cache_equivalence_gate(report) and report['frozen_broadcast_preflight']['passed']
                 and report['fullMelt']['laser_refresh']['optics']['counts']==report['localMelt']['laser_refresh']['optics']['counts'])
+        if sampling_pair:
+            from ray_sampling_review import error_summary
+            from local_melt_localization import localize
+            report['ray_sampling_error_review']=error_summary(report)
+            location_bounds=dict(b,_has_cut=False)
+            locations={label:localize(work/('fullMelt_'+label+'.csv'),work/('localMelt_'+label+'.csv'),location_bounds) for label in ('mid','final')}
+            save(work/'localMeltLocalization.json',dict(schema=1,complete=True,production_approved=False,comparison_kind=report['comparison_kind'],localization=locations))
         report['source_unchanged']=source_digest(source)==before and (prepared_local is None or source_digest(prepared_local)==local_before)
         if not report['source_unchanged']:raise ValueError('Source inputs changed')
         report['complete']=True
@@ -447,9 +472,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pa
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true');p.add_argument('--packed-ray-pair',action='store_true')
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true');p.add_argument('--thermal-cache-pair',action='store_true');p.add_argument('--packed-ray-pair',action='store_true');p.add_argument('--ray-sampling-pair',action='store_true')
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair,a.packed_ray_pair)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair,a.thermal_cache_pair,a.packed_ray_pair,a.ray_sampling_pair)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 
