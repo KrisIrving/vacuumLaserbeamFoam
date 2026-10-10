@@ -40,7 +40,8 @@ if (laserRefreshInterval > 1 && !laserDoRefresh)
         mag(alpha_filtered.primitiveField() - laserRefreshAlpha)
     );
     const scalarField& laserCellVolumes = mesh.V();
-    const scalar laserMinCellLength = pow(gMin(laserCellVolumes), 1.0/3.0);
+    const scalar laserMinCellLength =
+        Foam::pow(gMin(laserCellVolumes), scalar(1)/scalar(3));
     laserMotionCells = gMax(mag(U.primitiveField()))*laserSourceAge
         /max(laserMinCellLength, VSMALL);
     laserDoRefresh = laserSourceAge >= laserRefreshMaxAge
