@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+for tool in python3 foamDictionary blockMesh setFields checkMesh decomposePar reconstructPar postProcess mpirun vacuumLaserbeamFoam; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
+done
+WORK=tests/m247Performance/runs/wang-ray-suite-$(date +%Y%m%d-%H%M%S)
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd -P)
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/wang_ray_suite.py --work "$WORK" --package --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+git rev-parse HEAD > "$WORK/revision.txt"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 tests/m247Performance/wang_ray_suite.py --work "$WORK" 2>&1 | tee "$WORK/collection.log"
