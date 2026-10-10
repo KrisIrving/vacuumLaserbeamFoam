@@ -1,6 +1,6 @@
 import unittest,tempfile,json,tarfile
 from pathlib import Path
-from local_melt_localization import localize,regions,align_output_times
+from local_melt_localization import localize,regions,align_output_times,optical_calls
 from test_local_melt_pair import cell,write
 from package_results import package
 
@@ -15,6 +15,18 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual([x['time'] for x in align_output_times(r,t)],t)
         for wrong in ([.000184,.00019],[.000185]):
             with self.assertRaises(ValueError):align_output_times(r,wrong)
+
+    def test_full_domain_has_no_artificial_cold_cut_region(self):
+        a=dict(cell(.000001),y=.000001)
+        self.assertIn('coldCutReservoir',regions(a,a,self.bounds))
+        self.assertNotIn('coldCutReservoir',regions(a,a,dict(self.bounds,_has_cut=False)))
+    def test_optical_counts_follow_actual_refreshes_not_cfd_steps(self):
+        perf=dict(performance=dict(steps=834))
+        self.assertEqual(optical_calls(perf),834)
+        self.assertEqual(optical_calls(dict(perf,laser_refresh=dict(updates=418,held_steps=416))),418)
+    def test_incomplete_refresh_counts_are_rejected(self):
+        with self.assertRaises(ValueError):
+            optical_calls(dict(performance=dict(steps=834),laser_refresh=dict(updates=418,held_steps=415)))
 
     def test_large_gas_phase_error_is_not_counted_as_liquid_metal(self):
         a=cell(.1,T=1000,alpha=0,epsilon=0);b=dict(a,T=1200,epsilon=1)

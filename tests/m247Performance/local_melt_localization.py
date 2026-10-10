@@ -14,7 +14,7 @@ def regions(a,b,bounds):
     if max(a['alpha'],b['alpha'])>=.5:result.append('metalEither')
     if any(.01<=x['alpha']<=.99 for x in (a,b)):result.append('interfaceEither')
     if any(x['alpha']>=.05 and x['epsilon']>=.05 for x in (a,b)):result.append('liquidMetalEither')
-    if a['y']<=bounds['ymin']+48e-6:result.append('coldCutReservoir')
+    if bounds.get('_has_cut', True) and a['y']<=bounds['ymin']+48e-6:result.append('coldCutReservoir')
     return result
 
 def delta(a,b,m):
@@ -54,26 +54,38 @@ def align_output_times(records,times):
         raise ValueError('Laser profile/output times differ beyond serialization round-off')
     return [dict(r,time=t) for r,t in zip(records,times)]
 
+def optical_calls(variant_report):
+    steps=variant_report['performance']['steps']
+    refresh=variant_report.get('laser_refresh')
+    if refresh is None:return steps
+    updates=refresh['updates'];held=refresh['held_steps']
+    if (not isinstance(updates,int) or not isinstance(held,int)
+        or updates<1 or held<0 or updates+held!=steps):
+        raise ValueError('Refresh update/hold counts do not cover CFD steps')
+    return updates
+
 def collect(source,work):
     source=Path(source).resolve();work=Path(work).resolve()
     if source==work or source in work.parents or work in source.parents:raise ValueError('Output overlaps existing run')
     report=json.loads((source/'localMeltPairReview.json').read_text())
     if not report.get('complete') or not report.get('source_unchanged'):raise ValueError('Completed matched pair required')
     work.mkdir(exist_ok=True)
-    result=dict(schema=1,complete=False,production_approved=False,source=str(source),cost=report['cost'],keyhole_comparisons=report['keyhole_comparisons'],measurement_quality_gate=report['measurement_quality_gate'],localization={},laser={})
+    bounds=dict(report['window']['bounds'])
+    bounds['_has_cut']=any(x.get('cutFaces',0)>0 for x in report['localMelt']['snapshots'])
+    result=dict(schema=1,comparison_kind=report.get('comparison_kind','full/local mesh'),cold_cut_region_applicable=bounds['_has_cut'],complete=False,production_approved=False,source=str(source),cost=report['cost'],keyhole_comparisons=report['keyhole_comparisons'],measurement_quality_gate=report['measurement_quality_gate'],localization={},laser={})
     output=work/'localMeltLocalization.json'
     save(output,result)
     try:
         for label in ('mid','final'):
             print('Localizing existing snapshot:',label,flush=True)
-            result['localization'][label]=localize(source/('fullMelt_'+label+'.csv'),source/('localMelt_'+label+'.csv'),report['window']['bounds'])
+            result['localization'][label]=localize(source/('fullMelt_'+label+'.csv'),source/('localMelt_'+label+'.csv'),bounds)
             save(output,result)
         for variant in ('fullMelt','localMelt'):
             text=(source/variant/'log.vacuumLaserbeamFoam').read_text()
             records=parse_records(text,'LASER_PERF_DIAGNOSTICS');rank_rows=parse_records(text,'LASER_RANK_DIAGNOSTICS')
             perf=report[variant]['performance'];times=[x['time'] for x in report[variant]['diagnostics']]
             records=align_output_times(records,times)
-            profile=summarize(records,times,48,perf['steps']);validate_rank_rows(rank_rows,records,48)
+            profile=summarize(records,times,48,optical_calls(report[variant]));validate_rank_rows(rank_rows,records,48)
             totals=[dict(rank=i,trace_s=sum(x['trace_s'] for x in rank_rows if x['rank']==i),advances=sum(x['advances'] for x in rank_rows if x['rank']==i)) for i in range(48)]
             totals.sort(key=lambda x:x['trace_s'],reverse=True)
             profile['rank_totals']=totals
