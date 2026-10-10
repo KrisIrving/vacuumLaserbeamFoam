@@ -63,6 +63,7 @@ BUILD_FILES += tuple(f'{variant}_{suffix}' for variant in ('regionalGain','regio
     ('thermalRegion_blockMesh.log','flowRegion_blockMesh.log','setFields.log','serial.log',
      'decompose.log','parallel.log','inputHashes.json','parallelInputHashes.json','fixtureInputs.json'))
 
+BUILD_FILES += ('localMeltLocalization.json',)
 BUILD_FILES += ('localMeltAudit_help.log','localMelt_initializeCut.log','subsetMesh_help.log','localMeltPairReview.json','localMeltPairStatus.json','localMeltSourceHashes.json','localMelt_selectionDict','localMeltPairBinary.txt')
 BUILD_FILES += tuple(f'{variant}_{stage}.log' for variant in ('fullMelt','localMelt') for stage in
     ('reconstructInitial','initial','select','subset','checkMesh','decompose','solver','reconstructFinal','mid','final','interface','keyhole'))
@@ -77,6 +78,7 @@ def package(work, output=None, exit_code=None):
     if output.exists():
         raise ValueError(f'Archive already exists (never overwritten): {output}')
     entries, missing, found = [], [], []
+    archived = {}
     def add(relative, archive_name):
         path = work/relative
         resolved = path.resolve()
@@ -86,6 +88,10 @@ def package(work, output=None, exit_code=None):
             missing.append(relative)
             return
         data = path.read_bytes()
+        if archive_name in archived:
+            if archived[archive_name] != data:raise ValueError("Conflicting review archive name: "+archive_name)
+            return
+        archived[archive_name]=data
         entries.append((archive_name, data))
         found.append(dict(source=relative, archive_name=archive_name,
                           bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
