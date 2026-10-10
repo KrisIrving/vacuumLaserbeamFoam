@@ -53,3 +53,11 @@ roundtrip, frozen equivalence and benefit remain Ubuntu checks.
 API reference: https://api.openfoam.com/2512/classFoam_1_1Pstream.html
 The library already uses Pstream::broadcastList for initial ray arrays. No
 custom MPI calls or global communicator/schedule modifications were added.
+
+## Measured outcome: 20261010-160619
+
+All MPI/frozen/sampled-transient equality gates passed on Ubuntu. Baseline
+1628.91s versus packed1691.15s; no total saving measured. Root broadcast timer
+9.83s versus0.83s, but tracing concentrated on ranks44/46(~61%advances) and
+root gather821..838s dominates synchronization. Do not repeat this experiment
+or enable it for speed. Defaults remain off. See development result entry.
