@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     Info<< "\nStarting time loop\n" << endl;
 
+    #include "laserRefreshState.H"
+
     while (runTime.run())
     {
         performance.beginStep();
@@ -183,10 +185,7 @@ int main(int argc, char *argv[])
 
             // Update the laser deposition field
             performance.start(vacuumPerformance::laser);
-            laser.updateDeposition
-            (
-                alpha_filtered, n_filtered, electrical_resistivity
-            );
+            #include "laserRefreshUpdate.H"
             performance.stop(vacuumPerformance::laser);
 
             performance.start(vacuumPerformance::props);

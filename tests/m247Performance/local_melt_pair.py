@@ -177,14 +177,15 @@ def cut_initialization_gate(text,faces):
     return records[0]
 
 
-def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
+def execute(source,work,solver,audit,wall_hours=2,prepared_local=None,refresh_pair=False):
     if os.name!="posix":raise ValueError("Run real native pair on Ubuntu")
+    if refresh_pair:prepared_local=source
     source_alias,work_alias=str(source),str(work)
     source,work=resolved_case_paths(source,work)
     solver,audit=Path(solver).resolve(),Path(audit).resolve()
     if prepared_local is not None:
         prepared_local,_=resolved_case_paths(prepared_local,work)
-        if prepared_local==source:raise ValueError("Full and local input paths resolve to the same case")
+        if prepared_local==source and not refresh_pair:raise ValueError("Full and local input paths resolve to the same case")
     if not math.isfinite(wall_hours) or not 0<wall_hours<=4:raise ValueError('Per-case wall hours must be in(0,4]')
     if (work/'localMeltPairReview.json').exists():raise ValueError('Fresh work required')
     work.mkdir(parents=True,exist_ok=True)
@@ -193,6 +194,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
         input_paths=dict(source_argument=source_alias,source_resolved=str(source),work_argument=work_alias,work_resolved=str(work)),
         approximation='Fixed crop; T/alpha/epsilon/U cut values held from native checkpoint owner cells, fixedFluxPressure p_rgh. No advancing global thermal reservoir or moving handoff.',
         wall_hours_per_case=None,process_policy="Foreground normal completion; no automatic timeout or kill")
+    if refresh_pair:
+        report['comparison_kind']='same full mesh/partition; bounded laser refresh vs every-call optics'
+        report['approximation']='Candidate holds deposition between guarded updates(interval2,age25ns,alphaChange0.1,motion0.25cells); all CFD/thermal steps retained. Default baseline interval1.'
     def persist():save(work/'localMeltPairReview.json',report)
     def stage(name,command,timeout=1800):
         command=list(map(str,command));row=dict(name=name,command=command,status='running');report['commands'].append(row);persist()
@@ -228,6 +232,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
                 if (dst/'constant/dynamicMeshDict').exists():raise ValueError('Fixed prepared mesh required')
                 for k,v in dict(startFrom='startTime',startTime='.00018',stopAt='endTime',endTime='.00019',writeControl='adjustableRunTime',writeInterval='5e-6',purgeWrite=0,writePrecision=17,writeCompression='off',writeFormat='ascii',localMeltBoundaryAudit='true').items():
                     set_entry(dst/'system/controlDict',k,v)
+                if refresh_pair:
+                    for k,v in dict(laserRefreshIntervalSteps=1 if dst==full else 2,laserRefreshMaxAge='25e-9',laserRefreshMaxAlphaChange='.1',laserRefreshMaxCellDisplacement='.25').items():
+                        set_entry(dst/'system/controlDict',k,v)
             # Require identical physics/numerical input settings, allowing only
             # additional preparation dictionaries in the local system directory.
             for path in (full/'constant').iterdir():
@@ -236,8 +243,8 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
             for name in ('fvSolution','fvSchemes'):
                 if sha(full/'system'/name)!=sha(local/'system'/name):raise ValueError('Prepared numerical settings differ: '+name)
             initial=export(full,'fullMelt_initial',.00018)
-            mapped=export(local,'localMelt_initial',.00018,verify=True)
-            if initial['cells']!=756000 or mapped['cells']!=604800 or mapped['cutFaces']!=6300 or mapped['activeCutFaces']:
+            mapped=export(local,'localMelt_initial',.00018,verify=not refresh_pair)
+            if initial['cells']!=756000 or mapped['cells']!=(756000 if refresh_pair else 604800) or mapped['cutFaces']!=(0 if refresh_pair else 6300) or mapped['activeCutFaces']:
                 raise ValueError('Prepared full/local mesh or cold-cut mismatch')
             b={k:mapped[k] for k in ('xmin','xmax','ymin','ymax','zmin','zmax')}
             report['window']=dict(bounds=b,selected_cells=mapped['cells'],prepared_input=str(prepared_local))
@@ -303,6 +310,14 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
                 if p.is_dir() and p.name.startswith('processor') and p.name[9:].isdigit():shutil.rmtree(p)
             set_entry(case/'system/decomposeParDict','numberOfSubdomains','48');set_entry(case/'system/decomposeParDict','method','scotch')
             stage(variant+'_decompose',['decomposePar','-case',case,'-time','0.00018','-noFunctionObjects'])
+            if refresh_pair and variant=='localMelt':
+                addresses=[]
+                for rank in range(48):
+                    name=f'processor{rank}/constant/polyMesh/cellProcAddressing'
+                    if sha(full/name)!=sha(local/name):raise ValueError('Laser refresh pair decomposition differs on rank'+str(rank))
+                    addresses.append(sha(full/name))
+                report['identical_cell_partition_sha256']=addresses
+                persist()
             md=dict(meta,variant=variant,window_bounds=b,cut_boundary_policy=report['approximation']);save(case/'probe.json',md)
             cmd=['mpirun','-np','48',solver,'-case',case,'-parallel']
             started=time.monotonic()
@@ -314,7 +329,11 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
                      command=list(map(str,cmd)),returncode=last.get('returncode',-1),forced_stop=False,wall_budget_stop=False))
                 shutil.copyfile(work/(variant+'_solver.log'),case/'log.vacuumLaserbeamFoam')
             _,summary,diagnostics=read_probe(case)
-            report[variant]=dict(performance=summary,diagnostics=diagnostics,thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,md,summary['steps']));persist()
+            report[variant]=dict(performance=summary,diagnostics=diagnostics,thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,md,summary['steps']))
+            if refresh_pair:
+                from laser_refresh_review import collect_refresh
+                report[variant]['laser_refresh']=collect_refresh(case,md,summary,1 if variant=='fullMelt' else 2)
+            persist()
             stage(variant+'_reconstructFinal',['reconstructPar','-case',case,'-time','0.000185,0.00019','-noFunctionObjects'])
             report[variant]['snapshots']=[export(case,variant+'_'+label,t) for label,t in (('mid',.000185),('final',.00019))]
             stage(variant+'_interface',['postProcess','-case',case,'-fields','(alpha.metal)','-dict',ROOT/'tutorials/vacuumLaserbeamFoam/M247_0p6Pa_powderTrack200us8um/system/movingKeyholeInterfaceDict','-time','0.000185,0.00019'])
@@ -330,9 +349,12 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
             note='Same48ranks/resolution/physical duration; solver wall includes initialization and writes. Prep/build/postprocess separately timed. Fixed crop excludes future global-thermal/moving costs.')
         boundary=parse_records((local/'log.vacuumLaserbeamFoam').read_text(encoding='utf-8'),'M247_LOCAL_MELT_BOUNDARY')
         required=('schema','time','cutFaces','activeCutFaces','cutMetalTmax','cutMetalEpsilonMax','cutUmax','cutNetFluxM3PerS','productionApproved')
-        if len(boundary)!=c['performance']['steps'] or any(any(k not in r for k in required) or r['schema']!=1 or r['cutFaces']<=0 for r in boundary):raise ValueError('Missing per-step cut-boundary audit')
-        report['boundary']=dict(records=boundary,active_material_clear=all(r['activeCutFaces']==0 for r in boundary),
-            maximum_cut_gas_or_metal_speed=max(r['cutUmax'] for r in boundary),note='No active metal contact is necessary but not sufficient for pressure/optical boundary independence; held reservoir cannot support long tracks.')
+        if refresh_pair:
+            report['boundary']=dict(active_material_clear=True,note='No cut boundary: identical full domains; no regional acceptance claim')
+        else:
+            if len(boundary)!=c['performance']['steps'] or any(any(k not in r for k in required) or r['schema']!=1 or r['cutFaces']<=0 for r in boundary):raise ValueError('Missing per-step cut-boundary audit')
+            report['boundary']=dict(records=boundary,active_material_clear=all(r['activeCutFaces']==0 for r in boundary),
+                maximum_cut_gas_or_metal_speed=max(r['cutUmax'] for r in boundary),note='No active metal contact is necessary but not sufficient for pressure/optical boundary independence; held reservoir cannot support long tracks.')
         keyhole=[]
         for variant in ('fullMelt','localMelt'):
             with (work/(variant+'_keyhole.csv')).open(encoding='utf-8',newline='') as f:
@@ -356,9 +378,9 @@ def execute(source,work,solver,audit,wall_hours=2,prepared_local=None):
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--solver',type=Path,required=True);p.add_argument('--audit',type=Path,required=True);p.add_argument('--wall-hours',type=float,default=2);p.add_argument('--prepared-local',type=Path);p.add_argument('--laser-refresh-pair',action='store_true')
     a=p.parse_args()
-    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local)
+    try:execute(a.source,a.work,a.solver,a.audit,a.wall_hours,a.prepared_local,a.laser_refresh_pair)
     except (ValueError,OSError,RuntimeError,subprocess.SubprocessError) as e:p.exit(1,f'Real local melt pair failed: {e}\n')
     print('Real local/full melt measurements complete; production approved: False',flush=True)
 
