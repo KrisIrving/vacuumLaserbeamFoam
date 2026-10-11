@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
-from wang_ray_suite import crossing, interpolate, compare_histories, package, field_metrics, summarize
+from wang_ray_suite import crossing, interpolate, compare_histories, package, field_metrics, summarize, hotspot_rows
 
 def fixture(scale=1,wall=100):
     diagnostics=[dict(time=t,Tmax=3000*scale,depositedPower=100*scale,
@@ -16,6 +16,15 @@ def fixture(scale=1,wall=100):
         full_scalar_pressure_load_N=.005*scale) for t in (2e-6,4e-6)])
 
 class WangSuiteTest(unittest.TestCase):
+    def test_hotspot_classifies_gas_interface_metal_without_changing_global_max(self):
+        result=hotspot_rows([6000,4000,3500],[0,.5,1],[1,.8,.6])
+        self.assertEqual(result['hottest_cells'][0]['region'],'gas')
+        self.assertEqual(result['hottest_cells'][0]['T_K'],6000)
+        self.assertEqual(result['region_Tmax_K'],dict(gas=6000,interface=4000,metal=3500))
+
+    def test_hotspot_rejects_mismatched_field_counts(self):
+        with self.assertRaises(ValueError): hotspot_rows([4000],[1,0],[.5])
+
     def test_summarize_consumes_actual_probe_tuple_contract(self):
         # read_probe returns metadata, timing summary, physics records in that order.
         # This regression exercises the complete consumer rather than a fabricated

@@ -65,6 +65,16 @@ missing liquidVolume.json and summaries, then refreshes the review archive.
 No need to rerun RunWangRaySuite. Collection success means evidence is complete,
 not that convergence or approximation gates pass.
 
+Collected archive(1) has complete volume evidence:384 is fastest but all
+reduced-ray full histories fail the agreed budget;192 also fails endpoints.
+Added offline temperatureHotspots.json for2/54/98/124/140us using reconstructed
+T/alpha.metal/epsilon1. Reports top10 hottest cells, gas/interface/metal maxima,
+and largest pointwise T differences against1536.54/98/124us are the actual
+worst sampled Tmax discrepancy times for384/192/768. This is evidence for
+choosing the next improvement, not permission to replace global Tmax with a
+different metric. No spatial coordinate is inferred from serial cell index.
+Run CollectWangRaySuite again to include this small diagnostic in the archive.
+
 Four full4um histories may take hours; do not extrapolate M247 mature8um cost
 into a promise for this stationary-growth run. Printed stage names and each
 case's live log show progress. Retain the runs for further offline analysis.

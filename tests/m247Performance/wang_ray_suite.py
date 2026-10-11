@@ -14,7 +14,7 @@ import tarfile
 import time
 
 from collect_probe import read_probe, parse_records
-from collect_thermal_validation import read_field, residual_gate
+from collect_thermal_validation import read_field, residual_gate, final_state
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT/'tutorials/vacuumLaserbeamFoam/wang2020_304L_nearVacuum'
@@ -76,6 +76,46 @@ def field_metrics(case):
         raise ValueError('Missing final liquid-volume state')
     save(case/'liquidVolume.json',result)
     return result
+
+def hotspot_rows(temperature, alpha, epsilon, limit=10):
+    if not (len(temperature)==len(alpha)==len(epsilon)):
+        raise ValueError('Hotspot fields have different cell counts')
+    import heapq
+    def row(i):
+        return dict(serial_cell_index=i,T_K=temperature[i],alpha_metal=alpha[i],epsilon1=epsilon[i],
+                    region='metal' if alpha[i]>=.99 else 'gas' if alpha[i]<=.01 else 'interface')
+    hottest=[row(i) for i in heapq.nlargest(limit,range(len(temperature)),key=temperature.__getitem__)]
+    regions={name:max((temperature[i] for i in range(len(temperature)) if predicate(alpha[i])),default=None)
+        for name,predicate in (('metal',lambda a:a>=.99),('interface',lambda a:.01<a<.99),('gas',lambda a:a<=.01))}
+    return dict(hottest_cells=hottest,region_Tmax_K=regions)
+
+def collect_hotspots(work):
+    # Actual largest sampled Tmax discrepancies:384 at54us,192 at98us,
+    # 768 at124us. Add onset2us and final140us; no new simulation or coordinates
+    # guessed from cell order. Same copied decomposition gives common serial IDs.
+    import heapq
+    times=(2e-6,54e-6,98e-6,124e-6,END)
+    output=dict(schema=1,times_s=times,variants={},errors={},
+        note='Diagnostic classification only. Global Tmax acceptance is unchanged; serial cell indices are not physical coordinates.')
+    for t in times:
+        ref=None
+        for count,_ in VARIANTS:
+            name=f'rays{count}'
+            try:
+                state=final_state(work/name,None,t)
+                temperature=scalar_field(state/'T');alpha=scalar_field(state/'alpha.metal');epsilon=scalar_field(state/'epsilon1')
+                result=hotspot_rows(temperature,alpha,epsilon)
+                if count==1536: ref=(temperature,alpha)
+                elif ref is not None:
+                    ids=heapq.nlargest(10,range(NCELLS),key=lambda i:abs(temperature[i]-ref[0][i]))
+                    result['largest_cell_temperature_differences']=[dict(serial_cell_index=i,
+                        reference_T_K=ref[0][i],candidate_T_K=temperature[i],absolute_delta_K=abs(temperature[i]-ref[0][i]),
+                        reference_alpha_metal=ref[1][i],candidate_alpha_metal=alpha[i]) for i in ids]
+                output['variants'].setdefault(name,[]).append(dict(time_s=t,**result))
+            except Exception as exc:
+                output['errors'][f'{name}@{t:.12g}']=str(exc)
+    save(work/'temperatureHotspots.json',output)
+    if output['errors']: raise ValueError('Incomplete hotspot evidence; see temperatureHotspots.json')
 
 def summarize(case):
     metadata, summary, diag=read_probe(case)
@@ -174,8 +214,9 @@ def collect(work):
         for name,summary in summaries.items():
             c=comparisons.get(name,{})
             writer.writerow((name,summary['job_wall_s'],c.get('job_speedup',1),summary['growth_32_136_us'],summary['thermal_gate'],*[c.get(k,{}).get('max_pointwise_relative_difference') for k in ('depth','liquid_volume','Tmax')],c.get('macro_history_budget_pass')))
-    print(json.dumps(report,indent=2),flush=True)
     if errors: raise ValueError('Incomplete suite; see comparison.json')
+    collect_hotspots(work)
+    print(json.dumps(report,indent=2),flush=True)
 
 def execute(work):
     solver=Path(shutil.which('vacuumLaserbeamFoam')).resolve()
