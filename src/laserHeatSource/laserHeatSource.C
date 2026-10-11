@@ -62,6 +62,21 @@ void laserHeatSource::createInitialRays
 
     const scalarField& yDimI = yDim_;
     const scalar pi = constant::mathematical::pi;
+    const Switch staggeredAngularSampling
+    (
+        lookupOrDefault<Switch>("staggeredAngularSampling", false)
+    );
+    if (staggeredAngularSampling && !radialPolarHeatSource())
+    {
+        FatalErrorInFunction << "staggeredAngularSampling requires radialPolarHeatSource"
+            << exit(FatalError);
+    }
+    if (staggeredAngularSampling)
+    {
+        Info<< "RAY_ANGULAR_SAMPLING schema=1 staggered="
+            << label(staggeredAngularSampling) << " nRadial=" << nRadial
+            << " nAngular=" << nAngular << endl;
+    }
 
     if (radialPolarHeatSource())
     {
@@ -106,7 +121,15 @@ void laserHeatSource::createInitialRays
             const label iR = globalIdx % nRadial;
 
             // Angular discretization
-            const scalar theta = 2.0*pi*iTheta/nAngular;
+            scalar theta = 2.0*pi*iTheta/nAngular;
+            if (staggeredAngularSampling)
+            {
+                // Stratify the angular phase across rings. Each ring still has
+                // nAngular evenly spaced samples with exactly its original
+                // radius, area and power. No temporal rotation or source hold.
+                theta += (2.0*pi/nAngular)
+                    *((scalar(iR)+0.5)/scalar(nRadial));
+            }
 
             // Radial discretization (uniform in radius)
             // const scalar r = rMax*(iR + 0.5)/nRadial;

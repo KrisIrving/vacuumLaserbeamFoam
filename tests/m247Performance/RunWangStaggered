@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+SOURCE=${1:-tests/m247Performance/runs/wang-ray-suite-20261011-000847}
+[[ -d "$SOURCE/prepared/processor0" && -f "$SOURCE/rays1536/summary.json" ]] || { echo "Missing completed Wang suite/prepared seed: $SOURCE"; exit 1; }
+WORK=tests/m247Performance/runs/wang-staggered-$(date +%Y%m%d-%H%M%S)
+mkdir -p "$WORK"
+WORK=$(cd "$WORK" && pwd -P)
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/wang_staggered.py --work "$WORK" --package --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+git rev-parse HEAD > "$WORK/revision.txt"
+for tool in python3 wmake mpirun foamDictionary reconstructPar postProcess vacuumLaserbeamFoam; do
+    command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
+done
+# Only implementation changes; no header/ABI change, no solver rebuild/clean.
+(cd src/laserHeatSource && wmake libso) 2>&1 | tee "$WORK/build.log"
+python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
+python3 tests/m247Performance/wang_staggered.py --source "$SOURCE" --work "$WORK" 2>&1 | tee "$WORK/collection.log"
