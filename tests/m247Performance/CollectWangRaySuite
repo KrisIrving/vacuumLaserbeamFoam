@@ -1,0 +1,19 @@
+#!/bin/bash
+# Offline only: reuse completed CFD and reconstructed fields.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+WORK=${1:?Usage: bash tests/m247Performance/CollectWangRaySuite tests/m247Performance/runs/wang-ray-suite-TIMESTAMP}
+WORK=$(cd "$WORK" && pwd -P)
+for name in rays1536 rays768 rays384 rays192; do
+    [[ -f "$WORK/$name/run.json" && -f "$WORK/$name/keyholeDepthSurface.csv" ]] || { echo "Missing completed case: $name"; exit 1; }
+done
+package() {
+    code=$?
+    trap - EXIT
+    python3 tests/m247Performance/wang_ray_suite.py --work "$WORK" --package --exit-code "$code" || code=1
+    exit "$code"
+}
+trap package EXIT
+git rev-parse HEAD > "$WORK/collectionRevision.txt"
+echo 'Offline collection only; no CFD, reconstruction, decomposition or build.'
+python3 tests/m247Performance/wang_ray_suite.py --collect --work "$WORK" 2>&1 | tee "$WORK/offlineCollection.log"

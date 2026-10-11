@@ -54,9 +54,16 @@ do not automatically select192 or relax criteria.
 After a postprocessing/collection repair, reuse existing results without CFD:
 
 ```bash
-python3 tests/m247Performance/wang_ray_suite.py --collect --work tests/m247Performance/runs/wang-ray-suite-TIMESTAMP
-python3 tests/m247Performance/wang_ray_suite.py --package --work tests/m247Performance/runs/wang-ray-suite-TIMESTAMP
+bash tests/m247Performance/CollectWangRaySuite tests/m247Performance/runs/wang-ray-suite-TIMESTAMP
 ```
+
+The20261011-000847 suite completed all four CFD and surface extractions. A
+collector tuple-unpacking error caused KeyError('steps') before volume export.
+The fixed collector uses read_probe's (metadata, timing summary, diagnostics)
+contract. CollectWangRaySuite reuses reconstructed ASCII fields to generate
+missing liquidVolume.json and summaries, then refreshes the review archive.
+No need to rerun RunWangRaySuite. Collection success means evidence is complete,
+not that convergence or approximation gates pass.
 
 Four full4um histories may take hours; do not extrapolate M247 mature8um cost
 into a promise for this stationary-growth run. Printed stage names and each

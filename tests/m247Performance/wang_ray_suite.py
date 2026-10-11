@@ -78,7 +78,7 @@ def field_metrics(case):
     return result
 
 def summarize(case):
-    summary, diag, perf=read_probe(case)
+    metadata, summary, diag=read_probe(case)
     depth=[(float(r['time_s']),float(r['keyhole_depth_um'])) for r in
            csv.DictReader((case/'keyholeDepthSurface.csv').open())]
     depth.sort()
@@ -102,7 +102,7 @@ def summarize(case):
                    deviation_from_xray_70us=relative(70,growth) if growth else None,
                    historical_full_ray_growth_us=76.2318,
                    equivalent_recoil_stage_75us_after_32um=stage_metrics,
-                   thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,json.loads((case/'probe.json').read_text()),summary['steps']),
+                   thermal_gate=summary['thermal_limit_hits']==0 and residual_gate(case,metadata,summary['steps']),
                    depth_history=depth, diagnostics=diag,
                    liquid_volume=field_metrics(case),
                    recoil_note='Beam is along -y here: full_recoil_force_y_signed_N is axial; full scalar load is a different quantity',

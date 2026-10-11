@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
-from wang_ray_suite import crossing, interpolate, compare_histories, package, field_metrics
+from wang_ray_suite import crossing, interpolate, compare_histories, package, field_metrics, summarize
 
 def fixture(scale=1,wall=100):
     diagnostics=[dict(time=t,Tmax=3000*scale,depositedPower=100*scale,
@@ -16,6 +16,25 @@ def fixture(scale=1,wall=100):
         full_scalar_pressure_load_N=.005*scale) for t in (2e-6,4e-6)])
 
 class WangSuiteTest(unittest.TestCase):
+    def test_summarize_consumes_actual_probe_tuple_contract(self):
+        # read_probe returns metadata, timing summary, physics records in that order.
+        # This regression exercises the complete consumer rather than a fabricated
+        # dictionary masquerading as the timing summary.
+        with tempfile.TemporaryDirectory() as tmp:
+            case=Path(tmp)
+            (case/'keyholeDepthSurface.csv').write_text('time_s,keyhole_depth_um\n0.000002,10\n0.00014,150\n')
+            (case/'keyholeRecoilSurface.csv').write_text('time_s,full_recoil_force_y_signed_N,full_scalar_pressure_load_N\n0.000002,0.004,0.005\n0.00014,0.004,0.005\n')
+            (case/'log.vacuumLaserbeamFoam').write_text('LASER_REFRESH_DIAGNOSTICS time=0.000002 interval=1 refreshed=1\nLASER_REFRESH_DIAGNOSTICS time=0.00014 interval=1 refreshed=1\n')
+            metadata=dict(variant='rays1536',epsilon_tolerance=1e-5,phase_temperature_tolerance_K=.001)
+            timing=dict(steps=2,thermal_limit_hits=0,job_wall_s=100)
+            physics=[dict(time=.000002,Tmax=3000),dict(time=.00014,Tmax=3100)]
+            with patch('wang_ray_suite.read_probe',return_value=(metadata,timing,physics)), patch('wang_ray_suite.residual_gate',return_value=True) as gate, patch('wang_ray_suite.field_metrics',return_value=[]):
+                report=summarize(case)
+            gate.assert_called_once_with(case,metadata,2)
+            self.assertEqual(report['steps'],2)
+            self.assertEqual(report['diagnostics'],physics)
+            self.assertTrue(report['thermal_gate'])
+
     def test_numeric_time_order_in_general_format_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             case=Path(tmp)
