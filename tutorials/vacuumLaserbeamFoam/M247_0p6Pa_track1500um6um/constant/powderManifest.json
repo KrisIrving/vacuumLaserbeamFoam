@@ -1,0 +1,76 @@
+{
+  "generator": "sequentialVerticalDeposition-v2",
+  "seed": 2471500,
+  "particleCount": 330,
+  "attempts": 13726,
+  "rejectedLayerThickness": 13396,
+  "preserveSampledPSD": true,
+  "substrateSurfaceY_m": 0.0006,
+  "layerThickness_m": 8e-05,
+  "nominalLayerThickness_m": 5e-05,
+  "targetPackingFractionNominalLayer": 0.58,
+  "highestParticleTop_m": 0.0006799927527640881,
+  "targetSolidVolume_m3": 3.31296e-11,
+  "solidVolume_m3": 3.3130359483344224e-11,
+  "layerVolume_m3": 9.139200000000001e-11,
+  "equivalentDenseThickness_m": 2.9000664813851736e-05,
+  "actualPackingFractionNominalLayer": 0.5800132962770347,
+  "actualSolidFractionGeometricEnvelope": 0.36250831017314666,
+  "targetSolidFraction": 0.3625,
+  "actualSolidFraction": 0.36250831017314666,
+  "diameterMin_m": 3.009848484848485e-05,
+  "diameterD10_m": 3.654503787878788e-05,
+  "diameterD50_m": 5.261079545454545e-05,
+  "diameterD90_m": 7.433416666666667e-05,
+  "diameterMax_m": 7.991515151515152e-05,
+  "diameterMean_m": 5.4265e-05,
+  "minimumInterparticleGap_m": -3.3881317890172014e-20,
+  "clearance_m": 0.0,
+  "config": {
+    "seed": 2471500,
+    "footprint": {
+      "xMin": -0.0003,
+      "xMax": 0.00174,
+      "zMin": -0.00028,
+      "zMax": 0.00028
+    },
+    "substrateSurfaceY": 0.0006,
+    "layerThickness": 8e-05,
+    "nominalLayerThickness": 5e-05,
+    "targetPackingFraction": 0.58,
+    "preserveSampledPSD": true,
+    "placementOrder": "largestFirst",
+    "placementAttemptsPerParticle": 100000,
+    "clearance": 0.0,
+    "diameterDistribution": {
+      "type": "piecewiseQuantile",
+      "quantiles": [
+        0.0,
+        0.1,
+        0.5,
+        0.9,
+        1.0
+      ],
+      "diameters": [
+        3e-05,
+        3.65e-05,
+        5.26e-05,
+        7.44e-05,
+        8e-05
+      ]
+    },
+    "coverage": {
+      "gridSpacing": 2e-06,
+      "centerlineZ": 0.0,
+      "corridor": {
+        "xMin": 0,
+        "xMax": 0.0015,
+        "zMin": -7.5e-05,
+        "zMax": 7.5e-05
+      }
+    }
+  },
+  "projectedCoverageFractionFootprint": 0.6938750524695676,
+  "projectedCoverageFractionCorridor": 0.7251022222222222,
+  "maximumUncoveredCenterlineGap_m": 5.800000000000001e-05
+}
