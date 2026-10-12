@@ -1139,4 +1139,16 @@ ratios to compensate the LIGGGHTS *input* mass weights, and 480 rather than
 numerical input correction, not a change to the experimental PSD or DEM
 contact law. Acceptance requires a fresh native archive and all gates pass.
 
+The user describes the intended PSD as approximately Gaussian but does not
+know whether the experimental D10/D50/D90 are number- or volume-weighted.
+The current 16-bin generator interpolates the three supplied quantiles rather
+than fitting an exact normal law (the unequal 10–50 and 50–90 gaps cannot be
+matched by one symmetric Gaussian). Its next run is therefore a *number-basis
+candidate*. The manifest now reports both number- and volume-weighted
+quantiles. The 21:38 final bed had volume-weighted D10/D50/D90 about
+43.80/67.93/78.25 um; that is not equivalent to its number-based
+36.09/48.83/74.75 um. Do not claim experimental PSD validation or approve
+the final 1.5 mm track until the measurement basis or full distribution is
+established. The cheap DEM candidate can still assess numerical bed quality.
+
 
