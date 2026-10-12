@@ -102,6 +102,11 @@ def create_input(work):
         "run 400000", "unfix ins",
         "write_dump all custom post/raw.dump id x y z radius vx vy vz modify sort id",
         "compute rad all property/atom radius",
+        # Match the official LPBF_small DEM sequence: consume the per-atom
+        # radius compute via a reduce/thermo output before evaluating the
+        # height-selection variable between runs. A bare run 0 is insufficient.
+        "compute radiusSum all reduce sum c_rad",
+        "thermo_style custom step atoms c_radiusSum",
         "run 0",
         f'variable above atom "y+c_rad > {top:.12g}"',
         "group trim variable above", "delete_atoms group trim compress yes",
@@ -302,11 +307,14 @@ def run_native(work):
     create_input(work)
     executable = resolve_liggghts()
     start = time.perf_counter()
-    with (work / "input.liggghts").open("rb") as inp, (work / "log.liggghts").open("w") as log:
-        result = subprocess.run([executable], cwd=work, stdin=inp,
-                                stdout=log, stderr=subprocess.STDOUT, check=False)
+    # Official DEM_small/Allrun pattern: liggghts < input.liggghts &> log.liggghts.
+    # Pass the verified executable as a positional parameter, never shell text.
+    command = ["bash", "-c", 'exec "$1" < input.liggghts > log.liggghts 2>&1',
+               "m247-liggghts", str(executable)]
+    result = subprocess.run(command, cwd=work, check=False)
     report = dict(executable=str(Path(executable).resolve()),
                   executableSha256=sha256(Path(executable)),
+                  command=command,
                   returncode=result.returncode,elapsedWallSeconds=time.perf_counter()-start)
     (work / "run.json").write_text(json.dumps(report, indent=2) + "\n")
     if result.returncode:
