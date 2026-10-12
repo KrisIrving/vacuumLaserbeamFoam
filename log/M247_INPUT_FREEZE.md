@@ -1,9 +1,10 @@
 # M247 experiment-input freeze — v0
 
-**Provenance correction (2026-10-12):** The process inputs below are frozen
-project targets, but the repository does not identify a primary paper or run
-sheet establishing their combination as one experiment. They must not be
-presented as independently verified experimental values. See
+**Provenance correction (2026-10-12):** The user confirms that 0.6 Pa,
+1070 °C preheat, 350 W, 1 m/s, and the listed powder-size distribution are
+their experimental conditions. Preserve these as user-supplied experimental
+inputs; the repository does not yet include the corresponding run sheet or
+powder certificate, so do not attribute them to an unrelated paper. See
 `log/entries/2026-10-12-m247-parameter-provenance-audit.md`.
 
 ## Purpose
