@@ -1151,4 +1151,23 @@ quantiles. The 21:38 final bed had volume-weighted D10/D50/D90 about
 the final 1.5 mm track until the measurement basis or full distribution is
 established. The cheap DEM candidate can still assess numerical bed quality.
 
+# 2026-10-12: M247 DEM 22:26 candidate and LF wrapper repair
+
+Archive `M247_m247-powder-dem-20261012-222657_review.tar.gz` is complete,
+exit 0 with all nine manifest hashes verified. Native LIGGGHTS elapsed
+14.877 s; 480 raw -> 339 final particles. Number-based D10/D50/D90
+36.0938/51.3422/74.75 um pass, but volume-based values are
+46.311/71.3344/78.25 um (measurement basis still unconfirmed). Nominal
+packing 0.610731 misses the frozen 0.58 +/- 0.03 gate by 0.000731;
+velocity P95 0.006683 m/s misses the 0.005 m/s settling gate. Boundary
+penetration max 0.0143 um and interparticle overlap max 0.0355 um pass.
+No CFD advanced. Changed inserted count to 460 (linear target from this run
+predicts about 0.585 packing) and post-trim settling from 50000 to 250000
+steps, matching the official LPBF_small DEM continuation; then a 50000-step
+post-correction relaxation. An intermediate relaxed dump is packaged to
+identify any persistent motion without another opaque trial. The shell
+wrapper's remote blob contained one stray CR, causing `$'\\r': command not
+found` after packaging; normalized the full remote file to LF and verified
+zero CR bytes. Native outcome for the new input remains unverified.
+
 
