@@ -73,7 +73,9 @@ class PowderDEMTest(unittest.TestCase):
                             setup.index("group trim variable above"))
             self.assertIn("thermo_style custom step atoms c_radiusSum\nrun 0\nvariable above", setup)
             metadata = json.loads((work / "demInput.json").read_text())
-            self.assertEqual(metadata["insertedParticlesRequested"], 480)
+            self.assertEqual(metadata["insertedParticlesRequested"], 460)
+            self.assertIn("delete_atoms group trim compress yes\nrun 250000", setup)
+            self.assertIn("post/relaxed.dump", setup)
             self.assertAlmostEqual(sum(metadata["trimCalibration"]["massWeights"]), 1)
             rows = ["1 0 0.0629992 0 0.003 0 0 0",
                     "2 0.02 0.062 0 0.002 0 0 0"]
