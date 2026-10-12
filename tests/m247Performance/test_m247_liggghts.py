@@ -72,7 +72,10 @@ class PowderDEMTest(unittest.TestCase):
             self.assertLess(setup.index("compute radiusSum all reduce sum c_rad"),
                             setup.index("group trim variable above"))
             self.assertIn("thermo_style custom step atoms c_radiusSum\nrun 0\nvariable above", setup)
-            rows = ["1 0 0.063 0 0.003 0 0 0",
+            metadata = json.loads((work / "demInput.json").read_text())
+            self.assertEqual(metadata["insertedParticlesRequested"], 480)
+            self.assertAlmostEqual(sum(metadata["trimCalibration"]["massWeights"]), 1)
+            rows = ["1 0 0.0629992 0 0.003 0 0 0",
                     "2 0.02 0.062 0 0.002 0 0 0"]
             dump(work / "post/raw.dump", rows)
             dump(work / "post/final.dump", rows)
@@ -83,6 +86,19 @@ class PowderDEMTest(unittest.TestCase):
             self.assertAlmostEqual(manifest["diameterMax_m"], 60e-6)
             self.assertIn("sphereToCell", (work / "setFieldsDict").read_text())
             self.assertFalse(manifest["readyForReview"])
+            self.assertTrue(manifest["preflightGates"]["boundary"])
+            self.assertAlmostEqual(manifest["boundaryPenetrationMax_m"]["floor"], 8e-9)
+
+    def test_material_boundary_crossing_still_fails(self):
+        TEMP_ROOT.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
+            work = Path(directory)
+            dem.create_input(work)
+            rows = ["1 0 0.062995 0 0.003 0 0 0"]
+            dump(work / "post/raw.dump", rows)
+            dump(work / "post/final.dump", rows)
+            with self.assertRaisesRegex(ValueError, "boundary penetration exceeds"):
+                dem.audit(work)
 
     def test_dump_count_mismatch_is_rejected(self):
         TEMP_ROOT.mkdir(exist_ok=True)
