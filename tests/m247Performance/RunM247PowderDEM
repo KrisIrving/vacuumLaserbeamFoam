@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }
+WORK="tests/m247Performance/runs/m247-powder-dem-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$WORK"
+python3 tools/powderBed/m247_liggghts.py run --work "$WORK"
+

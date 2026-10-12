@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+python3 tools/powderBed/m247_liggghts.py verify-template
 WORK=tests/m247Performance/runs/m247-track1500-v2-pilot-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$WORK"
 WORK=$(cd "$WORK" && pwd -P)
@@ -19,3 +20,4 @@ done
 (cd applications/solvers/vacuumLaserbeamFoam && wmake) 2>&1 | tee "$WORK/buildSolver.log"
 python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
 python3 tests/m247Performance/track1500_pilot_v2.py --work "$WORK" 2>&1 | tee "$WORK/collection.log"
+

@@ -1,5 +1,16 @@
 # M247 1.5 mm, 6um corridor V2: geometry correction
 
+**Powder hold (2026-10-12):** the checked-in 330-particle bed was made by the
+geometric `sequentialVerticalDeposition-v2` script, not by LIGGGHTS. The user
+requires a LIGGGHTS-generated bed for the final case. `RunM247TrackPilotV2`
+now stops before CFD until a native DEM bed has been generated, audited and
+installed. Run `bash tests/m247Performance/RunM247PowderDEM` first on Ubuntu
+with `liggghts` on PATH and send its uniquely named review archive. This DEM
+pilot does not change this template or advance CFD. Its contact parameters are
+provisional upstream tutorial values, so passing its PSD/packing gates does not
+establish experimental powder-bed fidelity. The final coverage target and
+contact/recoater conditions still need review.
+
 This is a separate mesh template. The original50/60us archives retain the
 original geometry for reproducibility. Use RunM247TrackPilotV2 to create a
 fresh case; never restart old partitions on this changed mesh.
@@ -30,7 +41,7 @@ Boundary audit: tests/m247Performance/TRACK_BOUNDARY_AUDIT.md. The top T
 backflow and p_rgh total-pressure choices need further sensitivity evidence;
 this V2 geometry correction does not imply final boundary approval.
 
-From the repository root with OpenFOAM-v2512 loaded:
+After DEM powder approval and installation, from the repository root with OpenFOAM-v2512 loaded:
 
 ```bash
 git pull --ff-only
@@ -39,3 +50,4 @@ bash tests/m247Performance/RunM247TrackPilotV2
 
 The first run stops at50us and produces one uniquely named review archive.
 No previous case is modified and no full-track run starts automatically.
+
