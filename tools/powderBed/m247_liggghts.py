@@ -30,7 +30,7 @@ CASE = ROOT / "tutorials/vacuumLaserbeamFoam/M247_0p6Pa_track1500um6umV2"
 CONFIG = CASE / "powderBedConfig.json"
 CGS_TO_M = 0.01
 N_BINS = 16
-INSERTED_PARTICLES = 480
+INSERTED_PARTICLES = 460
 # Native 2026-10-12 21:38:35 pilot: smaller particles preferentially survived
 # the 80 um top trim. These observed counts compensate the *numerical trim*,
 # keeping the final number-based PSD tied to the user's experimental targets.
@@ -123,9 +123,15 @@ def create_input(work):
         "run 0",
         f'variable above atom "y+c_rad > {top:.12g}"',
         "group trim variable above", "delete_atoms group trim compress yes",
-        "run 50000",
+        # Official LPBF_small continues 250000 steps after height trimming.
+        # The previous 50000-step relaxation left p95 speed above the gate.
+        "run 250000",
+        "write_dump all custom post/relaxed.dump id x y z radius vx vy vz modify sort id",
         "run 0",
         "group trimAfterRelax variable above", "delete_atoms group trimAfterRelax compress yes",
+        "run 50000",
+        "run 0",
+        "group trimFinal variable above", "delete_atoms group trimFinal compress yes",
         "run 0",
         "write_dump all custom post/final.dump id x y z radius vx vy vz modify sort id",
     ])
@@ -311,7 +317,7 @@ def package(work, exit_code):
     names=("input.liggghts","demInput.json","log.liggghts","run.json",
            "post/raw.dump","post/final.dump","powderManifest.json",
            "powderParticles.csv","setFieldsDict")
-    optional=("failure.json",)
+    optional=("failure.json","post/relaxed.dump")
     missing=[name for name in names if not (work/name).is_file()]
     summary=dict(schema=1,exitCode=exit_code,missingFiles=missing,
                  files={name:sha256(work/name) for name in names+optional
