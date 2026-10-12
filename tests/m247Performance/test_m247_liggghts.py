@@ -84,6 +84,8 @@ class PowderDEMTest(unittest.TestCase):
             self.assertEqual(manifest["generator"], "LIGGGHTS-PUBLIC-DEM")
             self.assertEqual(manifest["particleCount"], 2)
             self.assertAlmostEqual(manifest["diameterMax_m"], 60e-6)
+            self.assertGreater(manifest["diameterVolumeD50_m"],
+                               manifest["diameterD50_m"])
             self.assertIn("sphereToCell", (work / "setFieldsDict").read_text())
             self.assertFalse(manifest["readyForReview"])
             self.assertTrue(manifest["preflightGates"]["boundary"])
