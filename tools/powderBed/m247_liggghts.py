@@ -9,6 +9,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -256,13 +257,15 @@ def package(work, exit_code):
     names=("input.liggghts","demInput.json","log.liggghts","run.json",
            "post/raw.dump","post/final.dump","powderManifest.json",
            "powderParticles.csv","setFieldsDict")
+    optional=("failure.json",)
     missing=[name for name in names if not (work/name).is_file()]
     summary=dict(schema=1,exitCode=exit_code,missingFiles=missing,
-                 files={name:sha256(work/name) for name in names if (work/name).is_file()})
+                 files={name:sha256(work/name) for name in names+optional
+                        if (work/name).is_file()})
     (work/"reviewManifest.json").write_text(json.dumps(summary,indent=2)+"\n")
     archive=work.parent/("M247_"+work.name+"_review.tar.gz")
     with tarfile.open(archive,"w:gz") as tar:
-        for name in names+("reviewManifest.json",):
+        for name in names+optional+("reviewManifest.json",):
             if (work/name).is_file():tar.add(work/name,arcname=work.name+"/"+name)
     print(f"Review archive: {archive}\nSend this single archive, including on failure. No CFD advanced.",flush=True)
 
@@ -277,11 +280,27 @@ def verify_template():
         raise ValueError("V2 still has provisional geometric powder or unreviewed DEM powder; no CFD may start")
 
 
+def resolve_liggghts():
+    """Resolve a real executable; shell aliases are invisible to Python."""
+    override = os.environ.get("LIGGGHTS_EXECUTABLE")
+    if override:
+        path = Path(override).expanduser()
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise FileNotFoundError(f"LIGGGHTS_EXECUTABLE is not an executable file: {path}")
+        return path.resolve()
+    candidates = (Path.home() / "CFDEM/LIGGGHTS/src-build/liggghts",
+                  Path(shutil.which("liggghts")) if shutil.which("liggghts") else None)
+    for path in candidates:
+        if path is not None and path.is_file() and os.access(path, os.X_OK):
+            return path.resolve()
+    raise FileNotFoundError(
+        "LIGGGHTS executable not found; set LIGGGHTS_EXECUTABLE to the absolute "
+        "path (a shell alias is not available to Python)")
+
+
 def run_native(work):
-    executable = shutil.which("liggghts")
-    if not executable:
-        raise FileNotFoundError("liggghts is not on PATH; install/source LIGGGHTS before DEM preflight")
     create_input(work)
+    executable = resolve_liggghts()
     start = time.perf_counter()
     with (work / "input.liggghts").open("rb") as inp, (work / "log.liggghts").open("w") as log:
         result = subprocess.run([executable], cwd=work, stdin=inp,
@@ -319,6 +338,10 @@ if __name__ == "__main__":
                 run_native(args.work)
             except Exception as error:
                 code=1
+                args.work.mkdir(parents=True,exist_ok=True)
+                (args.work/"failure.json").write_text(json.dumps(
+                    {"schema":1,"errorType":type(error).__name__,"message":str(error)},
+                    indent=2)+"\n")
                 print(f"DEM preflight failed: {error}",flush=True)
             finally:
                 package(args.work,code)
