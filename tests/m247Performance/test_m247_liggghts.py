@@ -1,6 +1,7 @@
 """Offline contract checks for the LIGGGHTS-to-OpenFOAM powder handoff."""
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -44,6 +45,20 @@ class PowderDEMTest(unittest.TestCase):
             dem.package(work, 1)
             manifest = json.loads((work / "reviewManifest.json").read_text())
             self.assertIn("input.liggghts", manifest["files"])
+
+    def test_command_failure_archive_explains_missing_binary(self):
+        TEMP_ROOT.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
+            work = Path(directory) / "missing-binary"
+            env = dict(dem.os.environ, LIGGGHTS_EXECUTABLE=str(work / "absent"))
+            result = subprocess.run(
+                [sys.executable, str(Path(dem.__file__)), "run", "--work", str(work)],
+                env=env, capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 1)
+            self.assertTrue((work / "failure.json").is_file())
+            self.assertIn("LIGGGHTS_EXECUTABLE", (work / "failure.json").read_text())
+            with dem.tarfile.open(Path(directory) / "M247_missing-binary_review.tar.gz") as archive:
+                self.assertTrue(any(name.endswith("failure.json") for name in archive.getnames()))
 
     def test_preparation_and_unit_conversion(self):
         TEMP_ROOT.mkdir(exist_ok=True)
