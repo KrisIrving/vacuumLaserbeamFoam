@@ -4,8 +4,10 @@
 geometric `sequentialVerticalDeposition-v2` script, not by LIGGGHTS. The user
 requires a LIGGGHTS-generated bed for the final case. `RunM247TrackPilotV2`
 now stops before CFD until a native DEM bed has been generated, audited and
-installed. Run `bash tests/m247Performance/RunM247PowderDEM` first on Ubuntu
-with `liggghts` on PATH and send its uniquely named review archive. This DEM
+installed. Run `bash tests/m247Performance/RunM247PowderDEM` first on Ubuntu;
+the tool accepts `LIGGGHTS_EXECUTABLE` and automatically checks
+`~/CFDEM/LIGGGHTS/src-build/liggghts` before PATH. A shell alias alone is not
+visible to Python. Send its uniquely named review archive. This DEM
 pilot does not change this template or advance CFD. Its contact parameters are
 provisional upstream tutorial values, so passing its PSD/packing gates does not
 establish experimental powder-bed fidelity. The final coverage target and
