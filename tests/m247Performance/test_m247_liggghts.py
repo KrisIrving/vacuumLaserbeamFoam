@@ -69,6 +69,9 @@ class PowderDEMTest(unittest.TestCase):
             self.assertIn("gravity 981 vector 0 -1 0", setup)
             self.assertIn("particledistribution/discrete", setup)
             self.assertIn("write_dump all custom post/final.dump", setup)
+            self.assertLess(setup.index("compute radiusSum all reduce sum c_rad"),
+                            setup.index("group trim variable above"))
+            self.assertIn("thermo_style custom step atoms c_radiusSum\nrun 0\nvariable above", setup)
             rows = ["1 0 0.063 0 0.003 0 0 0",
                     "2 0.02 0.062 0 0.002 0 0 0"]
             dump(work / "post/raw.dump", rows)
