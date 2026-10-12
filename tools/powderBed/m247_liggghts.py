@@ -173,6 +173,18 @@ def read_dump(path):
     return sorted(atoms, key=lambda atom: atom["id"])
 
 
+def volume_weighted_percentile(diameters, fraction):
+    """Return a volume-cumulative diameter without assuming a measurement basis."""
+    values = sorted(diameters)
+    total = sum(d**3 for d in values)
+    cumulative = 0.0
+    for d in values:
+        cumulative += d**3
+        if cumulative >= fraction*total:
+            return d
+    return values[-1]
+
+
 def audit(work):
     cfg = json.loads(CONFIG.read_text())
     meta = json.loads((work / "demInput.json").read_text())
@@ -245,6 +257,10 @@ def audit(work):
                     equivalentDenseThickness_m=volume/area,
                     diameterMin_m=min(ds),diameterD10_m=percentile(ds,.1),
                     diameterD50_m=percentile(ds,.5),diameterD90_m=percentile(ds,.9),
+                    diameterVolumeD10_m=volume_weighted_percentile(ds,.1),
+                    diameterVolumeD50_m=volume_weighted_percentile(ds,.5),
+                    diameterVolumeD90_m=volume_weighted_percentile(ds,.9),
+                    experimentalPsdBasis="unconfirmed; numerical gate uses number count",
                     diameterMax_m=max(ds),minimumInterparticleGap_m=min_gap,
                     highestParticleTop_m=max(p["y"]+p["r"] for p in particles),
                     boundaryPenetrationMax_m=penetrations,
@@ -285,7 +301,8 @@ def audit(work):
                              f'{p["z"]:.12g}',f'{p["r"]:.12g}',f'{2*p["r"]:.12g}'))
     write_set_fields(work / "setFieldsDict",particles,floor)
     print(json.dumps({"particleCount":len(final),"packingNominal":manifest["actualPackingFractionNominalLayer"],
-                      "D10_D50_D90_um":[1e6*manifest[f"diameterD{q}_m"] for q in (10,50,90)],
+                      "numberD10_D50_D90_um":[1e6*manifest[f"diameterD{q}_m"] for q in (10,50,90)],
+                      "volumeD10_D50_D90_um":[1e6*manifest[f"diameterVolumeD{q}_m"] for q in (10,50,90)],
                       "corridorCoverage":manifest["projectedCoverageFractionCorridor"],
                       "gates":gates,"readyForReview":manifest["readyForReview"]},indent=2),flush=True)
 
