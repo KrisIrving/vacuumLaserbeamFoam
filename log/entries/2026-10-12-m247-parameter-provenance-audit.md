@@ -1,7 +1,9 @@
 # M247 parameter provenance audit (2026-10-12)
 
 Scope: the `M247_0p6Pa_track1500um6umV2` pilot. This is a source audit, not a
-claim that the parameters describe one published experimental track. The case
+claim that the parameters describe one published experimental track. The user
+confirmed the chamber pressure, preheat, power, speed and PSD as their own
+experimental conditions. The case
 remains blocked before CFD until a native LIGGGHTS bed is reviewed. Do not
 change material values opportunistically during the DEM handoff; preserve
 matched comparisons, then run named sensitivities for uncertain parameters.
@@ -14,7 +16,7 @@ matched comparisons, then run named sensitivities for uncertain parameters.
 | Surface tension 1.70 N/m; temperature slope -2.5e-4 N/(m K); emissivity 0.30 | Current files call these provisional; no same-heat, near-melt primary measurements were confirmed. | Provisional sensitivity values, not validation anchors. |
 | Ni optical constants n=2.611, k=5.842 at 1064 nm | Case documents these as a pure-Ni surrogate, not MAR-M247 optical data. | Absorptivity is uncertain; preserve the ray-count comparison but do not infer alloy optical accuracy from it. |
 | Nine-component composition Ni 61.80, Cr 8.09, Co 9.31, W 9.40, Ta 3.21, Al 5.49, Hf 1.50, Ti 0.69, Mo 0.51 wt.% | `M247_INPUT_FREEZE.md` labels this a temporary literature fallback. Jin et al. report ICP-OES chemistry of *their own* EPBF powder [2], not of this case's powder. | Requires actual powder certificate. C/B/Zr are absent from the evaporation mixture and pure-element vapor-pressure fits do not establish alloy activity/depletion accuracy. |
-| 0.6 Pa, 1070 °C initial metal, 350 W, 1 m/s, 86 µm spot, 50 µm nominal layer, PSD D10/50/90 = 36.5/52.6/74.4 µm | These appear in `M247_INPUT_FREEZE.md` as experiment inputs, but no linked primary paper or powder certificate documents this combined condition. Searches for the combined distinctive values found no match. Published MAR-M247 conditions differ: Jin et al. used EPBF at 1000 °C with 14–125 µm powder [2]; Shi et al. used SLM at 200 W, 900 mm/s and 30 µm layers [3]. | Treat as project target inputs, **not** externally verified experimental data. Do not substitute parameters from unrelated papers. Obtain original run sheet and powder PSD/certificate before claiming experimental validation. |
+| 0.6 Pa, 1070 °C initial metal, 350 W, 1 m/s, 86 µm spot, 50 µm nominal layer, PSD D10/50/90 = 36.5/52.6/74.4 µm | User confirms 0.6 Pa, 1070 °C, 350 W, 1 m/s and the current PSD are their experimental conditions. No linked primary paper documents this combined condition; the remaining spot/layer entries still need their own source confirmation. Published MAR-M247 conditions differ: Jin et al. used EPBF at 1000 °C with 14–125 µm powder [2]; Shi et al. used SLM at 200 W, 900 mm/s and 30 µm layers [3]. | Freeze the user-confirmed values as experimental inputs. Do not substitute unrelated papers' process settings. Archive the original run sheet and powder certificate when available; distinguish user-supplied inputs from independent literature validation. |
 | DEM contact: 5 MPa reduced Young's modulus, 0.45 Poisson ratio, 0.1 restitution, 0.065 friction; 500 particles, gravity rain with walls | Current generator adapts the upstream LaserbeamFoam LIGGGHTS rain-deposition approach. These contact coefficients are numerical/provisional, not calibrated M247 measurements. No recoater/blade is simulated. | DEM accounts for contacts/collisions *during bed generation*. It does not provide ongoing CFD–DEM collision coupling during laser melting. Check final PSD, particle count, packing, coverage, overlaps, residual motion, topography and size segregation; calibrate against measured spread bed if available. |
 
 ## Decision gates
@@ -26,9 +28,9 @@ matched comparisons, then run named sensitivities for uncertain parameters.
    A gate pass is only computational consistency, not physical calibration.
 3. Install the audited bed and perform the 50 µs pilot; inspect melt-pool
    geometry, conservation, boundary margins and runtime before 1.5 mm.
-4. Keep source status explicit: [1] supports melting ranges; no identified
-   source supports the complete process parameter set. Upgrade to experimental
-   validation only with the actual target paper/run sheet and powder data.
+4. Keep source status explicit: [1] supports melting ranges; the user supplies
+   the experiment settings. Independent experimental validation of predictions
+   still needs the measured track data and run sheet.
 
 ## Primary sources
 
