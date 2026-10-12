@@ -30,7 +30,16 @@ CASE = ROOT / "tutorials/vacuumLaserbeamFoam/M247_0p6Pa_track1500um6umV2"
 CONFIG = CASE / "powderBedConfig.json"
 CGS_TO_M = 0.01
 N_BINS = 16
-INSERTED_PARTICLES = 500
+INSERTED_PARTICLES = 480
+# Native 2026-10-12 21:38:35 pilot: smaller particles preferentially survived
+# the 80 um top trim. These observed counts compensate the *numerical trim*,
+# keeping the final number-based PSD tied to the user's experimental targets.
+# Recheck after each native run; this is not a measured powder-flow property.
+CALIBRATION_CONFIG_SHA256 = "0e3ca1caafe597d1406bde8ea5506169e7988747b636ec144df9fd17c5e18719"
+CALIBRATION_ARCHIVE_SHA256 = "0a9d1e9bd446d2c7bab9f5ce46a86a4771936638849e5db0909e35e4762e3f83"
+REFERENCE_RAW_COUNTS = (32, 33, 32, 36, 29, 35, 38, 25, 22, 29, 23, 26, 32, 40, 34, 34)
+REFERENCE_FINAL_COUNTS = (28, 30, 25, 31, 21, 21, 23, 18, 17, 18, 15, 20, 17, 25, 20, 23)
+BOUNDARY_TOLERANCE_M = 2e-8  # 0.02 um; soft-contact penetration, 0.3% of 6 um cell
 
 
 def next_prime(value):
@@ -52,6 +61,8 @@ def create_input(work):
     work.mkdir(parents=True, exist_ok=True)
     (work / "post").mkdir(exist_ok=True)
     cfg = json.loads(CONFIG.read_text())
+    if sha256(CONFIG) != CALIBRATION_CONFIG_SHA256:
+        raise ValueError("Powder config changed; re-evaluate DEM trim calibration")
     bounds = cfg["footprint"]
     xmin, xmax = bounds["xMin"] / CGS_TO_M, bounds["xMax"] / CGS_TO_M
     zmin, zmax = bounds["zMin"] / CGS_TO_M, bounds["zMax"] / CGS_TO_M
@@ -59,7 +70,9 @@ def create_input(work):
     top = (cfg["substrateSurfaceY"] + cfg["layerThickness"]) / CGS_TO_M
     diameters = [piecewise_quantile_value(cfg["diameterDistribution"], (i + 0.5) / N_BINS)
                  for i in range(N_BINS)]
-    weights = [d ** 3 / sum(p ** 3 for p in diameters) for d in diameters]
+    unscaled_weights = [d**3 * raw/final for d,raw,final in zip(
+        diameters, REFERENCE_RAW_COUNTS, REFERENCE_FINAL_COUNTS)]
+    weights = [weight/sum(unscaled_weights) for weight in unscaled_weights]
     seed_base = int(cfg["seed"])
     template_seeds = [next_prime(seed_base + 100 * i) for i in range(N_BINS)]
     distribution_seed = next_prime(seed_base + 2000)
@@ -121,7 +134,11 @@ def create_input(work):
                     insertedParticlesRequested=INSERTED_PARTICLES,distributionBins=N_BINS,
                     liggghtsSeeds=dict(templates=template_seeds,distribution=distribution_seed,
                                        insertion=insertion_seed),
-                    distributionBasis="number fraction converted to LIGGGHTS mass weights",
+                    distributionBasis="experimental number-quantile bins; LIGGGHTS mass weights compensated for observed 80 um trim survival",
+                    trimCalibration=dict(referenceArchiveSha256=CALIBRATION_ARCHIVE_SHA256,
+                                         referenceRawCounts=REFERENCE_RAW_COUNTS,
+                                         referenceFinalCounts=REFERENCE_FINAL_COUNTS,
+                                         massWeights=weights),
                     contactParameters="provisional upstream laserbeamFoam DEM tutorial values; M247 solid density 7.95 g/cm3",
                     cgsToMeters=CGS_TO_M)
     (work / "demInput.json").write_text(json.dumps(metadata, indent=2) + "\n")
@@ -169,11 +186,22 @@ def audit(work):
     bounds = cfg["footprint"]
     floor = cfg["substrateSurfaceY"]
     ceiling = floor + cfg["layerThickness"]
+    penetrations = {face: 0.0 for face in ("xMin", "xMax", "zMin", "zMax", "floor", "top")}
+    penetration_counts = {face: 0 for face in penetrations}
     for p in particles:
-        if (p["x"]-p["r"] < bounds["xMin"]-1e-9 or p["x"]+p["r"] > bounds["xMax"]+1e-9
-                or p["z"]-p["r"] < bounds["zMin"]-1e-9 or p["z"]+p["r"] > bounds["zMax"]+1e-9
-                or p["y"]-p["r"] < floor-1e-9 or p["y"]+p["r"] > ceiling+1e-9):
-            raise ValueError("DEM particle crosses footprint, substrate or 80 um envelope")
+        face_depths = dict(xMin=bounds["xMin"]-(p["x"]-p["r"]),
+                           xMax=p["x"]+p["r"]-bounds["xMax"],
+                           zMin=bounds["zMin"]-(p["z"]-p["r"]),
+                           zMax=p["z"]+p["r"]-bounds["zMax"],
+                           floor=floor-(p["y"]-p["r"]),
+                           top=p["y"]+p["r"]-ceiling)
+        for face, depth in face_depths.items():
+            if depth > 0:
+                penetrations[face] = max(penetrations[face], depth)
+                penetration_counts[face] += 1
+    if max(penetrations.values()) > BOUNDARY_TOLERANCE_M:
+        raise ValueError(f"DEM boundary penetration exceeds {BOUNDARY_TOLERANCE_M*1e6:.3f} um: "
+                         f"{ {face: round(depth*1e6, 6) for face, depth in penetrations.items()} }")
     min_gap = float("inf")
     for i, a in enumerate(particles):
         for b in particles[i+1:]:
@@ -219,6 +247,9 @@ def audit(work):
                     diameterD50_m=percentile(ds,.5),diameterD90_m=percentile(ds,.9),
                     diameterMax_m=max(ds),minimumInterparticleGap_m=min_gap,
                     highestParticleTop_m=max(p["y"]+p["r"] for p in particles),
+                    boundaryPenetrationMax_m=penetrations,
+                    boundaryPenetrationCounts=penetration_counts,
+                    boundaryPenetrationTolerance_m=BOUNDARY_TOLERANCE_M,
                     projectedCoverageFractionFootprint=projected_coverage(particles,bounds,spacing),
                     projectedCoverageFractionCorridor=projected_coverage(particles,corridor,spacing),
                     maximumUncoveredCenterlineGap_m=maximum_centerline_gap(
@@ -235,6 +266,7 @@ def audit(work):
     # Gates protect the next stage; clipping can bias the PSD, so a successful
     # LIGGGHTS exit alone never means the bed is acceptable.
     gates = dict(particleCount=len(particles)>0,
+                 boundary=max(penetrations.values())<=BOUNDARY_TOLERANCE_M,
                  d10=abs(manifest["diameterD10_m"]/36.5e-6-1)<=.10,
                  d50=abs(manifest["diameterD50_m"]/52.6e-6-1)<=.05,
                  d90=abs(manifest["diameterD90_m"]/74.4e-6-1)<=.10,
