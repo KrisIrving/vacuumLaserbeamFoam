@@ -50,7 +50,7 @@ def field_rows(path,width):
                     if count==CELLS:return
         raise ValueError('Truncated field: '+str(path))
 
-def pool_geometry(state):
+def pool_geometry(state, beam_x=50e-6):
     fine_cells={};all_hot=[];liquid_hot=[];outside=0
     peaks=dict(metal=0,interface=0,gas=0)
     for index,(tr,ar,centre) in enumerate(zip(field_rows(state/'T',1),field_rows(state/'alpha.metal',1),field_rows(state/'C',3))):
@@ -73,7 +73,7 @@ def pool_geometry(state):
     substrate=[k for k,p in fine_cells.items() if p[1]<=SURFACE]
     pool=[]
     if substrate:
-        seed=min(substrate,key=lambda k:(fine_cells[k][0]-50e-6)**2+(fine_cells[k][1]-SURFACE)**2+fine_cells[k][2]**2)
+        seed=min(substrate,key=lambda k:(fine_cells[k][0]-beam_x)**2+(fine_cells[k][1]-SURFACE)**2+fine_cells[k][2]**2)
         seen={seed};queue=deque([seed])
         while queue:
             k=queue.popleft();pool.append(fine_cells[k])

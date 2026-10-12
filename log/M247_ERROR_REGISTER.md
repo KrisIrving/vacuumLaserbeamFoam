@@ -1,3 +1,11 @@
+## 2026-10-12: 1.5mm pilot startup linear exception; pressure bottleneck
+
+Pilot20261012-105416 completed50us in3.0146h; no nonlinear thermal cap hits, all4198 nonlinear residual checks pass. However the first T linear solve at1.200048002ns reached1000 iterations with residual7.9338294e-9 above1e-9 requested. Later T solves pass. Do not interpret thermal_gate=true as proof that every linear solve converged. Mature50--60us restart comparison carries this startup exception in source.json and cannot repair or validate startup.
+
+Maximum printed Courant0.1548 versus target0.1 is recorded, not concealed. Pressure final residuals all satisfy1e-7; no fatal solver errors. Mesh OK and all archive hashes match. Pressure50.44% now dominates, thermal16.51%; avoid unsupported claims that thermal remains the primary bottleneck or that the1.5mm run will complete within24h.
+
+Added matchedPCG/GAMG50--60us pair with exact55/60us depth/width checks, linear pressure/T convergence and method identity guards. Explicitly set both p_rgh and p_rghFinal so dictionary expansion cannot leave a hiddenPCG final solver. No pressure tolerance/correction-count/time-step changes. NativeGAMG result pending;9 focused tests/Bash syntax pass. See log/entries/2026-10-12-m247-pilot-pressure-bottleneck.md and tests/m247Performance/TRACK_PRESSURE_PAIR.md.
+
 ## 2026-10-10 202035: reduced-ray budget PASS and measured1.649x; longer validation
 
 Review archive complete,exit0,missingfiles0; all manifest file SHA256 verified.

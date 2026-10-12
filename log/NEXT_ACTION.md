@@ -1,3 +1,9 @@
+## 2026-10-12 current: pressure optimisation on completed1.5mm pilot
+
+The50us M2476um/384-ray pilot completed3.0146h. Average3.13 thermal iterations, no nonlinear caps; pressure50.44% is dominant. First-step T linear cap is recorded separately; it remains an outstanding startup exception. Instantaneous molten depth105um/width270um, fine margin39um. Full1500us heating startup-rate projection90.44h plus cooling is not a runtime guarantee.
+
+Ubuntu next: git pull --ff-only, then bash tests/m247Performance/RunM247PressurePair tests/m247Performance/runs/m247-track1500-pilot-20261012-105416/track1500. Fresh matched50--60usPCG/GAMG variants, no rerun of0--50us, source preserved, one timestamped archive on success/failure. Review native pressure savings, linear/nonlinear convergence and both55/60us melt depth/width differences. No additionalWang/ray-count/thermal mini screens now. Passing recommends longer continuation only; even ideal pressure elimination alone cannot meet24h at this observed whole-path mesh rate. Further mesh/time-step changes need measured physics/cost evidence.
+
 ## 2026-10-10 202035: reduced-ray budget PASS and measured1.649x; longer validation
 
 Review archive complete,exit0,missingfiles0; all manifest file SHA256 verified.
