@@ -1119,4 +1119,24 @@ Native completion and powder quality remain unverified until a new archive is
 reviewed. The user's 0.6 Pa, 1070 C, 350 W, 1 m/s and PSD are their
 experimental conditions, not literature values.
 
+# 2026-10-12: M247 native DEM completed; nanometre wall contacts and PSD shift
+
+Archive `M247_m247-powder-dem-20261012-213835_review.tar.gz` has a successful
+native exit after 450000 steps (15.18 s wall), raw and final dumps. It did not
+advance CFD. 500 inserted particles became 352 after top trim and relaxation.
+The audit initially rejected wall contacts: maximum penetration below the
+floor 0.008 um, xMax 0.005 um, zMin 0.0039 um. These are soft-contact
+penetrations, far below the 6 um CFD cell, but must be measured and bounded.
+The audit now records per-face counts/depths and permits at most 0.02 um;
+larger crossings still fail. Re-auditing this archive shows packing 0.58378,
+PSD D10/D50/D90 36.0938/48.8266/74.75 um, corridor coverage 0.7596,
+minimum interparticle gap -0.01584 um and velocity P95 0.004822 m/s.
+Only D50 fails the unchanged 5% gate against the user's 52.6 um experiment.
+Raw D50 was 51.3422 um, so the 80 um top trim preferentially removed larger
+particles. The next native trial uses the observed 16-bin raw/final survival
+ratios to compensate the LIGGGHTS *input* mass weights, and 480 rather than
+500 inserted particles to preserve target packing. This is a calibrated
+numerical input correction, not a change to the experimental PSD or DEM
+contact law. Acceptance requires a fresh native archive and all gates pass.
+
 
