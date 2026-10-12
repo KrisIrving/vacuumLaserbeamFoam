@@ -1,5 +1,11 @@
 # M247 experiment-input freeze — v0
 
+**Provenance correction (2026-10-12):** The process inputs below are frozen
+project targets, but the repository does not identify a primary paper or run
+sheet establishing their combination as one experiment. They must not be
+presented as independently verified experimental values. See
+`log/entries/2026-10-12-m247-parameter-provenance-audit.md`.
+
 ## Purpose
 
 This file separates experimentally fixed inputs from provisional material-model
@@ -123,3 +129,4 @@ spatter particle for the full 2-ms track.
 7. desired post-scan cooling duration.
 
 None of these blocks the initial constitutive vapor-pressure screening.
+
