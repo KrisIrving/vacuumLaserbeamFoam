@@ -7,6 +7,32 @@ from unittest.mock import patch
 from wang_staggered import collect, package
 
 class StaggeredTest(unittest.TestCase):
+    def test_full_slope_correction_solves_isolated_mushy_enthalpy(self):
+        cp,latent,solidus,width=735.,274000.,1697.,30.
+        target=.35
+        enthalpy=cp*(solidus+width*target)+latent*target
+        def correct(epsilon,relaxation):
+            temperature=(enthalpy-latent*epsilon)/cp
+            return epsilon+relaxation*cp/(latent+cp*width)*(temperature-solidus-width*epsilon)
+        full=correct(.2,1.)
+        half=correct(.2,.5)
+        self.assertAlmostEqual(full,target,places=12)
+        self.assertAlmostEqual(abs(half-target),abs(.2-target)/2,places=12)
+
+    def test_thermal_collect_uses_full_ray_candidate_without_stagger_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work=Path(tmp)
+            for name in ('rays1536','rays384'):
+                p=work/'reference'/name;p.mkdir(parents=True)
+                (p/'summary.json').write_text('{}')
+            with patch('wang_staggered.summarize',return_value=dict(steps=2,thermal_gate=True)) as summary, patch('wang_staggered.compare_histories',return_value={}):
+                collect(work,thermal_newton=True)
+            summary.assert_called_once_with(work/'rays1536Newton')
+            report=json.loads((work/'comparison.json').read_text())
+            self.assertEqual(report['experiment'],'fullRayThermalNewton')
+            self.assertTrue(report['candidate_thermal_gate'])
+            self.assertFalse(report['production_approved'])
+
     def test_ring_phase_preserves_uniform_spacing_and_centroid(self):
         # Rotation changes spatial coverage but not annular Gaussian weights.
         # Each ring remains a closed, uniform quadrature with zero lateral moment.
