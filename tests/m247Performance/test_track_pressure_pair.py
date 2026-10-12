@@ -11,6 +11,7 @@ class PressurePairTest(unittest.TestCase):
             return '\n'.join(f'GAMG: Solving for p_rgh, Initial residual = 0.001, Final residual = {r}, No Iterations 4\ntime step continuity errors : sum local = 1e-9, global = 1e-12, cumulative = 1e-10' for r in (1e-5,1e-5,final))
         self.assertTrue(pressure_stats(log(9e-8),1)['passed'])
         self.assertTrue(pressure_stats('time step continuity errors : sum local = 0, global = 0, cumulative = 0\n'+log(9e-8),1)['passed'])
+        self.assertTrue(pressure_stats('time step continuity errors : sum local = 5e-16, global = -4e-18, cumulative = 3.2e-8\n'+log(9e-8),1)['passed'])
         with self.assertRaises(ValueError):pressure_stats('time step continuity errors : sum local = 1, global = 0, cumulative = 0\n'+log(9e-8),1)
         self.assertFalse(pressure_stats(log(1e-6),1)['passed'])
         with self.assertRaises(ValueError):pressure_stats(log(9e-8),2)

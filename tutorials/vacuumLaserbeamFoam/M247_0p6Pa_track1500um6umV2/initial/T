@@ -1,0 +1,23 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class volScalarField;
+    location "0";
+    object T;
+}
+dimensions [0 0 0 1 0 0 0];
+
+// Experiment: global preheat at 1070 C.
+internalField uniform 1343.15;
+
+boundaryField
+{
+    bottomWall
+    {
+        type fixedValue;
+        value uniform 1343.15;
+    }
+    sideWalls { type zeroGradient; }
+    atmosphere { type zeroGradient; }
+}

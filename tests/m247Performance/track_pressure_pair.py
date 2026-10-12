@@ -38,10 +38,13 @@ def pressure_stats(text, steps):
                for i,(initial,final,n) in enumerate(rows))
     continuity=[tuple(map(float,m)) for m in re.findall(
         r'sum local = ([-+0-9.eE]+), global = ([-+0-9.eE]+), cumulative = ([-+0-9.eE]+)',text)]
-    # OpenFOAM prints one zero continuity line while initialising phi, before
-    # the first pressure solve. Reject any other mismatch rather than assuming
-    # every continuity line belongs to a p_rgh solve.
-    if len(continuity)==len(rows)+1 and continuity[0]==(0.0,0.0,0.0):
+    # OpenFOAM prints one initial continuity line before the first pressure
+    # solve. Fresh cases start at zero; restarts carry the preceding run's
+    # cumulative error. The startup local/global terms must be roundoff-size.
+    first_cont=text.find('time step continuity errors')
+    first_pressure=text.find('Solving for p_rgh')
+    if (len(continuity)==len(rows)+1 and 0<=first_cont<first_pressure
+        and abs(continuity[0][0])<=1e-12 and abs(continuity[0][1])<=1e-12):
         continuity=continuity[1:]
     if len(continuity)!=len(rows):raise ValueError('Missing continuity records')
     # Reject nonfinite values even if not represented by the numeric regex.

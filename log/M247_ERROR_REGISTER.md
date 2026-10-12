@@ -1,3 +1,9 @@
+## 2026-10-12: pressure pair completed but collector failed on nonzero-restart continuity line
+
+Archive M247_m247-pressure-pair-20261012-150149_review.tar.gz contains completed PCG and GAMG50--60us runs and55/60us geometry. Manifest complete=false only because pressure_stats again required an extra initial continuity record to be exactly(0,0,0). On a restart the initial local/global terms are roundoff (5.82e-16,-3.73e-18) and cumulative3.19e-8 carries prior history. Corrected parser to require precisely one pre-pressure extra line with local/global <=1e-12 and a matching solve count; malformed extra records still fail. Recollected both full native logs locally and generated comparison.json; no CFD rerun. Future parser tests include nonzero carried cumulative startup.
+
+Result: GAMG36.5% slower than PCG, not accepted. Boundary review found the V1 terminal fine-strip allowance120um smaller than the observed molten forward reach129um at60us. V1 cannot be continued to1.5mm as a6um molten-region case. Added separate V2 geometry with180um terminal allowance and preserved old archive. Native V2 pending. See log/entries/2026-10-12-m247-pressure-result-boundaries.md.
+
 ## 2026-10-12: 1.5mm pilot startup linear exception; pressure bottleneck
 
 Pilot20261012-105416 completed50us in3.0146h; no nonlinear thermal cap hits, all4198 nonlinear residual checks pass. However the first T linear solve at1.200048002ns reached1000 iterations with residual7.9338294e-9 above1e-9 requested. Later T solves pass. Do not interpret thermal_gate=true as proof that every linear solve converged. Mature50--60us restart comparison carries this startup exception in source.json and cannot repair or validate startup.

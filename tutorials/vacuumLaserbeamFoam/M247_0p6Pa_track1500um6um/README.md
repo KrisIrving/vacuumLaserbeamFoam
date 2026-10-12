@@ -37,6 +37,13 @@ not a demonstrated moving-window speedup. Larger mesh means fewer rays do not
 guarantee a cheap full track. Pilot reports measured wall/physical-us and a
 clearly labelled30x startup-rate projection for1500us; no24h promise.
 Fine-zone margin and boundary adequacy must be reviewed before continuing.
+Review of the completed50--60us pair found a future-path issue: at60us the
+solidus molten front reaches x=189um while the beam is at x=60um, a129um
+forward reach. At the planned1500um endpoint, the fine x boundary at1620um
+provides only120um ahead of the beam. If this reach persists, the molten
+front enters the coarser block. Do not start the full1.5mm scan from this
+static mesh; extend the fine corridor with a validated new mesh or adopt a
+validated moving region. The current50/60us results remain valid locally.
 
 Powder: deterministic seed2471500,330 particles, fixed30..80um PSD,
 D10/D50/D90=36.545/52.611/74.334um,nominal50um packing0.580013,

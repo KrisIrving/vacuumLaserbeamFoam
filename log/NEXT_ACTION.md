@@ -1,3 +1,11 @@
+## 2026-10-12 current: PCG retained, boundary audit, separate V2 mesh pilot
+
+Native50--60us M247 pressure pair completed: PCG2788.89s, GAMG3806.36s. GAMG is36.5% slower; retainPCG. Depth/width agree at55/60us; zero nonlinear thermal cap hits and full linear convergence on both mature restarts. Pair archive manifest is incomplete solely because collector mishandled the carried initial continuity line; full archived logs were recollected locally after the fix, no CFD rerun needed. Results in log/entries/2026-10-12-m247-pressure-result-boundaries.md.
+
+Boundary audit: the current V1 fine x corridor ends1620um, while the60us molten front reaches129um ahead of laser, exceeding the120um terminal allowance. Do not continue V1 to1.5mm. Atmosphere T zeroGradient on backflow and totalPressure on p_rgh are provisional; see tests/m247Performance/TRACK_BOUNDARY_AUDIT.md. No assertion of validated outer-boundary independence.
+
+Prepared V2 static mesh with fine x through1680um, reduced far-substrate fine depth based on older200us M247 result, expected3,814,272 cells, materials/laser/BC unchanged. Ubuntu next: git pull --ff-only; bash tests/m247Performance/RunM247TrackPilotV2. Send its single M247_m247-track1500-v2-pilot-TIMESTAMP_review.tar.gz even on failure. This is a new0--50us case, not a restart of old partitions. Native checkMesh, melt dimensions/fine-margin and cost must be reviewed before any long continuation. Full-track24h remains unproved.
+
 ## 2026-10-12 current: pressure optimisation on completed1.5mm pilot
 
 The50us M2476um/384-ray pilot completed3.0146h. Average3.13 thermal iterations, no nonlinear caps; pressure50.44% is dominant. First-step T linear cap is recorded separately; it remains an outstanding startup exception. Instantaneous molten depth105um/width270um, fine margin39um. Full1500us heating startup-rate projection90.44h plus cooling is not a runtime guarantee.

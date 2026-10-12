@@ -1,0 +1,3656 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "system";
+    object setFieldsDict;
+}
+
+defaultFieldValues
+(
+    volScalarFieldValue alpha.metal 0
+);
+
+regions
+(
+    boxToCell
+    {
+        box (-1 -1 -1) (1 0.0006 1);
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 0, diameter 7.99151515152e-05 m
+    sphereToCell
+    {
+        origin (0.00125793565138 0.000639957575758 -7.19264776953e-05);
+        radius 3.99575757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 1, diameter 7.97454545455e-05 m
+    sphereToCell
+    {
+        origin (2.19545869237e-05 0.000639872727273 6.18307873072e-05);
+        radius 3.98727272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 2, diameter 7.95757575758e-05 m
+    sphereToCell
+    {
+        origin (0.000164985788739 0.000639787878788 0.000231198201016);
+        radius 3.97878787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 3, diameter 7.94060606061e-05 m
+    sphereToCell
+    {
+        origin (0.00135022803611 0.000639703030303 -8.54405047363e-05);
+        radius 3.9703030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 4, diameter 7.92363636364e-05 m
+    sphereToCell
+    {
+        origin (0.000776470789041 0.000639618181818 8.86180088915e-05);
+        radius 3.96181818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 5, diameter 7.90666666667e-05 m
+    sphereToCell
+    {
+        origin (0.00106292699531 0.000639533333333 -3.6185686469e-05);
+        radius 3.95333333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 6, diameter 7.8896969697e-05 m
+    sphereToCell
+    {
+        origin (-1.86480958289e-05 0.000639448484848 0.000135175088451);
+        radius 3.94484848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 7, diameter 7.87272727273e-05 m
+    sphereToCell
+    {
+        origin (0.000571021774682 0.000639363636364 0.00019208959574);
+        radius 3.93636363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 8, diameter 7.85575757576e-05 m
+    sphereToCell
+    {
+        origin (0.00103759041961 0.000639278787879 0.000180366742925);
+        radius 3.92787878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 9, diameter 7.83878787879e-05 m
+    sphereToCell
+    {
+        origin (0.000594223019517 0.000639193939394 8.38817362244e-05);
+        radius 3.91939393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 10, diameter 7.82181818182e-05 m
+    sphereToCell
+    {
+        origin (1.48801679408e-05 0.000639109090909 -0.000118085500029);
+        radius 3.91090909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 11, diameter 7.80484848485e-05 m
+    sphereToCell
+    {
+        origin (0.000213608281226 0.000639024242424 6.16769711536e-05);
+        radius 3.90242424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 12, diameter 7.78787878788e-05 m
+    sphereToCell
+    {
+        origin (0.00158715641753 0.000638939393939 -0.000227117549339);
+        radius 3.89393939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 13, diameter 7.77090909091e-05 m
+    sphereToCell
+    {
+        origin (0.00162584971653 0.000638854545455 -0.00014518589674);
+        radius 3.88545454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 14, diameter 7.75393939394e-05 m
+    sphereToCell
+    {
+        origin (0.000493767229318 0.00063876969697 0.000134767302559);
+        radius 3.87696969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 15, diameter 7.73696969697e-05 m
+    sphereToCell
+    {
+        origin (0.0013532556586 0.000638684848485 0.000181896632505);
+        radius 3.86848484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 16, diameter 7.72e-05 m
+    sphereToCell
+    {
+        origin (0.00154376649479 0.0006386 7.76624396675e-05);
+        radius 3.86e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 17, diameter 7.70303030303e-05 m
+    sphereToCell
+    {
+        origin (0.000342975470019 0.000638515151515 -0.00014031432402);
+        radius 3.85151515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 18, diameter 7.68606060606e-05 m
+    sphereToCell
+    {
+        origin (0.00105236317913 0.00063843030303 7.76603719277e-05);
+        radius 3.84303030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 19, diameter 7.66909090909e-05 m
+    sphereToCell
+    {
+        origin (0.00114693751185 0.000638345454545 4.04548688205e-05);
+        radius 3.83454545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 20, diameter 7.65212121212e-05 m
+    sphereToCell
+    {
+        origin (0.000426279469217 0.000638260606061 7.35378492253e-05);
+        radius 3.82606060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 21, diameter 7.63515151515e-05 m
+    sphereToCell
+    {
+        origin (0.00108228452527 0.000638175757576 -0.00016475624442);
+        radius 3.81757575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 22, diameter 7.61818181818e-05 m
+    sphereToCell
+    {
+        origin (-6.37395163016e-05 0.000638090909091 -5.18866860671e-05);
+        radius 3.80909090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 23, diameter 7.60121212121e-05 m
+    sphereToCell
+    {
+        origin (0.000671286786905 0.000638006060606 0.000164392205462);
+        radius 3.80060606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 24, diameter 7.58424242424e-05 m
+    sphereToCell
+    {
+        origin (0.000111851872692 0.000637921212121 0.000100277838331);
+        radius 3.79212121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 25, diameter 7.56727272727e-05 m
+    sphereToCell
+    {
+        origin (0.000496825191215 0.000637836363636 1.51410494546e-05);
+        radius 3.78363636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 26, diameter 7.5503030303e-05 m
+    sphereToCell
+    {
+        origin (-0.000207677368196 0.000637751515152 -3.84805757399e-05);
+        radius 3.77515151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 27, diameter 7.53333333333e-05 m
+    sphereToCell
+    {
+        origin (-0.000150682222512 0.000637666666667 -0.000166709983352);
+        radius 3.76666666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 28, diameter 7.51636363636e-05 m
+    sphereToCell
+    {
+        origin (0.0015161518711 0.000637581818182 -0.000149228939146);
+        radius 3.75818181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 29, diameter 7.49939393939e-05 m
+    sphereToCell
+    {
+        origin (-0.000257691628799 0.000637496969697 -9.48787903085e-05);
+        radius 3.7496969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 30, diameter 7.48242424242e-05 m
+    sphereToCell
+    {
+        origin (0.00148606314435 0.000637412121212 0.000159606386553);
+        radius 3.74121212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 31, diameter 7.46545454545e-05 m
+    sphereToCell
+    {
+        origin (0.000930849237193 0.000637327272727 0.000240185274608);
+        radius 3.73272727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 32, diameter 7.44848484848e-05 m
+    sphereToCell
+    {
+        origin (0.000690190562845 0.000637242424242 -0.000238456158978);
+        radius 3.72424242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 33, diameter 7.43174242424e-05 m
+    sphereToCell
+    {
+        origin (0.000866066420374 0.000637158712121 2.7315736477e-06);
+        radius 3.71587121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 34, diameter 7.41522727273e-05 m
+    sphereToCell
+    {
+        origin (-2.81986590008e-05 0.000637076136364 0.000242540050033);
+        radius 3.70761363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 35, diameter 7.39871212121e-05 m
+    sphereToCell
+    {
+        origin (0.000409348542309 0.000636993560606 -1.84122327982e-05);
+        radius 3.69935606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 36, diameter 7.3821969697e-05 m
+    sphereToCell
+    {
+        origin (0.00058222816571 0.000636910984848 -0.000127158069979);
+        radius 3.69109848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 37, diameter 7.36568181818e-05 m
+    sphereToCell
+    {
+        origin (6.69651343514e-05 0.000636828409091 -0.000233682969036);
+        radius 3.68284090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 38, diameter 7.34916666667e-05 m
+    sphereToCell
+    {
+        origin (0.000936560820115 0.000636745833333 -0.00020243374997);
+        radius 3.67458333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 39, diameter 7.33265151515e-05 m
+    sphereToCell
+    {
+        origin (-9.7697725207e-05 0.000636663257576 0.000193833399478);
+        radius 3.66632575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 40, diameter 7.31613636364e-05 m
+    sphereToCell
+    {
+        origin (0.00161657570979 0.000636580681818 -4.01057783418e-05);
+        radius 3.65806818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 41, diameter 7.29962121212e-05 m
+    sphereToCell
+    {
+        origin (0.000303094725601 0.000636498106061 0.000170043850198);
+        radius 3.64981060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 42, diameter 7.28310606061e-05 m
+    sphereToCell
+    {
+        origin (0.00111450080038 0.000636415530303 0.000213713524071);
+        radius 3.6415530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 43, diameter 7.26659090909e-05 m
+    sphereToCell
+    {
+        origin (-0.000188669820161 0.000636332954545 6.17907123397e-05);
+        radius 3.63329545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 44, diameter 7.25007575758e-05 m
+    sphereToCell
+    {
+        origin (0.000425205851408 0.000636250378788 0.000209084244091);
+        radius 3.62503787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 45, diameter 7.23356060606e-05 m
+    sphereToCell
+    {
+        origin (7.99882732766e-05 0.00063616780303 -7.42597483299e-05);
+        radius 3.61678030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 46, diameter 7.21704545455e-05 m
+    sphereToCell
+    {
+        origin (0.000671784012033 0.000636085227273 -0.000153947113582);
+        radius 3.60852272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 47, diameter 7.20053030303e-05 m
+    sphereToCell
+    {
+        origin (0.000783592205803 0.000636002651515 -2.13496387042e-05);
+        radius 3.60026515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 48, diameter 7.18401515152e-05 m
+    sphereToCell
+    {
+        origin (0.000841303052218 0.000635920075758 -0.000243497549964);
+        radius 3.59200757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 49, diameter 7.1675e-05 m
+    sphereToCell
+    {
+        origin (0.00164109194541 0.0006358375 8.57351441362e-05);
+        radius 3.58375e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 50, diameter 7.15098484848e-05 m
+    sphereToCell
+    {
+        origin (0.000972772821092 0.000635754924242 9.00067758176e-06);
+        radius 3.57549242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 51, diameter 7.13446969697e-05 m
+    sphereToCell
+    {
+        origin (0.000294887014465 0.000635672348485 2.01431800449e-05);
+        radius 3.56723484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 52, diameter 7.11795454545e-05 m
+    sphereToCell
+    {
+        origin (0.00124153934867 0.000635589772727 0.000218195895665);
+        radius 3.55897727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 53, diameter 7.10143939394e-05 m
+    sphereToCell
+    {
+        origin (-6.18947134748e-05 0.00063550719697 5.68085406846e-05);
+        radius 3.55071969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 54, diameter 7.08492424242e-05 m
+    sphereToCell
+    {
+        origin (0.000215256531001 0.000635424621212 0.000158232315026);
+        radius 3.54246212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 55, diameter 7.06840909091e-05 m
+    sphereToCell
+    {
+        origin (-0.000139411908062 0.000635342045455 -8.06347766064e-05);
+        radius 3.53420454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 56, diameter 7.05189393939e-05 m
+    sphereToCell
+    {
+        origin (0.00147246360191 0.000635259469697 -0.000226904435318);
+        radius 3.5259469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 57, diameter 7.03537878788e-05 m
+    sphereToCell
+    {
+        origin (0.000828448158166 0.000635176893939 0.00016021204326);
+        radius 3.51768939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 58, diameter 7.01886363636e-05 m
+    sphereToCell
+    {
+        origin (0.00169562468024 0.000635094318182 -1.26487733835e-05);
+        radius 3.50943181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 59, diameter 7.00234848485e-05 m
+    sphereToCell
+    {
+        origin (0.000217339100127 0.000635011742424 -2.07895649769e-05);
+        radius 3.50117424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 60, diameter 6.98583333333e-05 m
+    sphereToCell
+    {
+        origin (0.0012659793128 0.000634929166667 -0.000164321431107);
+        radius 3.49291666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 61, diameter 6.96931818182e-05 m
+    sphereToCell
+    {
+        origin (0.000453109034899 0.000634846590909 -0.000213297626215);
+        radius 3.48465909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 62, diameter 6.9528030303e-05 m
+    sphereToCell
+    {
+        origin (0.00128024569344 0.000634764015152 8.49986106271e-06);
+        radius 3.47640151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 63, diameter 6.93628787879e-05 m
+    sphereToCell
+    {
+        origin (-4.44393341247e-05 0.000634681439394 -0.000235620691419);
+        radius 3.46814393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 64, diameter 6.91977272727e-05 m
+    sphereToCell
+    {
+        origin (0.000964637617137 0.000634598863636 0.00013214391882);
+        radius 3.45988636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 65, diameter 6.90325757576e-05 m
+    sphereToCell
+    {
+        origin (0.00114580639422 0.000634516287879 -9.74389947097e-05);
+        radius 3.45162878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 66, diameter 6.88674242424e-05 m
+    sphereToCell
+    {
+        origin (0.000712823048284 0.000634433712121 -7.06357247398e-05);
+        radius 3.44337121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 67, diameter 6.87022727273e-05 m
+    sphereToCell
+    {
+        origin (0.00100231722728 0.000634351136364 -9.61544416977e-05);
+        radius 3.43511363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 68, diameter 6.85371212121e-05 m
+    sphereToCell
+    {
+        origin (0.00088807153074 0.000634268560606 -7.93474939525e-05);
+        radius 3.42685606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 69, diameter 6.8371969697e-05 m
+    sphereToCell
+    {
+        origin (5.98041668302e-05 0.000634185984848 0.000169858703696);
+        radius 3.41859848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 70, diameter 6.82068181818e-05 m
+    sphereToCell
+    {
+        origin (0.00162474136481 0.000634103409091 0.000188146193995);
+        radius 3.41034090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 71, diameter 6.80416666667e-05 m
+    sphereToCell
+    {
+        origin (0.000364790147559 0.000634020833333 0.000129578312314);
+        radius 3.40208333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 72, diameter 6.78765151515e-05 m
+    sphereToCell
+    {
+        origin (0.00113557004212 0.000633938257576 0.000113312495817);
+        radius 3.39382575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 73, diameter 6.77113636364e-05 m
+    sphereToCell
+    {
+        origin (0.00127543444028 0.000633855681818 0.000109600533629);
+        radius 3.38556818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 74, diameter 6.75462121212e-05 m
+    sphereToCell
+    {
+        origin (0.000205843693851 0.000633773106061 -0.000195389117961);
+        radius 3.37731060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 75, diameter 6.73810606061e-05 m
+    sphereToCell
+    {
+        origin (0.000492556295296 0.000633690530303 -0.000114831426139);
+        radius 3.3690530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 76, diameter 6.72159090909e-05 m
+    sphereToCell
+    {
+        origin (0.000789940155353 0.000633607954545 -0.000180762661395);
+        radius 3.36079545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 77, diameter 6.70507575758e-05 m
+    sphereToCell
+    {
+        origin (0.000787738838883 0.000633525378788 -9.78732199108e-05);
+        radius 3.35253787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 78, diameter 6.68856060606e-05 m
+    sphereToCell
+    {
+        origin (0.000120444467314 0.00063344280303 -4.7769025473e-06);
+        radius 3.34428030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 79, diameter 6.67204545455e-05 m
+    sphereToCell
+    {
+        origin (-0.000266284585327 0.000633360227273 1.60576556544e-05);
+        radius 3.33602272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 80, diameter 6.65553030303e-05 m
+    sphereToCell
+    {
+        origin (0.00170607391193 0.000633277651515 -0.000221930662537);
+        radius 3.32776515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 81, diameter 6.63901515152e-05 m
+    sphereToCell
+    {
+        origin (0.00115896527591 0.000633195075758 -0.000245224836297);
+        radius 3.31950757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 82, diameter 6.6225e-05 m
+    sphereToCell
+    {
+        origin (0.000289760341217 0.0006331125 8.8980271561e-05);
+        radius 3.31125e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 83, diameter 6.60598484848e-05 m
+    sphereToCell
+    {
+        origin (0.00151660110448 0.000633029924242 0.000233197116497);
+        radius 3.30299242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 84, diameter 6.58946969697e-05 m
+    sphereToCell
+    {
+        origin (0.00136239609479 0.000632947348485 8.393648716e-05);
+        radius 3.29473484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 85, diameter 6.57295454545e-05 m
+    sphereToCell
+    {
+        origin (0.000348118425878 0.000632864772727 0.000235668322899);
+        radius 3.28647727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 86, diameter 6.55643939394e-05 m
+    sphereToCell
+    {
+        origin (0.00142304355037 0.00063278219697 -3.80288939709e-05);
+        radius 3.27821969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 87, diameter 6.53992424242e-05 m
+    sphereToCell
+    {
+        origin (0.000751830706527 0.000632699621212 0.000218293813024);
+        radius 3.26996212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 88, diameter 6.52340909091e-05 m
+    sphereToCell
+    {
+        origin (0.00059202244863 0.000632617045455 1.2023561395e-05);
+        radius 3.26170454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 89, diameter 6.50689393939e-05 m
+    sphereToCell
+    {
+        origin (0.00152379182492 0.000632534469697 -6.84335150948e-06);
+        radius 3.2534469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 90, diameter 6.49037878788e-05 m
+    sphereToCell
+    {
+        origin (0.00143107986546 0.000632451893939 -0.00011737614873);
+        radius 3.24518939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 91, diameter 6.47386363636e-05 m
+    sphereToCell
+    {
+        origin (0.00141796134729 0.000632369318182 0.000236790774043);
+        radius 3.23693181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 92, diameter 6.45734848485e-05 m
+    sphereToCell
+    {
+        origin (0.000677034160068 0.000632286742424 -1.07667605117e-05);
+        radius 3.22867424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 93, diameter 6.44083333333e-05 m
+    sphereToCell
+    {
+        origin (0.000161450133928 0.000632204166667 -6.88515334115e-05);
+        radius 3.22041666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 94, diameter 6.42431818182e-05 m
+    sphereToCell
+    {
+        origin (0.00122451837716 0.000632121590909 -0.000221678647442);
+        radius 3.21215909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 95, diameter 6.4078030303e-05 m
+    sphereToCell
+    {
+        origin (0.000258746066863 0.000632039015152 -0.000110347894112);
+        radius 3.20390151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 96, diameter 6.39128787879e-05 m
+    sphereToCell
+    {
+        origin (0.00140651846793 0.000631956439394 -0.000192543391733);
+        radius 3.19564393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 97, diameter 6.37477272727e-05 m
+    sphereToCell
+    {
+        origin (0.000172853775239 0.000631873863636 -0.000132760663759);
+        radius 3.18738636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 98, diameter 6.35825757576e-05 m
+    sphereToCell
+    {
+        origin (0.000644544289839 0.000631791287879 -7.58988283739e-05);
+        radius 3.17912878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 99, diameter 6.34174242424e-05 m
+    sphereToCell
+    {
+        origin (-0.000182602113296 0.000631708712121 0.000230513158271);
+        radius 3.17087121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 100, diameter 6.32522727273e-05 m
+    sphereToCell
+    {
+        origin (0.00141838299603 0.000631626136364 0.000140230601827);
+        radius 3.16261363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 101, diameter 6.30871212121e-05 m
+    sphereToCell
+    {
+        origin (0.000856545375504 0.000631543560606 -0.000151789234146);
+        radius 3.15435606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 102, diameter 6.2921969697e-05 m
+    sphereToCell
+    {
+        origin (0.000412179945579 0.000631460984848 -0.000155069561026);
+        radius 3.14609848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 103, diameter 6.27568181818e-05 m
+    sphereToCell
+    {
+        origin (0.0016980296736 0.000631378409091 0.00014297196755);
+        radius 3.13784090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 104, diameter 6.25916666667e-05 m
+    sphereToCell
+    {
+        origin (-0.000245745629223 0.000631295833333 0.000114715727059);
+        radius 3.12958333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 105, diameter 6.24265151515e-05 m
+    sphereToCell
+    {
+        origin (0.00168080358909 0.000636415839587 -7.72652065972e-05);
+        radius 3.12132575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 106, diameter 6.22613636364e-05 m
+    sphereToCell
+    {
+        origin (-0.000235473507913 0.000631130681818 -0.000203566884338);
+        radius 3.11306818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 107, diameter 6.20962121212e-05 m
+    sphereToCell
+    {
+        origin (0.000850213369155 0.000631048106061 0.00024479809741);
+        radius 3.10481060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 108, diameter 6.19310606061e-05 m
+    sphereToCell
+    {
+        origin (0.00122405404519 0.000630965530303 4.82994976049e-05);
+        radius 3.0965530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 109, diameter 6.17659090909e-05 m
+    sphereToCell
+    {
+        origin (0.000539729126801 0.000630882954545 -0.000220841741786);
+        radius 3.08829545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 110, diameter 6.16007575758e-05 m
+    sphereToCell
+    {
+        origin (0.00153188383874 0.000630800378788 -7.08496201245e-05);
+        radius 3.08003787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 111, diameter 6.14356060606e-05 m
+    sphereToCell
+    {
+        origin (0.000309671667757 0.00063071780303 -7.19499206193e-05);
+        radius 3.07178030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 112, diameter 6.12704545455e-05 m
+    sphereToCell
+    {
+        origin (4.39821772433e-05 0.000630635227273 -1.33896832077e-05);
+        radius 3.06352272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 113, diameter 6.11053030303e-05 m
+    sphereToCell
+    {
+        origin (0.00118949985215 0.000630552651515 -0.00016224900405);
+        radius 3.05526515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 114, diameter 6.09401515152e-05 m
+    sphereToCell
+    {
+        origin (0.00013972224612 0.000630470075758 -0.000189666474459);
+        radius 3.04700757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 115, diameter 6.0775e-05 m
+    sphereToCell
+    {
+        origin (0.00144688804526 0.0006303875 5.70891409133e-05);
+        radius 3.03875e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 116, diameter 6.06098484848e-05 m
+    sphereToCell
+    {
+        origin (0.00114542686163 0.000630304924242 -2.87529931906e-05);
+        radius 3.03049242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 117, diameter 6.04446969697e-05 m
+    sphereToCell
+    {
+        origin (0.000259306637824 0.000630222348485 -0.000243906448706);
+        radius 3.02223484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 118, diameter 6.02795454545e-05 m
+    sphereToCell
+    {
+        origin (0.00131484591798 0.000645041854145 -0.000206079727574);
+        radius 3.01397727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 119, diameter 6.01143939394e-05 m
+    sphereToCell
+    {
+        origin (0.00103451915192 0.00063005719697 -0.000247867692622);
+        radius 3.00571969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 120, diameter 5.99492424242e-05 m
+    sphereToCell
+    {
+        origin (0.000675412295312 0.000629974621212 5.27472121597e-05);
+        radius 2.99746212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 121, diameter 5.97840909091e-05 m
+    sphereToCell
+    {
+        origin (0.000409322283256 0.000629892045455 -9.3607455917e-05);
+        radius 2.98920454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 122, diameter 5.96189393939e-05 m
+    sphereToCell
+    {
+        origin (0.000487474974122 0.000629809469697 0.000247401522831);
+        radius 2.9809469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 123, diameter 5.94537878788e-05 m
+    sphereToCell
+    {
+        origin (0.000131557114961 0.000629726893939 -0.000250150014026);
+        radius 2.97268939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 124, diameter 5.92886363636e-05 m
+    sphereToCell
+    {
+        origin (4.34092876356e-05 0.000629644318182 0.000237859586521);
+        radius 2.96443181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 125, diameter 5.91234848485e-05 m
+    sphereToCell
+    {
+        origin (-0.000163609565316 0.000629561742424 0.000136231430682);
+        radius 2.95617424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 126, diameter 5.89583333333e-05 m
+    sphereToCell
+    {
+        origin (0.00026365831289 0.000629479166667 0.000234043002871);
+        radius 2.94791666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 127, diameter 5.87931818182e-05 m
+    sphereToCell
+    {
+        origin (0.000388482822228 0.000629396590909 -0.000247002121245);
+        radius 2.93965909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 128, diameter 5.8628030303e-05 m
+    sphereToCell
+    {
+        origin (-0.000243087032399 0.000629314015152 0.000207898266615);
+        radius 2.93140151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 129, diameter 5.84628787879e-05 m
+    sphereToCell
+    {
+        origin (-1.64131657051e-05 0.000647520113672 -4.9441121528e-06);
+        radius 2.92314393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 130, diameter 5.82977272727e-05 m
+    sphereToCell
+    {
+        origin (0.00117813284808 0.000629148863636 0.000235556863029);
+        radius 2.91488636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 131, diameter 5.81325757576e-05 m
+    sphereToCell
+    {
+        origin (0.000543232383126 0.000629066287879 -5.10280657393e-05);
+        radius 2.90662878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 132, diameter 5.79674242424e-05 m
+    sphereToCell
+    {
+        origin (0.000287231671484 0.000628983712121 -0.000183217822878);
+        radius 2.89837121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 133, diameter 5.78022727273e-05 m
+    sphereToCell
+    {
+        origin (0.00119545158022 0.000650873116936 0.000122041835108);
+        radius 2.89011363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 134, diameter 5.76371212121e-05 m
+    sphereToCell
+    {
+        origin (7.8231244794e-05 0.000628818560606 -0.000160148699791);
+        radius 2.88185606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 135, diameter 5.7471969697e-05 m
+    sphereToCell
+    {
+        origin (0.000884978739748 0.000628735984848 0.000114118691735);
+        radius 2.87359848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 136, diameter 5.73068181818e-05 m
+    sphereToCell
+    {
+        origin (-6.69974834153e-05 0.000628653409091 -0.000171237663334);
+        radius 2.86534090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 137, diameter 5.71416666667e-05 m
+    sphereToCell
+    {
+        origin (0.000941216466657 0.000628570833333 -0.000125906481083);
+        radius 2.85708333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 138, diameter 5.69765151515e-05 m
+    sphereToCell
+    {
+        origin (0.00138693929357 0.000628488257576 1.20681166713e-05);
+        radius 2.84882575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 139, diameter 5.68113636364e-05 m
+    sphereToCell
+    {
+        origin (0.00167829111791 0.000628405681818 0.000242327458343);
+        radius 2.84056818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 140, diameter 5.66462121212e-05 m
+    sphereToCell
+    {
+        origin (0.000616770476213 0.000628323106061 -0.000218564716489);
+        radius 2.83231060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 141, diameter 5.64810606061e-05 m
+    sphereToCell
+    {
+        origin (-0.000129302842761 0.000628240530303 -1.31846752091e-05);
+        radius 2.8240530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 142, diameter 5.63159090909e-05 m
+    sphereToCell
+    {
+        origin (0.0013080511941 0.000628157954545 0.000233151007192);
+        radius 2.81579545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 143, diameter 5.61507575758e-05 m
+    sphereToCell
+    {
+        origin (-0.000184432296481 0.000628075378788 -0.000250747777194);
+        radius 2.80753787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 144, diameter 5.59856060606e-05 m
+    sphereToCell
+    {
+        origin (0.00170360205901 0.00064875081653 8.59339872474e-05);
+        radius 2.79928030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 145, diameter 5.58204545455e-05 m
+    sphereToCell
+    {
+        origin (0.000955223994091 0.00064937508268 -5.82996424397e-05);
+        radius 2.79102272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 146, diameter 5.56553030303e-05 m
+    sphereToCell
+    {
+        origin (0.00147322735226 0.000627827651515 -7.2897357837e-05);
+        radius 2.78276515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 147, diameter 5.54901515152e-05 m
+    sphereToCell
+    {
+        origin (-0.000110909234434 0.000627745075758 -0.000237079069851);
+        radius 2.77450757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 148, diameter 5.5325e-05 m
+    sphereToCell
+    {
+        origin (0.00157511541783 0.000648246670346 0.000238497694935);
+        radius 2.76625e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 149, diameter 5.51598484848e-05 m
+    sphereToCell
+    {
+        origin (0.000344441766565 0.000638797738286 -2.58589249662e-05);
+        radius 2.75799242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 150, diameter 5.49946969697e-05 m
+    sphereToCell
+    {
+        origin (0.00171051848391 0.000627497348485 -0.000147895938979);
+        radius 2.74973484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 151, diameter 5.48295454545e-05 m
+    sphereToCell
+    {
+        origin (-6.3799366706e-08 0.000627414772727 -0.000188091096444);
+        radius 2.74147727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 152, diameter 5.46643939394e-05 m
+    sphereToCell
+    {
+        origin (0.000898805306545 0.00062733219697 0.000176187884643);
+        radius 2.73321969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 153, diameter 5.44992424242e-05 m
+    sphereToCell
+    {
+        origin (-9.8929477164e-05 0.000643676776695 -0.000127639263412);
+        radius 2.72496212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 154, diameter 5.43340909091e-05 m
+    sphereToCell
+    {
+        origin (0.000996068975396 0.00064342246704 -0.000180094141817);
+        radius 2.71670454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 155, diameter 5.41689393939e-05 m
+    sphereToCell
+    {
+        origin (0.00139220722289 0.000648788072646 -0.000247294769193);
+        radius 2.7084469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 156, diameter 5.40037878788e-05 m
+    sphereToCell
+    {
+        origin (0.000646620998402 0.000627001893939 0.000243957142783);
+        radius 2.70018939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 157, diameter 5.38386363636e-05 m
+    sphereToCell
+    {
+        origin (0.00117011828818 0.000626919318182 0.00017355743904);
+        radius 2.69193181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 158, diameter 5.36734848485e-05 m
+    sphereToCell
+    {
+        origin (0.000974772285498 0.000646153639404 -0.000252374925749);
+        radius 2.68367424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 159, diameter 5.35083333333e-05 m
+    sphereToCell
+    {
+        origin (0.000910484841283 0.000639471417757 6.60214342254e-05);
+        radius 2.67541666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 160, diameter 5.33431818182e-05 m
+    sphereToCell
+    {
+        origin (0.00136074882824 0.00065230627149 0.000245377128835);
+        radius 2.66715909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 161, diameter 5.3178030303e-05 m
+    sphereToCell
+    {
+        origin (0.00155377983684 0.00064996005981 0.000141068194284);
+        radius 2.65890151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 162, diameter 5.30128787879e-05 m
+    sphereToCell
+    {
+        origin (-0.000124543896923 0.000641905622391 9.79542417473e-05);
+        radius 2.65064393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 163, diameter 5.28477272727e-05 m
+    sphereToCell
+    {
+        origin (0.000755511877553 0.000647831705654 -0.000227839171315);
+        radius 2.64238636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 164, diameter 5.26825757576e-05 m
+    sphereToCell
+    {
+        origin (0.000328211332346 0.000626341287879 -0.000252924329098);
+        radius 2.63412878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 165, diameter 5.25390151515e-05 m
+    sphereToCell
+    {
+        origin (0.000707426640527 0.000626269507576 9.95311645924e-05);
+        radius 2.62695075758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 166, diameter 5.24170454545e-05 m
+    sphereToCell
+    {
+        origin (-0.000268316288915 0.000653784230037 -0.000155543702021);
+        radius 2.62085227273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 167, diameter 5.22950757576e-05 m
+    sphereToCell
+    {
+        origin (0.000342326996391 0.000652892221498 -0.000203355126207);
+        radius 2.61475378788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 168, diameter 5.21731060606e-05 m
+    sphereToCell
+    {
+        origin (0.000143398685528 0.00062608655303 0.000164427996011);
+        radius 2.60865530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 169, diameter 5.20511363636e-05 m
+    sphereToCell
+    {
+        origin (0.00109564307929 0.000626025568182 -0.00024660451799);
+        radius 2.60255681818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 170, diameter 5.19291666667e-05 m
+    sphereToCell
+    {
+        origin (0.000841208618009 0.000625964583333 7.33911030712e-05);
+        radius 2.59645833333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 171, diameter 5.18071969697e-05 m
+    sphereToCell
+    {
+        origin (0.000468122241367 0.000625903598485 -5.92346930474e-05);
+        radius 2.59035984848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 172, diameter 5.16852272727e-05 m
+    sphereToCell
+    {
+        origin (0.00105888373782 0.00064167291662 0.000241861943411);
+        radius 2.58426136364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 173, diameter 5.15632575758e-05 m
+    sphereToCell
+    {
+        origin (0.00120264381034 0.000625781628788 -1.96294290117e-05);
+        radius 2.57816287879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 174, diameter 5.14412878788e-05 m
+    sphereToCell
+    {
+        origin (0.000362812098284 0.000625720643939 5.96249171579e-05);
+        radius 2.57206439394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 175, diameter 5.13193181818e-05 m
+    sphereToCell
+    {
+        origin (0.00162256634683 0.000650470165824 2.89496894446e-05);
+        radius 2.56596590909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 176, diameter 5.11973484848e-05 m
+    sphereToCell
+    {
+        origin (0.000542111259559 0.000636119391172 0.000254118934492);
+        radius 2.55986742424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 177, diameter 5.10753787879e-05 m
+    sphereToCell
+    {
+        origin (0.000521402861502 0.000649983680201 -0.000171016052206);
+        radius 2.55376893939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 178, diameter 5.09534090909e-05 m
+    sphereToCell
+    {
+        origin (0.000729363831616 0.000648474742538 -0.000136032434199);
+        radius 2.54767045455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 179, diameter 5.08314393939e-05 m
+    sphereToCell
+    {
+        origin (0.000724897114856 0.000648199471563 1.72599543369e-05);
+        radius 2.5415719697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 180, diameter 5.0709469697e-05 m
+    sphereToCell
+    {
+        origin (0.000517947226343 0.000647520905949 7.39048495358e-05);
+        radius 2.53547348485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 181, diameter 5.05875e-05 m
+    sphereToCell
+    {
+        origin (0.00133717490274 0.00062529375 -1.18463780585e-05);
+        radius 2.529375e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 182, diameter 5.0465530303e-05 m
+    sphereToCell
+    {
+        origin (0.000765837923466 0.000653537094437 0.000166085011342);
+        radius 2.52327651515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 183, diameter 5.03435606061e-05 m
+    sphereToCell
+    {
+        origin (0.000593088272465 0.000651345980614 -6.12467498606e-05);
+        radius 2.5171780303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 184, diameter 5.02215909091e-05 m
+    sphereToCell
+    {
+        origin (-0.000272383305284 0.00064468667382 0.00025111249772);
+        radius 2.51107954545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 185, diameter 5.00996212121e-05 m
+    sphereToCell
+    {
+        origin (0.000102228162105 0.000652351623801 0.000220827155919);
+        radius 2.50498106061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 186, diameter 4.99776515152e-05 m
+    sphereToCell
+    {
+        origin (0.000805525714187 0.000653765339216 0.000217274700114);
+        radius 2.49888257576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 187, diameter 4.98556818182e-05 m
+    sphereToCell
+    {
+        origin (0.00133465516392 0.000624927840909 -0.000151806557626);
+        radius 2.49278409091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 188, diameter 4.97337121212e-05 m
+    sphereToCell
+    {
+        origin (0.000429466781186 0.000647436386719 0.00013591350606);
+        radius 2.48668560606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 189, diameter 4.96117424242e-05 m
+    sphereToCell
+    {
+        origin (0.00158565955448 0.000648425171251 -9.17991851156e-05);
+        radius 2.48058712121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 190, diameter 4.94897727273e-05 m
+    sphereToCell
+    {
+        origin (0.00128687597026 0.000624744886364 0.000168277650601);
+        radius 2.47448863636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 191, diameter 4.93678030303e-05 m
+    sphereToCell
+    {
+        origin (-0.000211473565072 0.000639789463744 0.000165393811969);
+        radius 2.46839015152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 192, diameter 4.92458333333e-05 m
+    sphereToCell
+    {
+        origin (0.00114036156268 0.000655050840718 -0.000181666678516);
+        radius 2.46229166667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 193, diameter 4.91238636364e-05 m
+    sphereToCell
+    {
+        origin (0.0010008284816 0.000624561931818 0.000253934496765);
+        radius 2.45619318182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 194, diameter 4.90018939394e-05 m
+    sphereToCell
+    {
+        origin (0.000196255381535 0.000651207967843 -0.000250160963997);
+        radius 2.45009469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 195, diameter 4.88799242424e-05 m
+    sphereToCell
+    {
+        origin (0.000697930030811 0.000646837820936 0.00023093345105);
+        radius 2.44399621212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 196, diameter 4.87579545455e-05 m
+    sphereToCell
+    {
+        origin (0.000274350291975 0.000653488804179 -3.63193562218e-05);
+        radius 2.43789772727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 197, diameter 4.86359848485e-05 m
+    sphereToCell
+    {
+        origin (0.00120078987119 0.000650245259063 -0.000111255262817);
+        radius 2.43179924242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 198, diameter 4.85140151515e-05 m
+    sphereToCell
+    {
+        origin (0.00164699261443 0.00065553782266 -0.000215374173802);
+        radius 2.42570075758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 199, diameter 4.83920454545e-05 m
+    sphereToCell
+    {
+        origin (0.00169822534788 0.000649507358963 0.000198460785135);
+        radius 2.41960227273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 200, diameter 4.82700757576e-05 m
+    sphereToCell
+    {
+        origin (0.000724203600609 0.000624135037879 -0.000186235326815);
+        radius 2.41350378788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 201, diameter 4.81481060606e-05 m
+    sphereToCell
+    {
+        origin (0.000363700441016 0.000652956005282 -7.63146524037e-05);
+        radius 2.40740530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 202, diameter 4.80261363636e-05 m
+    sphereToCell
+    {
+        origin (-0.000274018610206 0.000624013068182 -0.000244912011841);
+        radius 2.40130681818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 203, diameter 4.79041666667e-05 m
+    sphereToCell
+    {
+        origin (-0.000269265706193 0.00065485302784 0.000169172136973);
+        radius 2.39520833333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 204, diameter 4.77821969697e-05 m
+    sphereToCell
+    {
+        origin (0.000661572684872 0.000653632275747 9.91184998627e-05);
+        radius 2.38910984848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 205, diameter 4.76602272727e-05 m
+    sphereToCell
+    {
+        origin (0.00109380219412 0.000647408919075 0.000152855457534);
+        radius 2.38301136364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 206, diameter 4.75382575758e-05 m
+    sphereToCell
+    {
+        origin (0.000964800628793 0.000623769128788 7.33277207965e-05);
+        radius 2.37691287879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 207, diameter 4.74162878788e-05 m
+    sphereToCell
+    {
+        origin (0.0012747122374 0.000623708143939 -0.000247631113999);
+        radius 2.37081439394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 208, diameter 4.72943181818e-05 m
+    sphereToCell
+    {
+        origin (0.00124267481268 0.000641595289779 0.000158074139608);
+        radius 2.36471590909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 209, diameter 4.71723484848e-05 m
+    sphereToCell
+    {
+        origin (0.00108972243742 0.000648544343613 -0.000103244125768);
+        radius 2.35861742424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 210, diameter 4.70503787879e-05 m
+    sphereToCell
+    {
+        origin (0.000482740799402 0.000653006646596 0.000199609636134);
+        radius 2.35251893939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 211, diameter 4.69284090909e-05 m
+    sphereToCell
+    {
+        origin (0.00011614824422 0.000654600133846 -0.000135027012592);
+        radius 2.34642045455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 212, diameter 4.68064393939e-05 m
+    sphereToCell
+    {
+        origin (-0.000117927917064 0.000646889868876 4.26257318056e-05);
+        radius 2.3403219697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 213, diameter 4.6684469697e-05 m
+    sphereToCell
+    {
+        origin (0.00131472902615 0.00065380953123 6.24623843711e-05);
+        radius 2.33422348485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 214, diameter 4.65625e-05 m
+    sphereToCell
+    {
+        origin (0.000838964816301 0.000652191209531 -5.52790508533e-05);
+        radius 2.328125e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 215, diameter 4.6440530303e-05 m
+    sphereToCell
+    {
+        origin (0.001374409967 0.000652089254286 -0.000151575531945);
+        radius 2.32202651515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 216, diameter 4.63185606061e-05 m
+    sphereToCell
+    {
+        origin (0.000181364227584 0.000654067826775 0.000114234404028);
+        radius 2.3159280303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 217, diameter 4.61965909091e-05 m
+    sphereToCell
+    {
+        origin (0.000597092269202 0.000632418853878 0.000249209809363);
+        radius 2.30982954545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 218, diameter 4.60746212121e-05 m
+    sphereToCell
+    {
+        origin (-0.000121776212892 0.000623037310606 0.000253740294778);
+        radius 2.30373106061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 219, diameter 4.59526515152e-05 m
+    sphereToCell
+    {
+        origin (0.00118639867919 0.000656345686706 -5.39699620446e-05);
+        radius 2.29763257576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 220, diameter 4.58306818182e-05 m
+    sphereToCell
+    {
+        origin (7.97065798432e-06 0.000652804281964 0.000197336252735);
+        radius 2.29153409091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 221, diameter 4.57087121212e-05 m
+    sphereToCell
+    {
+        origin (4.20089569068e-05 0.000654913289077 0.000119331141469);
+        radius 2.28543560606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 222, diameter 4.55867424242e-05 m
+    sphereToCell
+    {
+        origin (0.00132690416134 0.000649822505773 0.000127066029785);
+        radius 2.27933712121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 223, diameter 4.54647727273e-05 m
+    sphereToCell
+    {
+        origin (0.00108384993735 0.000653462344411 2.74259578027e-05);
+        radius 2.27323863636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 224, diameter 4.53428030303e-05 m
+    sphereToCell
+    {
+        origin (0.00149064951657 0.000651868275086 3.28489598721e-05);
+        radius 2.26714015152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 225, diameter 4.52208333333e-05 m
+    sphereToCell
+    {
+        origin (0.000724026162965 0.00065544221467 0.000135065035892);
+        radius 2.26104166667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 226, diameter 4.50988636364e-05 m
+    sphereToCell
+    {
+        origin (-0.000196777888458 0.000622549431818 -0.000120381876515);
+        radius 2.25494318182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 227, diameter 4.49768939394e-05 m
+    sphereToCell
+    {
+        origin (8.39213262539e-06 0.000655385740556 -0.000242589474761);
+        radius 2.24884469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 228, diameter 4.48549242424e-05 m
+    sphereToCell
+    {
+        origin (0.00134643008243 0.000657473966317 2.26152970667e-05);
+        radius 2.24274621212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 229, diameter 4.47329545455e-05 m
+    sphereToCell
+    {
+        origin (0.000985349867587 0.000653122911093 0.000220067720259);
+        radius 2.23664772727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 230, diameter 4.46109848485e-05 m
+    sphereToCell
+    {
+        origin (0.00153580956911 0.00065673121175 0.000186406747425);
+        radius 2.23054924242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 231, diameter 4.44890151515e-05 m
+    sphereToCell
+    {
+        origin (0.00163573933018 0.000651442994545 0.000257296401803);
+        radius 2.22445075758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 232, diameter 4.43670454545e-05 m
+    sphereToCell
+    {
+        origin (0.00036463249578 0.000653128930354 0.000187222845882);
+        radius 2.21835227273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 233, diameter 4.42450757576e-05 m
+    sphereToCell
+    {
+        origin (0.000997383101374 0.000656171435026 5.95195387602e-05);
+        radius 2.21225378788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 234, diameter 4.41231060606e-05 m
+    sphereToCell
+    {
+        origin (0.00152346718518 0.000655906537063 -0.00021084103749);
+        radius 2.20615530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 235, diameter 4.40011363636e-05 m
+    sphereToCell
+    {
+        origin (0.000905926122333 0.000657631209919 -0.000147529449458);
+        radius 2.20005681818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 236, diameter 4.38791666667e-05 m
+    sphereToCell
+    {
+        origin (0.000137157812537 0.000645687388581 4.65878882076e-05);
+        radius 2.19395833333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 237, diameter 4.37571969697e-05 m
+    sphereToCell
+    {
+        origin (-0.000169238318357 0.000653111530529 0.000181616817011);
+        radius 2.18785984848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 238, diameter 4.36352272727e-05 m
+    sphereToCell
+    {
+        origin (0.000596241073894 0.000652926349729 -0.000257130450154);
+        radius 2.18176136364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 239, diameter 4.35132575758e-05 m
+    sphereToCell
+    {
+        origin (-0.000207020805935 0.000656455011276 -0.000164687567134);
+        radius 2.17566287879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 240, diameter 4.33912878788e-05 m
+    sphereToCell
+    {
+        origin (0.00147375630184 0.000646803457629 -2.39059963211e-05);
+        radius 2.16956439394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 241, diameter 4.32693181818e-05 m
+    sphereToCell
+    {
+        origin (0.000807489893813 0.000621634659091 3.34015849698e-05);
+        radius 2.16346590909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 242, diameter 4.31473484848e-05 m
+    sphereToCell
+    {
+        origin (0.0015734300589 0.000621573674242 1.71954354928e-05);
+        radius 2.15736742424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 243, diameter 4.30253787879e-05 m
+    sphereToCell
+    {
+        origin (-0.000160160836579 0.000655609956675 1.52960506375e-05);
+        radius 2.15126893939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 244, diameter 4.29034090909e-05 m
+    sphereToCell
+    {
+        origin (-7.69324873205e-05 0.000621451704545 0.000111845749727);
+        radius 2.14517045455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 245, diameter 4.27814393939e-05 m
+    sphereToCell
+    {
+        origin (0.000864130166643 0.000654799005266 0.000199476046249);
+        radius 2.1390719697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 246, diameter 4.2659469697e-05 m
+    sphereToCell
+    {
+        origin (0.00160159505049 0.000658083231225 0.00012056638693);
+        radius 2.13297348485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 247, diameter 4.25375e-05 m
+    sphereToCell
+    {
+        origin (-4.90573231311e-05 0.000650860580191 -0.000130283858029);
+        radius 2.126875e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 248, diameter 4.2415530303e-05 m
+    sphereToCell
+    {
+        origin (-9.70071078093e-05 0.000653648630001 0.00013851545083);
+        radius 2.12077651515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 249, diameter 4.22935606061e-05 m
+    sphereToCell
+    {
+        origin (0.000920799882373 0.000621146780303 -2.1256597659e-05);
+        radius 2.1146780303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 250, diameter 4.21715909091e-05 m
+    sphereToCell
+    {
+        origin (0.00090194966087 0.000621085795455 -0.000256817420502);
+        radius 2.10857954545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 251, diameter 4.20496212121e-05 m
+    sphereToCell
+    {
+        origin (0.00146437289888 0.000655605912182 -0.000175053851792);
+        radius 2.10248106061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 252, diameter 4.19276515152e-05 m
+    sphereToCell
+    {
+        origin (0.00156989002437 0.000648032047944 -0.000169979746479);
+        radius 2.09638257576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 253, diameter 4.18056818182e-05 m
+    sphereToCell
+    {
+        origin (0.000881739577185 0.000652399289028 -0.000192788207615);
+        radius 2.09028409091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 254, diameter 4.16837121212e-05 m
+    sphereToCell
+    {
+        origin (0.00146688075752 0.000645238085078 0.000101857416527);
+        radius 2.08418560606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 255, diameter 4.15617424242e-05 m
+    sphereToCell
+    {
+        origin (0.00167734746658 0.000651509108451 -0.000173467514792);
+        radius 2.07808712121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 256, diameter 4.14397727273e-05 m
+    sphereToCell
+    {
+        origin (0.000223880905645 0.000657645675614 -0.000140550893339);
+        radius 2.07198863636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 257, diameter 4.13178030303e-05 m
+    sphereToCell
+    {
+        origin (0.00146551500485 0.000655152272 0.000231171276507);
+        radius 2.06589015152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 258, diameter 4.11958333333e-05 m
+    sphereToCell
+    {
+        origin (0.000621065190602 0.000652978069335 0.000138161376813);
+        radius 2.05979166667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 259, diameter 4.10738636364e-05 m
+    sphereToCell
+    {
+        origin (0.00100583911024 0.000658225431488 -3.63105888472e-05);
+        radius 2.05369318182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 260, diameter 4.09518939394e-05 m
+    sphereToCell
+    {
+        origin (7.46389870915e-05 0.00064926442391 3.39361194288e-05);
+        radius 2.04759469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 261, diameter 4.08299242424e-05 m
+    sphereToCell
+    {
+        origin (1.77587722504e-05 0.000657748377345 -4.77892756602e-05);
+        radius 2.04149621212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 262, diameter 4.07079545455e-05 m
+    sphereToCell
+    {
+        origin (0.000500463631826 0.000620353977273 -0.000259363296758);
+        radius 2.03539772727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 263, diameter 4.05859848485e-05 m
+    sphereToCell
+    {
+        origin (0.000611978284321 0.000656476627208 -0.000171928719935);
+        radius 2.02929924242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 264, diameter 4.04640151515e-05 m
+    sphereToCell
+    {
+        origin (0.00143856494649 0.000658410168121 0.000184623356978);
+        radius 2.02320075758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 265, diameter 4.03420454545e-05 m
+    sphereToCell
+    {
+        origin (-0.00027130486888 0.000649553128637 6.68334513156e-05);
+        radius 2.01710227273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 266, diameter 4.02200757576e-05 m
+    sphereToCell
+    {
+        origin (0.000338484425757 0.000655600797861 8.44400767773e-05);
+        radius 2.01100378788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 267, diameter 4.00981060606e-05 m
+    sphereToCell
+    {
+        origin (0.00131466290912 0.000658629399216 -3.27727829358e-05);
+        radius 2.00490530303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 268, diameter 3.99761363636e-05 m
+    sphereToCell
+    {
+        origin (0.000838372416127 0.000659452839216 -0.000112465901626);
+        radius 1.99880681818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 269, diameter 3.98541666667e-05 m
+    sphereToCell
+    {
+        origin (-8.66194434923e-05 0.00064173479422 4.5959679627e-06);
+        radius 1.99270833333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 270, diameter 3.97321969697e-05 m
+    sphereToCell
+    {
+        origin (0.00158597003087 0.000659462663733 1.43873186375e-06);
+        radius 1.98660984848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 271, diameter 3.96102272727e-05 m
+    sphereToCell
+    {
+        origin (0.00127745989534 0.000659446586583 0.000252968876481);
+        radius 1.98051136364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 272, diameter 3.94882575758e-05 m
+    sphereToCell
+    {
+        origin (0.000233891127969 0.00066022303654 -6.64910579016e-05);
+        radius 1.97441287879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 273, diameter 3.93662878788e-05 m
+    sphereToCell
+    {
+        origin (0.00171648685896 0.000657566794986 0.000244130236043);
+        radius 1.96831439394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 274, diameter 3.92443181818e-05 m
+    sphereToCell
+    {
+        origin (0.000406383568967 0.000652952902884 0.000258968989871);
+        radius 1.96221590909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 275, diameter 3.91223484848e-05 m
+    sphereToCell
+    {
+        origin (0.000818591395639 0.000659436166531 4.54390006593e-05);
+        radius 1.95611742424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 276, diameter 3.90003787879e-05 m
+    sphereToCell
+    {
+        origin (0.000446863934694 0.000659023274094 0.000255132572186);
+        radius 1.95001893939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 277, diameter 3.88784090909e-05 m
+    sphereToCell
+    {
+        origin (0.0010733389571 0.000656803234777 -0.000218538004929);
+        radius 1.94392045455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 278, diameter 3.87564393939e-05 m
+    sphereToCell
+    {
+        origin (0.00140493943073 0.000657374271906 6.57333263107e-05);
+        radius 1.9378219697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 279, diameter 3.8634469697e-05 m
+    sphereToCell
+    {
+        origin (0.00101285835036 0.000656435763976 0.000121903980032);
+        radius 1.93172348485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 280, diameter 3.85125e-05 m
+    sphereToCell
+    {
+        origin (0.00129373347954 0.000657922473794 0.000199133611109);
+        radius 1.925625e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 281, diameter 3.8390530303e-05 m
+    sphereToCell
+    {
+        origin (0.000497607359224 0.000659221387267 -5.18549723906e-05);
+        radius 1.91952651515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 282, diameter 3.82685606061e-05 m
+    sphereToCell
+    {
+        origin (-4.59619474344e-05 0.000656678190573 0.000187818668503);
+        radius 1.9134280303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 283, diameter 3.81465909091e-05 m
+    sphereToCell
+    {
+        origin (0.000636458391068 0.00066008575283 -0.000255292844955);
+        radius 1.90732954545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 284, diameter 3.80246212121e-05 m
+    sphereToCell
+    {
+        origin (0.000635856372982 0.000659708251745 1.52241902165e-05);
+        radius 1.90123106061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 285, diameter 3.79026515152e-05 m
+    sphereToCell
+    {
+        origin (0.000219143617863 0.000655980217375 0.000215228483853);
+        radius 1.89513257576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 286, diameter 3.77806818182e-05 m
+    sphereToCell
+    {
+        origin (0.00164321466291 0.000658913194463 0.000135314806963);
+        radius 1.88903409091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 287, diameter 3.76587121212e-05 m
+    sphereToCell
+    {
+        origin (0.00120589884093 0.000657415917941 0.000172268855733);
+        radius 1.88293560606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 288, diameter 3.75367424242e-05 m
+    sphereToCell
+    {
+        origin (0.000842310150657 0.000658850283294 0.000103695468867);
+        radius 1.87683712121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 289, diameter 3.74147727273e-05 m
+    sphereToCell
+    {
+        origin (0.000552765793281 0.000618707386364 0.000126151420169);
+        radius 1.87073863636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 290, diameter 3.72928030303e-05 m
+    sphereToCell
+    {
+        origin (0.000255191605027 0.00065614041014 0.000128236957878);
+        radius 1.86464015152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 291, diameter 3.71708333333e-05 m
+    sphereToCell
+    {
+        origin (0.000459908582753 0.000661322461712 -0.000144887671146);
+        radius 1.85854166667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 292, diameter 3.70488636364e-05 m
+    sphereToCell
+    {
+        origin (0.00144940587183 0.00065155778726 1.30680486866e-05);
+        radius 1.85244318182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 293, diameter 3.69268939394e-05 m
+    sphereToCell
+    {
+        origin (0.000930476556873 0.000660439498438 0.000189408404515);
+        radius 1.84634469697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 294, diameter 3.68049242424e-05 m
+    sphereToCell
+    {
+        origin (0.000498014172921 0.000658668077865 -0.000254063160783);
+        radius 1.84024621212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 295, diameter 3.66829545455e-05 m
+    sphereToCell
+    {
+        origin (-0.000128563609 0.000659589545755 0.000235572481317);
+        radius 1.83414772727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 296, diameter 3.65609848485e-05 m
+    sphereToCell
+    {
+        origin (0.00035223052319 0.000658971318539 1.45828819524e-05);
+        radius 1.82804924242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 297, diameter 3.64015151515e-05 m
+    sphereToCell
+    {
+        origin (0.00134038389791 0.000618200757576 -0.000261676353068);
+        radius 1.82007575758e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 298, diameter 3.62045454545e-05 m
+    sphereToCell
+    {
+        origin (0.000927792436498 0.000658657698128 -1.20629370963e-05);
+        radius 1.81022727273e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 299, diameter 3.60075757576e-05 m
+    sphereToCell
+    {
+        origin (0.00102114615345 0.000658169695049 2.1015548195e-06);
+        radius 1.80037878788e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 300, diameter 3.58106060606e-05 m
+    sphereToCell
+    {
+        origin (0.00062479575812 0.000649227453217 0.000209142315219);
+        radius 1.79053030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 301, diameter 3.56136363636e-05 m
+    sphereToCell
+    {
+        origin (-9.90481137549e-05 0.000661788384854 -0.000177015482497);
+        radius 1.78068181818e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 302, diameter 3.54166666667e-05 m
+    sphereToCell
+    {
+        origin (0.000172123423979 0.000659876793147 -9.98779332156e-06);
+        radius 1.77083333333e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 303, diameter 3.52196969697e-05 m
+    sphereToCell
+    {
+        origin (0.0013106976195 0.000662249547545 -0.000160550761743);
+        radius 1.76098484848e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 304, diameter 3.50227272727e-05 m
+    sphereToCell
+    {
+        origin (0.00128243988834 0.000661567227183 -0.000122256333896);
+        radius 1.75113636364e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 305, diameter 3.48257575758e-05 m
+    sphereToCell
+    {
+        origin (0.000915607093004 0.000662441779086 0.000106666106508);
+        radius 1.74128787879e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 306, diameter 3.46287878788e-05 m
+    sphereToCell
+    {
+        origin (0.00146691737914 0.000662069251275 -0.000135129125026);
+        radius 1.73143939394e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 307, diameter 3.44318181818e-05 m
+    sphereToCell
+    {
+        origin (-3.11948807269e-05 0.000662332099579 -9.54959585643e-05);
+        radius 1.72159090909e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 308, diameter 3.42348484848e-05 m
+    sphereToCell
+    {
+        origin (-0.000269453328093 0.00066107516249 -0.000227670295807);
+        radius 1.71174242424e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 309, diameter 3.40378787879e-05 m
+    sphereToCell
+    {
+        origin (0.00112207845952 0.000660035370956 -5.722228764e-05);
+        radius 1.70189393939e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 310, diameter 3.38409090909e-05 m
+    sphereToCell
+    {
+        origin (0.000554564599167 0.000654062118968 0.000122132685576);
+        radius 1.69204545455e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 311, diameter 3.36439393939e-05 m
+    sphereToCell
+    {
+        origin (4.28621073504e-05 0.000653919644771 -0.000174361992745);
+        radius 1.6821969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 312, diameter 3.3446969697e-05 m
+    sphereToCell
+    {
+        origin (0.000250335957785 0.000657276888736 -0.00019115634778);
+        radius 1.67234848485e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 313, diameter 3.325e-05 m
+    sphereToCell
+    {
+        origin (0.00116082435784 0.000662102596249 -0.000142048810598);
+        radius 1.6625e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 314, diameter 3.3053030303e-05 m
+    sphereToCell
+    {
+        origin (0.00100733168428 0.000659284691195 -0.000140970383411);
+        radius 1.65265151515e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 315, diameter 3.28560606061e-05 m
+    sphereToCell
+    {
+        origin (0.00122083141997 0.000658612975289 -0.000262196280889);
+        radius 1.6428030303e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 316, diameter 3.26590909091e-05 m
+    sphereToCell
+    {
+        origin (0.00126220325572 0.00065341647611 6.49553361799e-05);
+        radius 1.63295454545e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 317, diameter 3.24621212121e-05 m
+    sphereToCell
+    {
+        origin (0.000917309716564 0.000649351409177 0.000143373942237);
+        radius 1.62310606061e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 318, diameter 3.22651515152e-05 m
+    sphereToCell
+    {
+        origin (0.000384213959247 0.000616132575758 -0.000196671714913);
+        radius 1.61325757576e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 319, diameter 3.20681818182e-05 m
+    sphereToCell
+    {
+        origin (0.000118197381978 0.000616034090909 0.000263647770223);
+        radius 1.60340909091e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 320, diameter 3.18712121212e-05 m
+    sphereToCell
+    {
+        origin (0.00117722839856 0.000653027708062 -0.000201049021478);
+        radius 1.59356060606e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 321, diameter 3.16742424242e-05 m
+    sphereToCell
+    {
+        origin (0.00152077786723 0.000615837121212 -0.000260176927541);
+        radius 1.58371212121e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 322, diameter 3.14772727273e-05 m
+    sphereToCell
+    {
+        origin (0.00169900145821 0.000663797051647 -0.000127425471101);
+        radius 1.57386363636e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 323, diameter 3.12803030303e-05 m
+    sphereToCell
+    {
+        origin (2.3728750084e-05 0.000661538293805 0.00026327875166);
+        radius 1.56401515152e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 324, diameter 3.10833333333e-05 m
+    sphereToCell
+    {
+        origin (0.000207614322813 0.000644951360578 -0.000103283283957);
+        radius 1.55416666667e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 325, diameter 3.08863636364e-05 m
+    sphereToCell
+    {
+        origin (0.00137987182359 0.000662966809182 0.000141500966767);
+        radius 1.54431818182e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 326, diameter 3.06893939394e-05 m
+    sphereToCell
+    {
+        origin (0.00168490026961 0.000662168799747 -0.000254810917961);
+        radius 1.53446969697e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 327, diameter 3.04924242424e-05 m
+    sphereToCell
+    {
+        origin (0.00157926487427 0.00066457182008 -0.000135420333345);
+        radius 1.52462121212e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 328, diameter 3.02954545455e-05 m
+    sphereToCell
+    {
+        origin (0.00111057891729 0.000647654722364 0.00026388392298);
+        radius 1.51477272727e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+    // particle 329, diameter 3.00984848485e-05 m
+    sphereToCell
+    {
+        origin (0.000544598408892 0.000663406873119 4.80237387547e-05);
+        radius 1.50492424242e-05;
+        fieldValues
+        (
+            volScalarFieldValue alpha.metal 1
+        );
+    }
+
+);
