@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/powderBed"))
 import m247_liggghts as dem
@@ -20,6 +21,30 @@ def dump(path, rows):
 
 
 class PowderDEMTest(unittest.TestCase):
+    def test_explicit_executable_and_bad_override(self):
+        TEMP_ROOT.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
+            executable = Path(directory) / "liggghts"
+            executable.write_text("fake")
+            with patch.dict(dem.os.environ, {"LIGGGHTS_EXECUTABLE": str(executable)}), \
+                 patch.object(dem.os, "access", return_value=True):
+                self.assertEqual(dem.resolve_liggghts(), executable.resolve())
+            with patch.dict(dem.os.environ, {"LIGGGHTS_EXECUTABLE": str(executable)+".missing"}):
+                with self.assertRaisesRegex(FileNotFoundError, "LIGGGHTS_EXECUTABLE"):
+                    dem.resolve_liggghts()
+
+    def test_failed_run_packages_input_and_reason(self):
+        TEMP_ROOT.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
+            work = Path(directory) / "failed-dem"
+            with patch.object(dem, "resolve_liggghts", side_effect=FileNotFoundError("missing")):
+                with self.assertRaisesRegex(FileNotFoundError, "missing"):
+                    dem.run_native(work)
+            self.assertTrue((work / "input.liggghts").is_file())
+            dem.package(work, 1)
+            manifest = json.loads((work / "reviewManifest.json").read_text())
+            self.assertIn("input.liggghts", manifest["files"])
+
     def test_preparation_and_unit_conversion(self):
         TEMP_ROOT.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
