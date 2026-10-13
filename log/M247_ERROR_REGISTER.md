@@ -1170,4 +1170,29 @@ wrapper's remote blob contained one stray CR, causing `$'\\r': command not
 found` after packaging; normalized the full remote file to LF and verified
 zero CR bytes. Native outcome for the new input remains unverified.
 
+# 2026-10-13: mature DEM bed handed to exploratory 50 us pilot
+
+Archive `M247_m247-powder-dem-20261013-140626_review.tar.gz` exit 0 with
+all 10 file hashes verified. Native time 26.23 s. 460 raw -> 341 final
+particles; velocity P95 fell from 0.00991 (raw) to 0.00292 (250k-step
+relaxation) to 0.00223 m/s (final). Number-based D10/D50/D90
+36.0938/51.3422/74.75 um pass current numerical gates. Boundary penetration
+max 0.008 um; pair overlap max 0.0080 um. Nominal packing 0.61406 misses
+the provisional .58 +/- .03 gate, while centerline gap is 48 um and corridor
+coverage 0.744. Experimental PSD measurement basis remains unknown; volume
+quantiles are 46.311/71.3344/78.25 um. This is not a final physical powder
+validation. Repeatedly changing the DEM insertion count is not justified by
+the available experimental packing data.
+
+V2 had a separate handoff defect: it checked the geometric bed inside the
+template, and the common pilot function rejected any DEM contact overlap and
+packing >.60. A new review-archive handoff verifies every hash, native exit,
+configuration and particle count, then installs the DEM `setFieldsDict`, CSV
+and manifest into a fresh copied case. Only the exploratory 50 us pilot can
+use the .54-.62 packing bracket; all other numerical gates remain required.
+The archive SHA and exception are recorded in `demHandoff.json` and the pilot
+report. Production approval remains false. The original V1 gate is unchanged.
+No Ubuntu CFD was launched while making this handoff; it requires a new native
+pilot review archive.
+
 
