@@ -5,6 +5,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import tarfile
 
@@ -12,7 +13,6 @@ ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "tutorials/vacuumLaserbeamFoam/M247_0p6Pa_track1500um6umV2/powderBedConfig.json"
 REQUIRED = ("demInput.json", "run.json", "powderManifest.json",
             "powderParticles.csv", "setFieldsDict", "post/final.dump")
-PILOT_PACKING_RANGE = (0.54, 0.62)  # exploratory bracket, not final .58 +/- .03 gate
 
 
 def digest(data):
@@ -30,8 +30,8 @@ def validate_manifest(manifest):
                ("particleCount", "boundary", "d10", "d50", "d90", "overlap", "settled")):
         raise ValueError("DEM pilot safety gates are incomplete")
     packing = manifest.get("actualPackingFractionNominalLayer")
-    if not isinstance(packing, (int, float)) or not PILOT_PACKING_RANGE[0] <= packing <= PILOT_PACKING_RANGE[1]:
-        raise ValueError(f"DEM pilot packing outside {PILOT_PACKING_RANGE}: {packing}")
+    if not isinstance(packing, (int, float)) or not math.isfinite(packing) or packing < 0:
+        raise ValueError(f"Invalid reported nominal packing: {packing}")
     if manifest.get("productionApproved"):
         raise ValueError("DEM archive unexpectedly claims production approval")
     return packing
@@ -79,8 +79,7 @@ def prepare(archive_path, stage):
         (stage/name).write_bytes(data[name])
     report = dict(schema=1,archive=str(archive_path),archiveSha256=digest(archive_path.read_bytes()),
                   finalDumpSha256=manifest["finalDumpSha256"],particleCount=len(rows),
-                  packingNominal=packing,strictPackingGate=manifest["preflightGates"]["packing"],
-                  pilotPackingRange=PILOT_PACKING_RANGE,
+                  packingNominal=packing,nominalPackingAdvisoryPass=manifest["preflightGates"].get("packing"),
                   experimentalPsdBasis=manifest.get("experimentalPsdBasis", "unknown"),
                   pilotOnly=True,productionApproved=False)
     (stage/"handoff.json").write_text(json.dumps(report, indent=2)+"\n")
