@@ -19,6 +19,11 @@ The user's Ubuntu OpenFOAM installation for this project is **OpenFOAM-v2512**
 (`WM_PROJECT_VERSION=v2512`; project directory under
 `~/OpenFOAM/OpenFOAM-v2512`). The M247 V2 pilot checks this version before
 building and records the loaded version and project path in its review archive.
+The host has multiple OpenFOAM installations. A checkout path containing
+`kris-v2512` does not prove which installation a shell has loaded. For every
+future M247 build or native run, record and verify the active
+`WM_PROJECT_VERSION`, resolved `WM_PROJECT_DIR`, and `wmake` path before
+interpreting compiler output or numerical results.
 The 2026-10-13 14:37 pilot archive proves that run actually loaded v2312;
 `-DOPENFOAM=2312`, headers and wmake rules all came from v2312. It is an
 invalid v2512 pilot, not a physics result. The earlier 14:28 archive showed
