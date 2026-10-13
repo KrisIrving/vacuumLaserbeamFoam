@@ -1219,4 +1219,18 @@ and solver `wclean`, `wmake` sequence. No direct deletion or forced process
 control is used. Reuse the 14:06 DEM archive; the next Ubuntu pilot will
 establish whether this resolves compilation and then measure CFD.
 
+# 2026-10-13: correction — 14:37 pilot loaded OpenFOAM-v2312
+
+Archive `M247_m247-track1500-v2-pilot-20261013-143751_review.tar.gz` has
+five matching file hashes and exit code 2. Its fresh compiler invocation
+contains `-DOPENFOAM=2312`, headers from `OpenFOAM-v2312` and v2312 `wmake`
+rules. It fails compiling `compactRay.C` inside the v2312 Pstream headers;
+no mesh or CFD ran. Therefore the 14:37 failure is a wrong loaded OpenFOAM
+environment, not merely a stale `.dep` file. My earlier 14:28 classification
+was incomplete: that archive contains a v2312 dependency path but no direct
+record of loaded `WM_PROJECT_VERSION`, so its environment is unproven.
+Neither failed pilot contributes M247 physics or performance evidence.
+Runner now checks `WM_PROJECT_VERSION`, `WM_PROJECT_DIR` and the actual
+`wmake` executable before any clean/build operation, recording all three.
+
 
