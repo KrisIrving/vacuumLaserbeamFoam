@@ -10,13 +10,13 @@ the tool accepts `LIGGGHTS_EXECUTABLE` and automatically checks
 `~/CFDEM/LIGGGHTS/src-build/liggghts` before PATH. A shell alias alone is not
 visible to Python. Send its uniquely named review archive. This DEM
 pilot does not change this template or advance CFD. Its contact parameters are
-provisional upstream tutorial values, so passing its PSD/packing gates does not
-establish experimental powder-bed fidelity. The final coverage target and
-contact/recoater conditions still need review. The 2026-10-13 14:06 DEM bed
-passes all strict numerical gates except the provisional .58 +/- .03 packing
-target (actual .61406). It is accepted only for a 50 us exploratory pilot
-under a documented .54-.62 pilot bracket. The handoff records this exception,
-the DEM archive hash and the unknown experimental PSD weighting basis.
+provisional upstream tutorial values, so passing the numerical preflight does
+not establish experimental powder-bed fidelity. The final coverage target and
+contact/recoater conditions still need review. Nominal-layer packing is
+reported but is not a hard acceptance gate: the provisional .58 +/- .03 target
+is not an experimental measurement. The 2026-10-13 14:06 bed reports .61406;
+its other numerical preflight gates pass. The handoff records the advisory
+packing comparison, DEM archive hash and unknown experimental PSD weighting basis.
 Neither this pilot nor the DEM bed is approved for the final 1.5 mm track.
 
 This is a separate mesh template. The original50/60us archives retain the
