@@ -97,15 +97,21 @@ def collect(work):
         projection_note='Startup50us rate is not a full-track ETA; thermal/ray work and timestep can change. Cooling cost excluded.',
         ready_for_next_stage_review=thermal and geometry['molten_metal_cells_outside_fine']==0 and pool is not None and pool['fine_margin_um']>=24 and geometry['solidus_all_metal']['fine_margin_um']>=12,
         production_approved=False)
+    handoff=case/'demHandoff.json'
+    if handoff.is_file():report['demHandoff']=json.loads(handoff.read_text())
     save(work/'pilotReport.json',report);print(json.dumps(report,indent=2),flush=True)
 
 def execute(work):
     case=work/'track1500';shutil.copytree(TEMPLATE,case)
+    prepare_case=globals().get('PREPARE_CASE')
+    if prepare_case:prepare_case(case,work)
     shutil.copytree(case/'initial',case/'0')
     manifest=json.loads((case/'constant/powderManifest.json').read_text())
-    if manifest['minimumInterparticleGap_m'] < -1e-12 or not .56<=manifest['actualPackingFractionNominalLayer']<=.60:
+    powder_gate=globals().get('POWDER_GATE')
+    if powder_gate:powder_gate(manifest)
+    elif manifest['minimumInterparticleGap_m'] < -1e-12 or not .56<=manifest['actualPackingFractionNominalLayer']<=.60:
         raise ValueError('Powder overlap/packing preflight failed')
-    save(case/'probe.json',dict(schema=1,variant='track1500Pilot',start_s=0,end_s=50e-6,duration_us=50,ranks=48,
+    save(case/'probe.json',dict(schema=1,variant=globals().get('PILOT_VARIANT','track1500Pilot'),start_s=0,end_s=50e-6,duration_us=50,ranks=48,
         epsilon_tolerance=1e-4,phase_temperature_tolerance_K=.01,epsilon_relaxation=1,planned_scan_s=.0015,
         cooling_end_s=.002,rays=384,cells=CELLS))
     for tool in ('blockMesh','setFields','checkMesh'):run(case,tool,[tool])
@@ -146,3 +152,4 @@ def main():
     else:execute(work)
 
 if __name__=='__main__':main()
+
