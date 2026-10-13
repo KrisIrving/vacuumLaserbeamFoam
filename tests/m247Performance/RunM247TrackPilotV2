@@ -18,11 +18,20 @@ package() {
 }
 trap package EXIT
 git rev-parse HEAD > "$WORK/revision.txt"
-printf 'WM_PROJECT_VERSION=%s\nWM_PROJECT_DIR=%s\n' "${WM_PROJECT_VERSION:-unset}" "${WM_PROJECT_DIR:-unset}" > "$WORK/openfoamVersion.txt"
+printf 'WM_PROJECT_VERSION=%s\nWM_PROJECT_DIR=%s\nWMAKE=%s\n' "${WM_PROJECT_VERSION:-unset}" "${WM_PROJECT_DIR:-unset}" "$(command -v wmake || printf unset)" > "$WORK/openfoamVersion.txt"
 case "${WM_PROJECT_VERSION:-}" in
     v2512|2512) ;;
     *) echo "M247 V2 pilot requires OpenFOAM-v2512; current WM_PROJECT_VERSION=${WM_PROJECT_VERSION:-unset}" >&2; exit 2 ;;
 esac
+if [ ! -d "${WM_PROJECT_DIR:-}" ] || [ "$(basename "$WM_PROJECT_DIR")" != OpenFOAM-v2512 ]; then
+    echo "M247 V2 pilot requires WM_PROJECT_DIR to point to OpenFOAM-v2512; current=${WM_PROJECT_DIR:-unset}" >&2
+    exit 2
+fi
+WMAKE_PATH=$(command -v wmake || true)
+if [ -z "$WMAKE_PATH" ] || [ "$(realpath "$WMAKE_PATH")" != "$(realpath "$WM_PROJECT_DIR/wmake/wmake")" ]; then
+    echo "M247 V2 pilot requires the v2512 wmake; current=${WMAKE_PATH:-unset}" >&2
+    exit 2
+fi
 python3 tests/m247Performance/m247_dem_handoff.py "$DEM_ARCHIVE" "$WORK/dem"
 for tool in python3 wclean wmake wmakeLnInclude blockMesh setFields checkMesh decomposePar mpirun reconstructPar postProcess; do
     command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
