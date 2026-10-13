@@ -1,5 +1,22 @@
-Warning: truncated output (original token count: 33883)
-Total output lines: 2026
+Warning: truncated output (original token count: 34167)
+Total output lines: 2043
+
+## 2026-10-13: local 6 um corridor experiment ready for Ubuntu
+
+Built one full 0--50 us candidate run reusing the completed v2512 V2 DEM
+baseline and the same verified 341-particle archive. Candidate changes only
+`system/blockMeshDict`: fine x ends at 300 um (159 um ahead of the baseline
+50 us molten front), with a graded far-ahead slab to the unchanged 1920 um
+outer boundary. Predicted cells fall from 3,814,272 to 1,929,312 (-49.4%).
+The candidate remains 6 um around the initial melt; it is explicitly invalid
+for a full 1.5 mm static run. Wrapper checks active v2512 version/project/wmake,
+both archive hashes, solver/library and all non-mesh input provenance, then
+runs only the candidate. It packages mesh, solver, cost and physical comparison
+evidence in one named archive even on failure. Offline mesh/preflight and
+Python tests pass; native blockMesh, compilation and CFD remain Ubuntu tests.
+See tests/m247Performance/LOCAL_CORRIDOR.md for the one command. If 50 us
+cost/physics is favorable, implement translating refinement and global heat
+history before any full-track claim. Do not extrapolate the static local result.
 
 ## 2026-10-13: v2512 DEM 50 us pilot completed; full track still too costly
 
@@ -914,23 +931,7 @@ Global max div and boundary net volume flux must meet explicit tolerance.
 
 Added native local source-delta ledger and sourceAudit hook. Read supplied local
 volumetric laser, evaporation, radiation, advection and conduction densities;
-subtract mapped global conduction before scattering delta energy. Global source
-ownership must be explicitly declared conduction-only. Radiation can heat or cool;
-absorption/evaporation must be nonnegative. Component energy ledger reduces over
-MPI. These fields are supplied snapshots; actual ray/evap/radiation calls and
-pressure-to-VOF/advection coupling have NOT been wired into a timestep yet.
-
-166 Python tests pass. Independent 1D variable-coefficient manufactured pressure
-reference checks sign/through-flow; source tests check conduction replacement,
-no double count, signed radiation and corrections. Tests do NOT compile or run the
-new native projection. Native OpenFOAM build/MPI remains pending. Input NO_WRITE;
-no solver time advance or production/performance claim. Default LPBF unchanged.
-
-Next: actual momentum/VOF timestep, optical/source generation, interface flux and
-moving history; integrate pressure phi as VOF authority, not reinterpolate U phi.
-Projection presently uses externally supplied rho/U, not mapped mixture state.
-Source ownership declaration is an audit contract, not proof of existing solver
-ownership. Conservative interface flux must still be matched with global …3883 tokens truncated…/tests/m247Performance/RunMovingCFDLongPair
+subtract mapped global conduction before scattering delta energy…4167 tokens truncated…/tests/m247Performance/RunMovingCFDLongPair
 ```
 Automatically runs matched5ns and10ns ceilings from protected164709original
 checkpoint over180-180.4us (0.4us each). Startup1ns,48ranks,CFL0.1,thermal and
