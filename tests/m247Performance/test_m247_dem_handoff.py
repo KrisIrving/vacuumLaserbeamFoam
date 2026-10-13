@@ -46,8 +46,15 @@ class HandoffTest(unittest.TestCase):
             handoff.prepare(archive,stage)
             report=json.loads((stage/"handoff.json").read_text())
             self.assertTrue(report["pilotOnly"])
-            self.assertFalse(report["strictPackingGate"])
+            self.assertFalse(report["nominalPackingAdvisoryPass"])
             self.assertEqual(report["particleCount"],1)
+
+    def test_nominal_packing_is_advisory(self):
+        manifest=dict(generator="LIGGGHTS-PUBLIC-DEM",productionApproved=False,
+                      actualPackingFractionNominalLayer=.71,
+                      preflightGates=dict(particleCount=True,boundary=True,d10=True,
+                                          d50=True,d90=True,packing=False,overlap=True,settled=True))
+        self.assertEqual(handoff.validate_manifest(manifest),.71)
 
     def test_corrupt_archive_is_rejected_before_stage_creation(self):
         TEMP_ROOT.mkdir(exist_ok=True)
