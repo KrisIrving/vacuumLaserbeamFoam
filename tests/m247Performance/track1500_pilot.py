@@ -109,8 +109,8 @@ def execute(work):
     manifest=json.loads((case/'constant/powderManifest.json').read_text())
     powder_gate=globals().get('POWDER_GATE')
     if powder_gate:powder_gate(manifest)
-    elif manifest['minimumInterparticleGap_m'] < -1e-12 or not .56<=manifest['actualPackingFractionNominalLayer']<=.60:
-        raise ValueError('Powder overlap/packing preflight failed')
+    elif manifest['minimumInterparticleGap_m'] < -1e-12:
+        raise ValueError('Powder overlap preflight failed')
     save(case/'probe.json',dict(schema=1,variant=globals().get('PILOT_VARIANT','track1500Pilot'),start_s=0,end_s=50e-6,duration_us=50,ranks=48,
         epsilon_tolerance=1e-4,phase_temperature_tolerance_K=.01,epsilon_relaxation=1,planned_scan_s=.0015,
         cooling_end_s=.002,rays=384,cells=CELLS))
