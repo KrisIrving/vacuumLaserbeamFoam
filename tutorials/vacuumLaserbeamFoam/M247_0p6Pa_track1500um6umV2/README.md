@@ -1,17 +1,23 @@
 # M247 1.5 mm, 6um corridor V2: geometry correction
 
-**Powder hold (2026-10-12):** the checked-in 330-particle bed was made by the
+**Powder handoff (2026-10-13):** the checked-in 330-particle bed was made by the
 geometric `sequentialVerticalDeposition-v2` script, not by LIGGGHTS. The user
 requires a LIGGGHTS-generated bed for the final case. `RunM247TrackPilotV2`
-now stops before CFD until a native DEM bed has been generated, audited and
-installed. Run `bash tests/m247Performance/RunM247PowderDEM` first on Ubuntu;
+now takes the verified native DEM review archive as its one argument and
+installs its particle fields into a fresh pilot case. Run
+`bash tests/m247Performance/RunM247PowderDEM` first on Ubuntu;
 the tool accepts `LIGGGHTS_EXECUTABLE` and automatically checks
 `~/CFDEM/LIGGGHTS/src-build/liggghts` before PATH. A shell alias alone is not
 visible to Python. Send its uniquely named review archive. This DEM
 pilot does not change this template or advance CFD. Its contact parameters are
 provisional upstream tutorial values, so passing its PSD/packing gates does not
 establish experimental powder-bed fidelity. The final coverage target and
-contact/recoater conditions still need review.
+contact/recoater conditions still need review. The 2026-10-13 14:06 DEM bed
+passes all strict numerical gates except the provisional .58 +/- .03 packing
+target (actual .61406). It is accepted only for a 50 us exploratory pilot
+under a documented .54-.62 pilot bracket. The handoff records this exception,
+the DEM archive hash and the unknown experimental PSD weighting basis.
+Neither this pilot nor the DEM bed is approved for the final 1.5 mm track.
 
 This is a separate mesh template. The original50/60us archives retain the
 original geometry for reproducibility. Use RunM247TrackPilotV2 to create a
@@ -43,11 +49,13 @@ Boundary audit: tests/m247Performance/TRACK_BOUNDARY_AUDIT.md. The top T
 backflow and p_rgh total-pressure choices need further sensitivity evidence;
 this V2 geometry correction does not imply final boundary approval.
 
-After DEM powder approval and installation, from the repository root with OpenFOAM-v2512 loaded:
+For the 50 us DEM-bed exploratory pilot, from the repository root with
+OpenFOAM-v2512 loaded:
 
 ```bash
 git pull --ff-only
-bash tests/m247Performance/RunM247TrackPilotV2
+bash tests/m247Performance/RunM247TrackPilotV2 \
+  tests/m247Performance/runs/M247_m247-powder-dem-20261013-140626_review.tar.gz
 ```
 
 The first run stops at50us and produces one uniquely named review archive.
