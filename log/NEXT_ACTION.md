@@ -1,16 +1,39 @@
-## 2026-10-12 current: PCG retained, boundary audit, separate V2 mesh pilot
+Warning: truncated output (original token count: 33883)
+Total output lines: 2026
 
-Native50--60us M247 pressure pair completed: PCG2788.89s, GAMG3806.36s. GAMG is36.5% slower; retainPCG. Depth/width agree at55/60us; zero nonlinear thermal cap hits and full linear convergence on both mature restarts. Pair archive manifest is incomplete solely because collector mishandled the carried initial continuity line; full archived logs were recollected locally after the fix, no CFD rerun needed. Results in log/entries/2026-10-12-m247-pressure-result-boundaries.md.
+## 2026-10-13: v2512 DEM 50 us pilot completed; full track still too costly
 
-Boundary audit: the current V1 fine x corridor ends1620um, while the60us molten front reaches129um ahead of laser, exceeding the120um terminal allowance. Do not continue V1 to1.5mm. Atmosphere T zeroGradient on backflow and totalPressure on p_rgh are provisional; see tests/m247Performance/TRACK_BOUNDARY_AUDIT.md. No assertion of validated outer-boundary independence.
+The `M247_m247-track1500-v2-pilot-20261013-144606_review.tar.gz` manifest is
+complete (exit 0), with all 42 file hashes verified. Its environment record
+shows `WM_PROJECT_VERSION=v2512`, v2512 `WM_PROJECT_DIR` and v2512 `wmake`;
+solver/library preflight passed. This is the first completed 50 us V2 run with
+the 341-particle native DEM bed, 384 rays, 3,814,272 cells and 48 MPI ranks.
+It took 12,347.94 s (3.430 h), 4,980 steps: 246.90 s/us. Pressure used 51.11%
+of loop wall, thermal 17.97%, momentum 10.30%, laser 7.56%, alpha 7.49%.
+Mean thermal correctors 3.07, max 5, zero nonlinear cap hits. There was one
+first-step T linear solve at the 1,000-iteration cap (residual 7.51e-9 versus
+1e-9 target); this is not covered by the reported nonlinear thermal gate.
+Median deltaT 9.91 ns, maximum printed Courant 0.153, final cumulative flux
+continuity 9.52e-8. No fatal solver error occurred.
 
-Prepared V2 static mesh with fine x through1680um, reduced far-substrate fine depth based on older200us M247 result, expected3,814,272 cells, materials/laser/BC unchanged. Ubuntu next: git pull --ff-only; bash tests/m247Performance/RunM247TrackPilotV2. Send its single M247_m247-track1500-v2-pilot-TIMESTAMP_review.tar.gz even on failure. This is a new0--50us case, not a restart of old partitions. Native checkMesh, melt dimensions/fine-margin and cost must be reviewed before any long continuation. Full-track24h remains unproved.
+At 50 us, connected solidus melt depth is 93 um below the original surface,
+width 234 um, about one 6 um cell-centre uncertainty; this is not keyhole depth
+or final solidified track. No molten cells escaped the fine zone and minimum
+fine-zone margin is 45 um. The pilot's `ready_for_next_stage_review=true`
+permits further review only; it is not full-track or experimental approval.
 
-## 2026-10-12 current: pressure optimisation on completed1.5mm pilot
-
-The50us M2476um/384-ray pilot completed3.0146h. Average3.13 thermal iterations, no nonlinear caps; pressure50.44% is dominant. First-step T linear cap is recorded separately; it remains an outstanding startup exception. Instantaneous molten depth105um/width270um, fine margin39um. Full1500us heating startup-rate projection90.44h plus cooling is not a runtime guarantee.
-
-Ubuntu next: git pull --ff-only, then bash tests/m247Performance/RunM247PressurePair tests/m247Performance/runs/m247-track1500-pilot-20261012-105416/track1500. Fresh matched50--60usPCG/GAMG variants, no rerun of0--50us, source preserved, one timestamped archive on success/failure. Review native pressure savings, linear/nonlinear convergence and both55/60us melt depth/width differences. No additionalWang/ray-count/thermal mini screens now. Passing recommends longer continuation only; even ideal pressure elimination alone cannot meet24h at this observed whole-path mesh rate. Further mesh/time-step changes need measured physics/cost evidence.
+At the observed startup rate, 1,500 us heating alone extrapolates to about
+102.9 h, with cooling extra. The estimate is not a validated long-run ETA,
+but it fails the desired affordable-runtime screen by a wide margin. Even
+eliminating all measured pressure time would leave about 50.3 h, so repeating
+the full static 6 um case now is not justified. An older 50--60 us PCG/GAMG
+pair on the V1 geometry completed both jobs (2,788.9/3,806.4 s) but its
+collector failed; that directional evidence does not favor the same GAMG
+configuration, and it is not a matched V2 DEM comparison. Next acceleration
+work should target fewer active cells through a moving/local mesh while
+preserving global thermal history and comparing against this v2512 DEM pilot.
+Verify the loaded OpenFOAM version/path for every new native build. Do not
+claim a 24 h full-track capability or begin the 1.5 mm production run yet.
 
 ## 2026-10-10 202035: reduced-ray budget PASS and measured1.649x; longer validation
 
@@ -907,267 +930,7 @@ Next: actual momentum/VOF timestep, optical/source generation, interface flux an
 moving history; integrate pressure phi as VOF authority, not reinterpolate U phi.
 Projection presently uses externally supplied rho/U, not mapped mixture state.
 Source ownership declaration is an audit contract, not proof of existing solver
-ownership. Conservative interface flux must still be matched with global thermal
-boundaries; this delta ledger alone cannot establish regional physical closure.
-No new Ubuntu parameter screen or standalone user-run audit requested.
-
-
-## 2026-10-09: preserve capacity moments through regional remapping
-
-Native state handoff now conservatively maps sensible capacity endpoints [J/m3/K]
-and latent capacity [J/m3] alongside energy, alpha and latent-energy inventory.
-The capacities are moments of the source coefficients, NOT regenerated from mapped
-alpha. This preserves uniform T across interface mapping and keeps a fully liquid
-metal/cold gas crossing admissible. Fixed phase inventory is reconstructed using
-mapped capacity. No clipping, arbitrary neighbor redistribution or energy deletion.
-
-Added m247CapacityEnthalpy.H and persistent-moment m247RegionalState overload.
-Import coefficients from alpha only once at original checkpoint; repeated regional
-moves MUST supply the stored moments. Native mixed audit now reports schema2 and
-capacityMomentsMapped=1, uses mapped closure for local inverse/delta checks.
-Global energy-only correction still preserves original global inventories.
-
-160 Python tests pass, including fully molten/gas interface, uniform temperature,
-two sequential remaps of nonmatching partitions, moment integrals, invalid energy,
-and signed energy changes. Native build/MPI remains unverified; no acceleration
-claim. These are thermodynamic remap diagnostics, NOT a solved local CFD system.
-
-Remaining: momentum/VOF transport and correction ownership, pressure/open boundary,
-energy-source/interface flux accounting, moving persistent field migration,
-native fixture and integrated acceptance driver. Moment evolution/advection must
-be supplied with the local equations; recomputing cp/rho/L from averaged alpha
-would discard these moments and reintroduce the error. Existing TEqn is unchanged;
-its advective compatibility with the moment formulation is not established.
-No new Ubuntu micro-screen requested.
-
-
-## 2026-10-09: native mixed-state regional handoff
-
-Implemented m247MixtureEnthalpy and m247RegionalState: separate energy density,
-metal volume fraction and latent-energy inventory; reconstruct T at fixed phase
-inventory. Native regional audit has optional mixtureAudit branch, reads T,
-alpha.metal and epsilon1 from thermalRegion, predicts conduction, gathers state,
-returns only local delta energy and checks global ledger. Default solver untouched.
-
-Actual material coefficients: rhoMetal7950,rhoGas1,cpGas520,latentGas1;
-metal cp790/860,Ts1537,Tl1631,latent150000. Uses solver alpha-weighted cp and
-legacy alpha_filtered latent thresholds (<.01,>.99). h reference0K is explicit.
-This diagnostic closure does NOT establish advective TEqn equivalence; mapped
-states remain nonequilibrium until local phase equations reconcile them.
-
-Error prevented: averaging energy or temperature while recomputing equilibrium
-liquid fraction loses phase inventory. Map latent ENERGY density independently;
-alpha averaging may reduce its capacity. Such inadmissible states stop with a
-specific error, not clipping. Conservative bounded inventory redistribution is
-still required before production motion across such interfaces.
-
-155 Python tests pass. Native C++ build/MPI still unverified in this Windows
-environment. No local VOF/pressure/laser solve yet; no speedup or production claim.
-Next: conservative admissibility handling, local flow/pressure boundary and source
-ownership; build one integrated acceptance driver. No new Ubuntu micro-screen.
-
-
-## Native regional stage: transfer/enthalpy/FV wiring implemented, LPBF coupling pending
-
-Added src/m247RegionalCoupling/m247RegionalTransfer.H:owned MPI geometry/data
-exchange,sparse rectangular overlap,cache invalidation,integrated correction ledger.
-Added pure-metal exactclamped cp/latent enthalpy and inversion,checked with actual
-M247790/860cp,150kJ/kg latent parameters in independent Python analytic tests.
-Added two-region FV conduction/correction wiring utility with explicitdiffusion guard;
-no sourcefield writes.150Python tests pass. Native compilation/MPI runtime unverified.
-This is not yet local CFD:mixtureenthalpy,pressure/VOF/laser subdomain boundary,
-moving field migration and matched physical/cost acceptance remain outstanding.
-No new user-run small test in this checkpoint; preserve old validated solver.
-Next development connects region ownership and actual local equations before one
-combined user acceptance command. See src/m247RegionalCoupling/README.md.
-
-
-## 2026-10-08 210010: stop micro screens; structural regional acceleration
-
-Halo candidate failed performance (514.530s vs371.384s,11skips but48vs40steps).
-User requests faster development and no more small screens. Freeze these branches;
-defaults unchanged. Implemented conservative axis-aligned overlap transfer reference
-with147passing Python tests; true regional OpenFOAM solver remains pending.
-Next milestone is native global-conduction/local-CFD coupling and one combined
-acceptance driver. No new Ubuntu command in this update. See M247_REGIONAL_DEVELOPMENT.md.
-
-
-## 2026-10-08 203504: cadence native-valid but no skips; opt-in refinement halo
-
-Verified paired archive: both nativebuild/run,gates pass,40steps,zero thermalcaps.
-Reference370.380s,candidate377.393s,speedup0.98142; physicaldiagnostics identical.
-Interval4 attempted40updates,skipped0,30coverage overrides. Native protection did
-its job; cadence alone provides no acceleration. Do not adopt interval4alone or
-weaken coverage. First-stepneeded87687cells,step2needed2610,then485/408/313...
-new corewindow/hotwake cells require refinement eachstep. Split cause betweenwindow
-andwake not recorded, so do not assert thermal-only cause.
-
-Develop opt-in one face-neighbour refinementhalo around unionwindow/heldwake on
-attempted updates. Uses official2512protectedextendMarkedCells(bitSet&) method:
-https://api.openfoam.com/2512/dynamicRefineFvMesh_8H_source.html
-Default halo0/interval1 unchanged. Candidatehalo1/interval4 may pre-refine cells
-before coverage demands them. CoverageRequired still counts unrefined CORE cells
-before halo; first/scheduled/required updates remain enforced; window/wake checks,
-2Mcellcap,V0,mapping/thermal/continuity gates retained. No halo guarantee is assumed.
-Halo growth on attempted update only; no dilation on skippedstep. New nativecadence
-records prove haloLayers/haloAdded; metadata/dictionary/binary markers validated.
-Larger cellcount can outweigh fewerupdates; require measured netcost,not claim
-speedup from skipcount. Changesmesh/opticalinput,so physicalequivalence pending.
-
-Next after pull:
-```bash
-./tests/m247Performance/RunMovingHaloPair
-```
-Same rebuiltbinary,5nsceiling,48ranks,0.2us each: baselineinterval1/halo0 versus
-candidateinterval4/halo1.15minute solver cap each;prepare/build/decomposeextra.
-Send ONE M247_moving-halo-pair-<timestamp>_review.tar.gz on successorfailure.
-144Python tests/Bash syntax/pycompilepass; newC++compile/runtime pendingUbuntu.
-If halo still cannot skip or netcost worsens, stop this cadence branch rather than
-adding more layers without region/cost evidence.10ns remains experimental.
-
-
-## 2026-10-08 193354: longer pair succeeds; guarded topology cadence pilot
-
-Both native builds/decompositions/CFD complete180-180.4us,all gates pass,source
-unchanged,no thermalcaps.5ns87steps839.855s;10ns80steps776.799s (1.08117job speedup,
-7.51% wall saving). Late actualdt~3.94ns forboth; adaptive/write scheduling reduce
-ceiling benefit. FinalTmax differs+0.385%,Umax-4.047%,depositedpower+1.131%;
-max sampledpVap difference2.667% at180.3us.10ns remains experimental.
-Measured mesh-update wall totals139.10/125.90s (~16.6/16.2% loop). MW06 pipeline
-repair now confirmed native; original190128 interruption cause still unknown.
-
-Next after pull:
-```bash
-./tests/m247Performance/RunMovingMeshPair
-```
-Matched rebuilt binary, same5ns timestep ceiling, same48ranks and initial coarse
-checkpoint,0.2us each. Compare every-step topology interval1 vs opt-ininterval4.
-Every step still updates wake/mask and checks cell-centre window/wake refinement.
-Firstcycle updates;scheduledcycles update; any required cell withlevel!=1forces
-immediate update on all MPI ranks, overriding cadence. Skip only whencoverage is
-complete. ExistingV0,rawmapping,full-stepthermal/continuity checks retained.
-Skipped topology clears topoChanging/moving flags to avoid stale isoAdvector
-mapping; supported only for fixed meshpoints,not additional motion solvers.
-Native post-updatewindow coverage fatalcheck applies; no deferral silently allowed
-if window/wake incomplete. Coverage criteria are same centroid window/sparse hold
-semantics, not geometric intersection of entirecell withwindow.
-
-Per-step cadence records prove attempts/skips/coverage overrides. Collector rejects
-missing/mismatched records,newbinary marker required. Timer topology stage now
-also includes collective guard decision,not exclusively baseupdate. Actualsavings
-may be small/zero if coverage frequently forces updates; no speedup claim before
-native test. Passing short screens alone does not approve physicalequivalence.
-
-142Python tests and Bash syntax pass; nativechangedC++ compilation/runtime pending.
-Send ONE M247_moving-mesh-pair-<timestamp>_review.tar.gz,including bothsolver/stage
-logs,reports/comparison,status.15minute solver cap perrun,build/copy/decomposeextra.
-Default interval remains1; defaulttimestep5ns. Do not run anotherlongpair now.
-
-Official2512polyMesh interfaces confirm topoChanging(bool)/moving(bool):
-https://api.openfoam.com/2512/classFoam_1_1polyMesh.html
-Official2506dynamicRefineFvMesh source shows updateTopology sets state flags and
-baseupdate also dispatches motion solver. Full2512implementation fetchwas403;
-therefore native2512build/runtime are explicitlypending,not claimedfromdocs.
-https://api.openfoam.com/2506/dynamicRefineFvMesh_8C_source.html
-
-
-## 2026-10-08 192925: long job inactive and partial; clean bounded retry
-
-Resource inventory/archive hashes verified: no matching task processes;5ns ranks
-0-17initialT/U/alpha/epsilon/phi present,18-47absent; no solver log/run.json;10ns
-not started. Current disk free3.176TB,MemAvailable82.85GiB,inodesample. This rules
-out currently active matching task/current resource exhaustion, not historicalOOM/
-manual interruption/signal/IO cause. Previous saveddecompose tail endsProcessor18.
-No physical0.4us result exists. Stop repeating read-only collection now.
-
-Add explicit decomposition prerequisite: successful native subprocess exit AND
-native End marker,exact48processor directories,nonempty5initialcorefieldfiles per
-rank. Presence is not full mesh/field correctness; native solver validates content.
-Failure cannot advance solver. Recorded launcher independently tested for process
-nonzeroexit,timeout,KeyboardInterrupt; running entry saved beforelaunch, failure
-state/elapsed/returncode saved afterward. SIGKILL remains untrappable.
-
-After pull run once in a NEW automatically named directory:
-```bash
-./tests/m247Performance/RunMovingCFDLongPair
-```
-Preserves190128partialrun. Does not resume incompleteprocessor folders or delete
-any originaldata. No CFD work is lost from190128 because none was started.
-Two0.4us runs5ns/10ns;15minute solver budget each; build/preparation timeextra.
-Terminal now announces each decomposition/solver stage and its log path.
-Send ONE new M247_moving-long-pair-<timestamp>_review.tar.gz on successor failure.
-139Python tests and pycompile pass; unchanged Bash wrappers previously checked.
-No C++/physicschanges; native retry and decomposition gate pendingUbuntu.
-
-
-## 2026-10-08 191618: incomplete decomposition confirmed; live resource inventory
-
-Archive hashes/bytes verified,manifestexit1 correctly denotes incomplete pair.
-Native build succeeded. Reference decompose log stops during Processor18field
-transfer, no End; no solver/run.json/candidate. Initial commands[] does not mean
-no launch: old launcher recorded commands only AFTER success. Cause is unknown:
-no native fatal/OOM/disk/error exit evidence in saved logs. User supplied successful
-collection output only, not original interrupted-run output. Do not diagnose solver
-instability or restart originalcase based on this archive.
-
-Collector now writes movingLongInventory.json before copying: disk/inode free
-space, Linux MemAvailable/SwapFree, matching processnames/PIDs/states (own collector
-flagged),48rank initialfield progress and solver/run metadata existence. No kill,
-cleanup, build,decompose or CFD launch. Point-in-time resources cannot prove a
-historical cause. Run same fast read-only collector after pull, send fresh
-M247_moving-long-collection-<timestamp>_review.tar.gz. Source stays untouched.
-
-Future native launches persist running stage BEFORE subprocess starts, then
-completed/failed-or-interrupted,elapsed wall,error type/returncode. SIGKILL cannot
-be trapped; a running record is therefore not proof process is still alive.
-137Python tests pass (resource inventory/partial18field preservation), previous
-Bash wrapper unchanged. Live Ubuntu inventory pending; no solver physics change.
-
-
-## 2026-10-08 190128: incomplete long pair; completion gate and read-only recovery
-
-Verified archive contains only reference initialreport/build/collectionlog. Report
-complete=false,pilot_gate=false,commands=[]; no solver log/candidate/comparison.
-Manifest wrapperexit0 is inconsistent with completion. Cannot infer whether native
-job stopped, is still running, or failed in decompose stage from this evidence.
-Do not rerun or claim0.4us outcome. Source protection/CFD failures are not proven.
-
-MW06: parent wrapper trusted shellstatus and omitted decomposition/pilot logs.
-Fix explicit pilot/pair completion checks,signal exit130/143 handling, archived
-status report and stage logs/run/probe metadata. Missing/incomplete reports force
-nonzero wrapper status even if incomingstatus0. Existing package manifests remain
-historical evidence; incomplete archives are never upgraded without actual reports.
-
-Next after pull:
-```bash
-./tests/m247Performance/CollectMovingLongPair
-```
-Default originaldirectory runs/moving-long-pair-20261008-190128. Copies existing
-child stage logs/reports into a fresh timestamp directory; no build/decompose/CFD.
-Send M247_moving-long-collection-<timestamp>_review.tar.gz even when incomplete.
-Changing input during copy is rejected and partial evidence packaged. Do not
-interrupt an active job just to collect it. Collection success means evidence was
-copied, not simulation completion; manifest status records actual completion.
-
-136Python tests/Bash syntax pass, including initial-only false-zero regression,
-130/143 status retention and read-only partial-decompose evidence packaging.
-Ubuntu recovery pending. No native solver changes;5ns remains default and10ns
-experimental. Physical optimization resumes after actual long-run state is known.
-
-
-## 2026-10-08 185039: native stored-field profiles pass; bounded longer pair
-
-Native utility compiled and read both final180.2us snapshots successfully. Archive
-hashes/sizes verified,wrapperexit0,missingfilesnone. Input fields/topology hashes
-unchanged. Final total metal volume difference-4.406e-9%, liquid volume+0.004549%,
-metal-weightedT integral-4.904e-6%. Across three centroid slab projections relative
-L1 differences:metal0.0000258-0.0001247%,liquid0.0050-0.00751%,signedmetalU
-components0.0252-0.1977%. Signed slab averaging may cancel local velocity changes;
-these values do not prove pointwise3D equivalence or keyhole convergence.
-
-Next after pull:
-```bash
-./tests/m247Performance/RunMovingCFDLongPair
+ownership. Conservative interface flux must still be matched with global …3883 tokens truncated…/tests/m247Performance/RunMovingCFDLongPair
 ```
 Automatically runs matched5ns and10ns ceilings from protected164709original
 checkpoint over180-180.4us (0.4us each). Startup1ns,48ranks,CFL0.1,thermal and
@@ -2003,3 +1766,4 @@ time before the first time increment, so saved hold state can be read correctly.
 Pilot startup deltaT1ns, maxDeltaT5ns and maxCo/maxAlphaCo0.1 avoid taking
 a coarse-grid-sized first timestep across the initial refinement. These conservative
 compatibility settings are not a production speed benchmark.
+
