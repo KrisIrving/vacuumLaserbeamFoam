@@ -18,6 +18,10 @@ is not an experimental measurement. The 2026-10-13 14:06 bed reports .61406;
 its other numerical preflight gates pass. The handoff records the advisory
 packing comparison, DEM archive hash and unknown experimental PSD weighting basis.
 Neither this pilot nor the DEM bed is approved for the final 1.5 mm track.
+The runner uses official `wclean`/`wmakeLnInclude`/`wmake` commands for the
+laser library and `wclean`/`wmake` for the solver before starting CFD. This
+refreshes stale absolute dependency paths from an older OpenFOAM installation;
+the verified DEM archive can be reused without running LIGGGHTS again.
 
 This is a separate mesh template. The original50/60us archives retain the
 original geometry for reproducibility. Use RunM247TrackPilotV2 to create a
