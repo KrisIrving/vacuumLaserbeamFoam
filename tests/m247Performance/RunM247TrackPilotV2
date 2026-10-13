@@ -1,7 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-python3 tools/powderBed/m247_liggghts.py verify-template
+if [ "$#" -ne 1 ]; then
+    echo "Usage: bash tests/m247Performance/RunM247TrackPilotV2 PATH_TO_DEM_REVIEW.tar.gz" >&2
+    exit 2
+fi
+DEM_ARCHIVE=$(realpath "$1")
+test -f "$DEM_ARCHIVE" || { echo "Missing DEM archive: $DEM_ARCHIVE" >&2; exit 2; }
 WORK=tests/m247Performance/runs/m247-track1500-v2-pilot-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$WORK"
 WORK=$(cd "$WORK" && pwd -P)
@@ -13,6 +18,7 @@ package() {
 }
 trap package EXIT
 git rev-parse HEAD > "$WORK/revision.txt"
+python3 tests/m247Performance/m247_dem_handoff.py "$DEM_ARCHIVE" "$WORK/dem"
 for tool in python3 wmake blockMesh setFields checkMesh decomposePar mpirun reconstructPar postProcess; do
     command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
 done
