@@ -18,6 +18,11 @@ package() {
 }
 trap package EXIT
 git rev-parse HEAD > "$WORK/revision.txt"
+printf 'WM_PROJECT_VERSION=%s\nWM_PROJECT_DIR=%s\n' "${WM_PROJECT_VERSION:-unset}" "${WM_PROJECT_DIR:-unset}" > "$WORK/openfoamVersion.txt"
+case "${WM_PROJECT_VERSION:-}" in
+    v2512|2512) ;;
+    *) echo "M247 V2 pilot requires OpenFOAM-v2512; current WM_PROJECT_VERSION=${WM_PROJECT_VERSION:-unset}" >&2; exit 2 ;;
+esac
 python3 tests/m247Performance/m247_dem_handoff.py "$DEM_ARCHIVE" "$WORK/dem"
 for tool in python3 wclean wmake wmakeLnInclude blockMesh setFields checkMesh decomposePar mpirun reconstructPar postProcess; do
     command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
