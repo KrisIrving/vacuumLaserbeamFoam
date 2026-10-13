@@ -62,6 +62,10 @@ bash tests/m247Performance/RunM247TrackPilotV2 \
   tests/m247Performance/runs/M247_m247-powder-dem-20261013-140626_review.tar.gz
 ```
 
+The runner verifies `WM_PROJECT_VERSION` is `v2512` (or `2512`) and includes
+the loaded OpenFOAM version and directory in `openfoamVersion.txt` in its
+review archive.
+
 The first run stops at50us and produces one uniquely named review archive.
 No previous case is modified and no full-track run starts automatically.
 
