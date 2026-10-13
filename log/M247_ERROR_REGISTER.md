@@ -1195,4 +1195,15 @@ report. Production approval remains false. The original V1 gate is unchanged.
 No Ubuntu CFD was launched while making this handoff; it requires a new native
 pilot review archive.
 
+# 2026-10-13: nominal packing is advisory, not a hard acceptance gate
+
+The user confirmed that nominal packing should not be a hard criterion. The
+reported fraction is particle volume divided by footprint area times nominal
+50 um layer thickness, not a measured experimental bed density. The .58 +/-
+.03 comparison remains visible for audit, but it no longer controls DEM
+`readyForReview`, the V2 archive handoff, or either pilot's CFD launch. The
+previous exploratory .54-.62 bracket is removed. Particle count, boundary,
+PSD, overlap and settling checks remain required; `productionApproved` stays
+false. The 14:06 archive can be reused without rerunning native LIGGGHTS.
+
 
