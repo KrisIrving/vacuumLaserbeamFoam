@@ -91,11 +91,14 @@ def collect(work):
     save(case/'meltGeometry.json',geometry)
     thermal=summary['thermal_limit_hits']==0 and residual_gate(case,meta,summary['steps'])
     pool=geometry['solidus_connected_pool']
+    static_local=bool(globals().get('STATIC_LOCAL_CORRIDOR',False))
     report=dict(schema=1,complete=True,solver=summary,thermal_gate=thermal,geometry=geometry,
         simulated_scan_um=50,planned_scan_um=1500,
-        rough_heating_wall_hours_at_pilot_rate=summary['job_wall_s']/3600*30,
-        projection_note='Startup50us rate is not a full-track ETA; thermal/ray work and timestep can change. Cooling cost excluded.',
-        ready_for_next_stage_review=thermal and geometry['molten_metal_cells_outside_fine']==0 and pool is not None and pool['fine_margin_um']>=24 and geometry['solidus_all_metal']['fine_margin_um']>=12,
+        rough_heating_wall_hours_at_pilot_rate=None if static_local else summary['job_wall_s']/3600*30,
+        projection_note=('Static local fine zone ends after the first 50us; no full-track time projection or continuation is valid.' if static_local
+            else 'Startup50us rate is not a full-track ETA; thermal/ray work and timestep can change. Cooling cost excluded.'),
+        static_local_corridor_only=static_local,
+        ready_for_next_stage_review=(not static_local) and thermal and geometry['molten_metal_cells_outside_fine']==0 and pool is not None and pool['fine_margin_um']>=24 and geometry['solidus_all_metal']['fine_margin_um']>=12,
         production_approved=False)
     handoff=case/'demHandoff.json'
     if handoff.is_file():report['demHandoff']=json.loads(handoff.read_text())
