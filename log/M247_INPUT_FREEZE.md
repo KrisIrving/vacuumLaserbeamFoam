@@ -19,8 +19,12 @@ The user's Ubuntu OpenFOAM installation for this project is **OpenFOAM-v2512**
 (`WM_PROJECT_VERSION=v2512`; project directory under
 `~/OpenFOAM/OpenFOAM-v2512`). The M247 V2 pilot checks this version before
 building and records the loaded version and project path in its review archive.
-Paths to `OpenFOAM-v2312` in old `.dep` files are stale build dependencies,
-not the user's intended runtime.
+The 2026-10-13 14:37 pilot archive proves that run actually loaded v2312;
+`-DOPENFOAM=2312`, headers and wmake rules all came from v2312. It is an
+invalid v2512 pilot, not a physics result. The earlier 14:28 archive showed
+only a v2312 path in an old dependency file, so its loaded version is not
+established. Neither run reached CFD. The runner checks the version, project
+directory and `wmake` executable before it cleans or compiles anything.
 
 ## Experimentally fixed inputs
 
