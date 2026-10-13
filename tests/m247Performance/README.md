@@ -1,3 +1,11 @@
+## Current M247 acceleration experiment (2026-10-13)
+
+`LOCAL_CORRIDOR.md` documents the one-run V2 DEM comparison with a 6 um local
+fine corridor and coarsened far-ahead cells. Use
+`RunM247LocalCorridorPilot` with the existing DEM and completed v2512 V2
+50 us review archives. Its result only tests 0--50 us and is not a full-track
+moving-window solver.
+
 ## Selection correction after101823 early stop
 
 The fixed-local measurement keeps all active seeds and96um padding, including
@@ -195,3 +203,4 @@ this patch does not implement that architecture or promise a speed multiplier.
 Local verification for this patch covers 14 Python tests, shell syntax and diff
 checks. OpenFOAM compilation, MPI execution and physical regression are pending
 on the Ubuntu host.
+
