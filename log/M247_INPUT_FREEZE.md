@@ -13,6 +13,15 @@ This file separates experimentally fixed inputs from provisional material-model
 choices for the M247 transfer. The Wang near-vacuum equations remain frozen.
 Only M247-specific inputs and numerical design are being added.
 
+## Numerical environment
+
+The user's Ubuntu OpenFOAM installation for this project is **OpenFOAM-v2512**
+(`WM_PROJECT_VERSION=v2512`; project directory under
+`~/OpenFOAM/OpenFOAM-v2512`). The M247 V2 pilot checks this version before
+building and records the loaded version and project path in its review archive.
+Paths to `OpenFOAM-v2312` in old `.dep` files are stale build dependencies,
+not the user's intended runtime.
+
 ## Experimentally fixed inputs
 
 | Quantity | Frozen value | Notes |
