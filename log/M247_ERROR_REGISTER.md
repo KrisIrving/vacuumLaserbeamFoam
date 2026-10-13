@@ -1206,4 +1206,17 @@ previous exploratory .54-.62 bracket is removed. Particle count, boundary,
 PSD, overlap and settling checks remain required; `productionApproved` stays
 false. The 14:06 archive can be reused without rerunning native LIGGGHTS.
 
+# 2026-10-13: V2 pilot build stopped on stale OpenFOAM-v2312 dependency
+
+Archive `M247_m247-track1500-v2-pilot-20261013-142810_review.tar.gz` has a
+five-file manifest with matching hashes and exit code 2. DEM archive
+verification finished, but `wmake libso` stopped before solver build, mesh
+preparation or CFD: `compactRay.C.dep` still names
+`/home/kris/OpenFOAM/OpenFOAM-v2312/src/OpenFOAM/lnInclude/scalarImpl.H`.
+This is a stale build dependency, not a DEM or physics failure. The V2 runner
+now performs the official `wclean libso`, `wmakeLnInclude -u .`, `wmake libso`
+and solver `wclean`, `wmake` sequence. No direct deletion or forced process
+control is used. Reuse the 14:06 DEM archive; the next Ubuntu pilot will
+establish whether this resolves compilation and then measure CFD.
+
 
