@@ -19,11 +19,12 @@ package() {
 trap package EXIT
 git rev-parse HEAD > "$WORK/revision.txt"
 python3 tests/m247Performance/m247_dem_handoff.py "$DEM_ARCHIVE" "$WORK/dem"
-for tool in python3 wmake blockMesh setFields checkMesh decomposePar mpirun reconstructPar postProcess; do
+for tool in python3 wclean wmake wmakeLnInclude blockMesh setFields checkMesh decomposePar mpirun reconstructPar postProcess; do
     command -v "$tool" >/dev/null || { echo "Missing $tool; source OpenFOAM first"; exit 1; }
 done
-(cd src/laserHeatSource && wmake libso) 2>&1 | tee "$WORK/buildLaser.log"
-(cd applications/solvers/vacuumLaserbeamFoam && wmake) 2>&1 | tee "$WORK/buildSolver.log"
+# Refresh stale absolute paths in Make/*.dep using official OpenFOAM commands.
+(cd src/laserHeatSource && wclean libso && wmakeLnInclude -u . && test -r lnInclude/laserPerformance.H && wmake libso) 2>&1 | tee "$WORK/buildLaser.log"
+(cd applications/solvers/vacuumLaserbeamFoam && wclean && wmake) 2>&1 | tee "$WORK/buildSolver.log"
 python3 tests/m247Performance/check_solver.py --laser-profile --output "$WORK/solverCheck.json"
 python3 tests/m247Performance/track1500_pilot_v2.py --work "$WORK" 2>&1 | tee "$WORK/collection.log"
 
