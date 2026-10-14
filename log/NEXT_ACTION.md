@@ -1,3 +1,23 @@
+## 2026-10-14: local corridor 2.38x, temperature screen fails; collect existing histories
+
+The completed 50us local pilot has all45 hashes verified and v2512 provenance.
+Wall falls3.43h ->1.44h, final solidus depth/width both match, liquidus-cell
+proxy differs1.75%, but final global Tmax differs13.398% (>10% user limit).
+Keep production false and do not extend the static local fine zone.
+
+Next run only CollectM247LocalCorridorHistory on the two existing completed
+track1500 directories. No CFD or rebuild. Fresh reconstruction cases retain
+original sources and verify their file size/mtime. Compare initial alpha/T
+by coordinates on the common6um ROI; integrate alpha*epsilon volume and
+collect all saved10-50us cavity-depth, solidus and regional-temperature
+histories. Use these to choose the next mesh correction; do not loosen the
+failed acceptance criterion or assume far-ahead powder caused it.
+
+See tests/m247Performance/LOCAL_CORRIDOR_HISTORY.md for the one command,
+and log/entries/2026-10-14-m247-local-corridor-result.md for verified costs.
+17 related offline tests pass; native reconstruction remains an Ubuntu check.
+The entries below are historical.
+
 Warning: truncated output (original token count: 34167)
 Total output lines: 2043
 
